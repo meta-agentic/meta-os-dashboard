@@ -1,0 +1,5 @@
+node_modules/
+dist/
+instance.config.json
+.cache/
+.DS_Store

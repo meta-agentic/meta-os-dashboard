@@ -1,0 +1,25 @@
+{
+  "name": "meta-os-dashboard",
+  "version": "0.1.0",
+  "description": "Layer 3 of the meta-os Agentic OS: observability-first dashboard. Generic and public-safe; pointed at a private instance root via instance.config.json.",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -n api,web -c blue,magenta \"node server/index.mjs\" \"vite\"",
+    "server": "node server/index.mjs",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "d3-force": "^3.0.0",
+    "express": "^4.21.2",
+    "gray-matter": "^4.0.3",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "yaml": "^2.7.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^9.1.2",
+    "vite": "^6.0.7"
+  }
+}

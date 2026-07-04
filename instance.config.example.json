@@ -1,0 +1,7 @@
+{
+  "instanceRoot": "/absolute/path/to/your/instance-vault",
+  "frameworkRoot": "(optional) /absolute/path/to/meta-os — defaults to resolving the instance's systems/ symlink",
+  "backlogs": [
+    { "space": "example", "path": "/absolute/path/to/scrum/<space>/backlog.json" }
+  ]
+}
