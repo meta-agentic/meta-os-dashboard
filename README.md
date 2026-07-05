@@ -35,6 +35,9 @@ in the framework repo for the full contract this app implements.
 Every widget degrades visibly instead of guessing: a missing feed shows its reason, not
 a zero.
 
+What's next — unified event feed, scheduler forecast, output inbox, engine usage/cost,
+and (last) the prompt console — is planned in [ROADMAP.md](ROADMAP.md).
+
 ## Setup
 
 ```bash
