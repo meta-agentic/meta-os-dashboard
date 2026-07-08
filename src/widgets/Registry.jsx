@@ -5,12 +5,17 @@ import Card from './Card.jsx'
 const repoUrl = (repo) =>
   !repo ? null : /^https?:\/\//.test(repo) ? repo : `https://github.com/${repo}`
 
+// output: may also be a filesystem/vault path — only linkify URLs and org/repo
+// shorthand (exactly one slash, no leading dot or slash); paths render as text.
+const outputUrl = (o) =>
+  !o ? null : /^https?:\/\//.test(o) ? o : /^[\w.-]+\/[\w.-]+$/.test(o) ? `https://github.com/${o}` : null
+
 export default function Registry({ data }) {
   return (
     <Card title="Projects — estate registry" data={data}>
       <table>
         <thead>
-          <tr><th>project</th><th>purpose</th><th>stack</th></tr>
+          <tr><th>project</th><th>purpose</th><th>stack</th><th>delivers to</th></tr>
         </thead>
         <tbody>
           {data?.projects?.map((p) => (
@@ -23,6 +28,17 @@ export default function Registry({ data }) {
               </td>
               <td className="dim">{p.purpose}</td>
               <td>{(p.stack ?? []).map((s) => <span key={s} className="chip">{s}</span>)}</td>
+              <td className="small">
+                {p.output ? (
+                  outputUrl(p.output) ? (
+                    <a href={outputUrl(p.output)} target="_blank" rel="noreferrer">{p.output}</a>
+                  ) : (
+                    <span className="mono">{p.output}</span>
+                  )
+                ) : (
+                  <span className="dim" title="no output: field on the project node — deliverables land in the vault">memory/output/</span>
+                )}
+              </td>
             </tr>
           ))}
         </tbody>

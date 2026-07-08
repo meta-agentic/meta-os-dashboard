@@ -7,6 +7,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import matter from 'gray-matter'
 import YAML from 'yaml'
+import { nextRuns } from './cron.mjs'
 
 const run = promisify(execFile)
 const unavailable = (reason) => ({ available: false, reason })
@@ -72,7 +73,22 @@ export async function automations(instanceRoot) {
       const last = lastByName.get(r.automation) ?? null
       r.lastRun = last && { ts: last.ts, outcome: last.outcome ?? null }
     }
-    return { available: true, rows, runLog: log.length > 0 }
+
+    // Upcoming runs over the next 48h, derived from the cadence column (cron or
+    // @nickname per the ontology contract). Event-driven rows ("—") have no schedule;
+    // an unparseable cadence degrades to its reason instead of a guessed time.
+    const now = new Date()
+    const horizonHours = 48
+    for (const r of rows) {
+      if (r.status === 'retired' || !r.cadence || r.cadence === '—') continue
+      const times = nextRuns(r.cadence, now, horizonHours * 3600e3)
+      if (times === null) r.nextReason = `cadence "${r.cadence}" is not cron or a @nickname`
+      else r.upcoming = times
+    }
+    return {
+      available: true, rows, runLog: log.length > 0,
+      schedule: { now: now.toISOString(), horizonHours },
+    }
   } catch (e) {
     return unavailable(`automations/_index.md unreadable: ${e.message}`)
   }
@@ -162,6 +178,134 @@ export async function activity(instanceRoot, limit = 15) {
   }
 }
 
+// Output inbox: finished deliverables in memory/output/ plus recent promotions into
+// memory/wiki/ — the vault is the database, the inbox is just a view over it.
+// Timestamps come from the instance git history (file-add dates); uncommitted files
+// fall back to mtime and say so. A project's `output:` registry field (ontology) says
+// where it delivers when NOT here — the widget links the two views together.
+export async function outputs(instanceRoot, promotionWindowDays = 30) {
+  try {
+    // file → first-seen add date, newest history first so the latest add wins.
+    const added = new Map()
+    let gitOk = true
+    try {
+      const { stdout } = await run('git', [
+        '-C', instanceRoot, 'log', '--diff-filter=A', '--date=iso-strict',
+        '--pretty=format:\x01%ad', '--name-only', '--', 'memory/output', 'memory/wiki',
+      ])
+      let date = null
+      for (const line of stdout.split('\n')) {
+        if (line.startsWith('\x01')) date = line.slice(1)
+        else if (line && date && !added.has(line)) added.set(line, date)
+      }
+    } catch {
+      gitOk = false
+    }
+
+    const collect = async (stage) => {
+      const dir = path.join(instanceRoot, 'memory', stage)
+      const items = []
+      for (const f of await mdFiles(dir)) {
+        const rel = path.posix.join('memory', stage, f.file.split(path.sep).join('/'))
+        let fm = {}
+        try {
+          fm = matter(await fs.readFile(path.join(dir, f.file), 'utf8')).data
+        } catch { /* unreadable front-matter — still list the file */ }
+        const ts = added.get(rel) ?? new Date(f.mtime).toISOString()
+        items.push({
+          file: f.file, stage, ts, committed: added.has(rel),
+          type: fm.type ?? null, tags: fm.tags ?? [],
+          project: (fm.tags ?? []).find((t) => String(t).startsWith('project/'))?.slice(8) ?? null,
+        })
+      }
+      return items
+    }
+
+    const outputItems = await collect('output')
+    const cutoff = Date.now() - promotionWindowDays * 864e5
+    const promotions = (await collect('wiki')).filter((i) => new Date(i.ts).getTime() >= cutoff)
+    const items = [...outputItems, ...promotions.map((p) => ({ ...p, promotion: true }))]
+      .sort((a, b) => new Date(b.ts) - new Date(a.ts))
+    return {
+      available: true, items, promotionWindowDays,
+      counts: { output: outputItems.length, promotions: promotions.length },
+      datesBasis: gitOk ? 'git add-dates; mtime for uncommitted files' : 'mtime only — instance is not a git repository',
+    }
+  } catch (e) {
+    return unavailable(`memory/ unreadable: ${e.message}`)
+  }
+}
+
+// Unified event timeline: vault commits + automation runs + backlog sprint
+// transitions, normalized to { ts, source, actor, action, target, note? }. Composes
+// only feeds that already exist — per-story transition events wait for the tracker
+// changelog (the mirror carries no per-story timestamps). Each source degrades
+// independently; a dead source is reported, not silently absent.
+export async function events(instanceRoot, backlogs, limit = 40) {
+  const out = []
+  const sources = []
+
+  try {
+    const { stdout } = await run('git', [
+      '-C', instanceRoot, 'log', `-${limit}`, '--date=iso-strict',
+      '--pretty=format:%h%x09%ad%x09%an%x09%s',
+    ])
+    for (const l of stdout.split('\n').filter(Boolean)) {
+      const [hash, date, author, ...s] = l.split('\t')
+      out.push({ ts: date, source: 'vault', actor: author, action: 'commit', target: s.join('\t'), note: hash })
+    }
+    sources.push({ name: 'vault', available: true })
+  } catch {
+    sources.push({ name: 'vault', available: false, reason: 'instance root is not a git repository' })
+  }
+
+  try {
+    const jsonl = await fs.readFile(path.join(instanceRoot, 'automations/runs.jsonl'), 'utf8')
+    for (const l of jsonl.split('\n').filter(Boolean)) {
+      try {
+        const e = JSON.parse(l)
+        out.push({
+          ts: e.ts, source: 'automations', actor: e.automation,
+          action: `run ${e.outcome ?? '?'}`, target: e.note ?? '',
+        })
+      } catch { /* malformed line — skip */ }
+    }
+    sources.push({ name: 'automations', available: true })
+  } catch {
+    sources.push({ name: 'automations', available: false, reason: 'no automations/runs.jsonl yet' })
+  }
+
+  // Sprint open/close from the backlog mirrors. Closed sprints report their delivered
+  // count (stories DONE linked to the sprint) — sprint-close accounting, the only
+  // timestamps the mirror has. Future/planned sprints emit nothing.
+  const now = Date.now()
+  for (const { space, path: p } of backlogs ?? []) {
+    try {
+      const d = JSON.parse(await fs.readFile(p, 'utf8'))
+      const doneBySprint = new Map()
+      for (const s of d.stories ?? []) {
+        if (s.status === 'DONE' && s.sprint) doneBySprint.set(s.sprint, (doneBySprint.get(s.sprint) ?? 0) + 1)
+      }
+      for (const s of d.sprints ?? []) {
+        const started = s.startDate && new Date(s.startDate).getTime() <= now
+        if (started && ['IN PROGRESS', 'CLOSED'].includes(s.status))
+          out.push({ ts: s.startDate, source: 'backlog', actor: space, action: 'sprint started', target: s.name ?? s.id })
+        if (s.status === 'CLOSED' && s.endDate)
+          out.push({
+            ts: s.endDate, source: 'backlog', actor: space, action: 'sprint closed',
+            target: s.name ?? s.id, note: `${doneBySprint.get(s.id) ?? 0} delivered`,
+          })
+      }
+      sources.push({ name: `backlog:${space}`, available: true })
+    } catch (e) {
+      sources.push({ name: `backlog:${space}`, available: false, reason: `backlog unreadable: ${e.message}` })
+    }
+  }
+
+  out.sort((a, b) => new Date(b.ts) - new Date(a.ts))
+  return { available: true, events: out.slice(0, limit), sources }
+}
+
 // Lane derivation per ontology flow: group active-sprint stories by their `project`
 // field (the swarm-harness rule: a lane is a distinct codebase/service). Forecast is
 // velocity-based from closed sprints; the backlog mirror has no per-story transition
@@ -183,13 +327,27 @@ export async function lanes(backlogs) {
         (s) => activeIds.has(s.sprint) || activeIssues.has(s.jiraId),
       )
 
+      // Blocked is DERIVED (ontology flow.item_states): a not-done story whose
+      // `dependencies` include a story the mirror knows and that isn't DONE yet.
+      // Unknown dependency ids don't count — no guessing. Blocked AGE stays
+      // unavailable: the mirror has no transition timestamps (same reason as
+      // cycle-time below).
+      const statusById = new Map((d.stories ?? []).map((s) => [s.jiraId, s.status]))
+      const blockedBy = (s) =>
+        (s.dependencies ?? []).filter((id) => statusById.has(id) && statusById.get(id) !== 'DONE')
+
       const byLane = new Map()
       for (const s of inSprint) {
         const state = STATE[s.status]
         if (!state) continue // NO GO etc. — out of flow
-        const lane = byLane.get(s.project) ?? { lane: s.project, queues: { todo: [], 'in-progress': [], done: [] } }
-        lane.queues[state].push({ id: s.jiraId, title: s.title, points: s.storyPoints ?? null, epic: s.epic ?? null })
-        byLane.set(s.project, lane)
+        const key = s.project ?? 'unassigned' // no project field → still in flow, own lane
+        const lane = byLane.get(key) ?? { lane: key, queues: { todo: [], 'in-progress': [], done: [] } }
+        const blockers = state === 'done' ? [] : blockedBy(s)
+        lane.queues[state].push({
+          id: s.jiraId, title: s.title, points: s.storyPoints ?? null, epic: s.epic ?? null,
+          blockedBy: blockers.length ? blockers : null,
+        })
+        byLane.set(key, lane)
       }
       const pts = (q) => q.reduce((acc, i) => acc + (i.points ?? 0), 0)
       const laneRows = [...byLane.values()].map((l) => ({
@@ -197,6 +355,7 @@ export async function lanes(backlogs) {
         wip: l.queues['in-progress'].length,
         depth: l.queues.todo.length,
         done: l.queues.done.length,
+        blocked: [...l.queues.todo, ...l.queues['in-progress']].filter((i) => i.blockedBy).length,
         points: { todo: pts(l.queues.todo), wip: pts(l.queues['in-progress']), done: pts(l.queues.done) },
       })).sort((a, b) => b.wip + b.depth - (a.wip + a.depth))
 
