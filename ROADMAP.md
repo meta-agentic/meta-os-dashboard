@@ -37,19 +37,23 @@ mirror knows (unknown ids don't count — no guessing). Rendered as a warn outli
 story's queue slot plus a per-lane count; blocked *age* stays n/a for the same reason as
 cycle-time and says so.
 
-## Phase 2 — new read surfaces
+## Phase 2 — new read surfaces — SHIPPED
 
-**Output inbox (`Outputs` widget, `/api/outputs`).** Walk `memory/output/` plus recent
-promotions into `memory/wiki/` (file-adds from the instance git log carry the
-timestamps). Return front-matter type + tags for ontology facets; newest first; badge
-items newer than N days. Degrades to its reason when the folders are empty or missing.
+**Output inbox (`Outputs` widget, `/api/outputs`).** Walks `memory/output/` plus recent
+promotions into `memory/wiki/`; timestamps from instance git add-dates with mtime
+fallback for uncommitted files (and it says which basis it used). Front-matter type +
+`project/*` tag rendered as facet chips; fresh items (7d) dotted. Pairs with the
+registry's "delivers to" column: a project node's `output:` field (ontology optional
+field) names an external delivery repo/path; blank means deliverables land here.
 
-**Engine usage (`Usage` widget, `/api/usage`).** New optional config key `claudeHome`
-(default `~/.claude`). Parse the engine's per-project session JSONL logs, aggregate
-usage per model × project × day (tokens; cost if the log carries it — never estimate
-prices in code, they rot). Cache by file mtime like `server/graph.mjs`. Missing
-`claudeHome` or no logs → widget shows the reason, not zeros. Read-only and local-only:
-session logs contain instance content and must never be exported or committed.
+**Engine usage (`Usage` widget, `/api/usage`).** Optional config key `claudeHome`
+(default `~/.claude`). Parses the engine's per-project session JSONL logs
+(`message.usage` lines), aggregates per model × project × day over a 30d window,
+cached per file by mtime. Engine project slugs map back to registry projects via their
+`path` field. Cost is reported n/a — the logs carry no cost field and prices are never
+estimated in code. Missing `claudeHome`/logs → the widget shows the reason, not zeros.
+Read-only and local-only: session logs contain instance content and must never be
+exported or committed.
 
 ## Phase 3 — live telemetry
 

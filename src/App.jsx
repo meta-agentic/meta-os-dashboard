@@ -6,8 +6,10 @@ import Registry from './widgets/Registry.jsx'
 import Activity from './widgets/Activity.jsx'
 import Graph from './widgets/Graph.jsx'
 import Lint from './widgets/Lint.jsx'
+import Outputs from './widgets/Outputs.jsx'
+import Usage from './widgets/Usage.jsx'
 
-const FEEDS = ['meta', 'ontology', 'registry', 'automations', 'memory', 'events', 'lanes', 'lint']
+const FEEDS = ['meta', 'ontology', 'registry', 'automations', 'memory', 'events', 'lanes', 'lint', 'outputs', 'usage']
 
 export default function App() {
   const [data, setData] = useState({})
@@ -39,7 +41,9 @@ export default function App() {
         <Lanes data={data.lanes} />
         <Graph ontology={data.ontology} />
         <Memory data={data.memory} ontology={data.ontology} />
+        <Outputs data={data.outputs} />
         <Automations data={data.automations} />
+        <Usage data={data.usage} />
         <Registry data={data.registry} />
         <Lint data={data.lint} />
         <Activity data={data.events} />

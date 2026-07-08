@@ -196,3 +196,12 @@ line.zap { stroke: var(--accent); stroke-opacity: 0.9; }
 .striprail .stick.shipped { background: var(--accent); }
 .striprail .daymark { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--border); }
 .striplabels { display: flex; justify-content: space-between; margin-top: 2px; }
+.usagetotals { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 0.6rem; }
+.daybars { display: flex; align-items: flex-end; gap: 2px; height: 48px; margin-bottom: 0.75rem; }
+.daybars .daycol { flex: 1; max-width: 48px; display: flex; align-items: flex-end; height: 100%; }
+.daybars .daycol i {
+  display: block;
+  width: 100%;
+  background: var(--accent);
+  border-radius: 3px 3px 0 0;
+}

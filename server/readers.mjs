@@ -178,6 +178,64 @@ export async function activity(instanceRoot, limit = 15) {
   }
 }
 
+// Output inbox: finished deliverables in memory/output/ plus recent promotions into
+// memory/wiki/ — the vault is the database, the inbox is just a view over it.
+// Timestamps come from the instance git history (file-add dates); uncommitted files
+// fall back to mtime and say so. A project's `output:` registry field (ontology) says
+// where it delivers when NOT here — the widget links the two views together.
+export async function outputs(instanceRoot, promotionWindowDays = 30) {
+  try {
+    // file → first-seen add date, newest history first so the latest add wins.
+    const added = new Map()
+    let gitOk = true
+    try {
+      const { stdout } = await run('git', [
+        '-C', instanceRoot, 'log', '--diff-filter=A', '--date=iso-strict',
+        '--pretty=format:\x01%ad', '--name-only', '--', 'memory/output', 'memory/wiki',
+      ])
+      let date = null
+      for (const line of stdout.split('\n')) {
+        if (line.startsWith('\x01')) date = line.slice(1)
+        else if (line && date && !added.has(line)) added.set(line, date)
+      }
+    } catch {
+      gitOk = false
+    }
+
+    const collect = async (stage) => {
+      const dir = path.join(instanceRoot, 'memory', stage)
+      const items = []
+      for (const f of await mdFiles(dir)) {
+        const rel = path.posix.join('memory', stage, f.file.split(path.sep).join('/'))
+        let fm = {}
+        try {
+          fm = matter(await fs.readFile(path.join(dir, f.file), 'utf8')).data
+        } catch { /* unreadable front-matter — still list the file */ }
+        const ts = added.get(rel) ?? new Date(f.mtime).toISOString()
+        items.push({
+          file: f.file, stage, ts, committed: added.has(rel),
+          type: fm.type ?? null, tags: fm.tags ?? [],
+          project: (fm.tags ?? []).find((t) => String(t).startsWith('project/'))?.slice(8) ?? null,
+        })
+      }
+      return items
+    }
+
+    const outputItems = await collect('output')
+    const cutoff = Date.now() - promotionWindowDays * 864e5
+    const promotions = (await collect('wiki')).filter((i) => new Date(i.ts).getTime() >= cutoff)
+    const items = [...outputItems, ...promotions.map((p) => ({ ...p, promotion: true }))]
+      .sort((a, b) => new Date(b.ts) - new Date(a.ts))
+    return {
+      available: true, items, promotionWindowDays,
+      counts: { output: outputItems.length, promotions: promotions.length },
+      datesBasis: gitOk ? 'git add-dates; mtime for uncommitted files' : 'mtime only — instance is not a git repository',
+    }
+  } catch (e) {
+    return unavailable(`memory/ unreadable: ${e.message}`)
+  }
+}
+
 // Unified event timeline: vault commits + automation runs + backlog sprint
 // transitions, normalized to { ts, source, actor, action, target, note? }. Composes
 // only feeds that already exist — per-story transition events wait for the tracker
