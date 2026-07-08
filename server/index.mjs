@@ -33,6 +33,7 @@ app.get('/api/automations', api(() => read.automations(instanceRoot)))
 app.get('/api/memory', api(() => read.memory(instanceRoot)))
 app.get('/api/activity', api(() => read.activity(instanceRoot)))
 app.get('/api/lanes', api(() => read.lanes(config.backlogs)))
+app.get('/api/events', api(() => read.events(instanceRoot, config.backlogs)))
 app.get('/api/lint', api(() => lint(instanceRoot, frameworkRoot)))
 app.get('/api/graphs', api(async () => {
   const reg = await read.registry(instanceRoot)

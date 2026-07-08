@@ -9,29 +9,33 @@ Already covered, no new work: knowledge graph (Graph widget), task kanban (Lanes
 the backlog mirrors — the tracker stays authoritative). Rejected on principle: one-click
 skill buttons and a standalone chat pane — both fold into the prompt console (phase 4).
 
-## Phase 1 — derive from what exists (no contract change)
+## Phase 1 — derive from what exists (no contract change) — SHIPPED
 
 **Upcoming-runs strip (`Automations`).** The automations table's `cadence` column is
-already cron or a cron nickname. Add next-run computation in `server/readers.mjs`
-(small cron parser — support the nicknames plus 5-field expressions; no dependency
-needed) and return `nextRuns` alongside the existing rows. The widget gains a 24–48h
-horizontal strip: one tick per scheduled run, event-driven rows excluded. Rows whose
-cadence can't be parsed degrade visibly with the reason, per house rule.
+already cron or a cron nickname. `server/cron.mjs` (nicknames + 5-field expressions, no
+dependency) computes each scheduled row's occurrences over the next 48h; the widget
+gains a "next" column and a horizontal strip — one tick per run, shipped rows accented,
+candidates dim, event-driven rows excluded. Rows whose cadence can't be parsed degrade
+visibly with the reason, per house rule.
 
-**Unified event timeline (`Activity`).** New `/api/events` in `server/readers.mjs`
-composing, newest-first with a `source` field:
+**Unified event timeline (`Activity`).** `/api/events` composes, newest-first with a
+`source` field:
 
 - instance git log (already read for `/api/activity`)
 - `automations/runs.jsonl` (already read for `/api/automations`)
-- backlog changelogs from the configured `backlogs` (stage transitions — same files the
-  lanes forecasts use)
+- sprint open/close transitions from the configured backlog mirrors, with delivered
+  counts at close — the only timestamps the mirror carries; per-story transition events
+  wait for the tracker changelog (phase 2+)
 
-Normalized shape: `{ ts, source, actor, action, target, note? }`. The Activity widget
-becomes the feed with source filter chips; `/api/activity` stays until the widget flips.
+Normalized shape: `{ ts, source, actor, action, target, note? }`; each source degrades
+independently. The Activity widget is the feed with source filter chips;
+`/api/activity` remains for compatibility.
 
-**Blocked + age (`Lanes`).** Surface `blocked` item state and item-age-in-stage from the
-backlog mirror (both already specified in the ontology's `flow.metrics.instant`). Render
-as a per-lane badge with the oldest-blocked age.
+**Blocked (`Lanes`).** The mirror has no BLOCKED status and no timestamps, so blocked is
+*derived*: a not-done sprint story with an unfinished `dependencies` edge to a story the
+mirror knows (unknown ids don't count — no guessing). Rendered as a warn outline on the
+story's queue slot plus a per-lane count; blocked *age* stays n/a for the same reason as
+cycle-time and says so.
 
 ## Phase 2 — new read surfaces
 

@@ -16,7 +16,8 @@ in the framework repo for the full contract this app implements.
 ## What it shows
 
 - **Lanes** — active sprint flow per swarm lane: todo/wip/done as filled slots (not just
-  counts), a sprint burn line, story points, and forecasts (velocity, median-baseline
+  counts), a sprint burn line, story points, blocked stories (derived from unfinished
+  dependency edges in the mirror), and forecasts (velocity, median-baseline
   acceleration, Little's-Law ETA).
 - **Knowledge graph** — a live, pannable/zoomable view over
   [graphify](https://github.com/meta-agentic/meta-os/tree/main/skills/graphify) output.
@@ -25,12 +26,14 @@ in the framework repo for the full contract this app implements.
   effect, and ambient + real-event node sparks when the graph changes.
 - **Memory** — the raw → wiki → output promotion pipeline as fill-slot gauges (capacity
   = 24h high-water mark), plus federated-vault context (navigation, not canon).
-- **Automations** — the instance's automation table with cadence and last-run/outcome,
-  read from a simple `runs.jsonl` append log.
+- **Automations** — the instance's automation table with cadence and last-run/outcome
+  (read from a simple `runs.jsonl` append log), next-run per scheduled row, and a
+  next-48h strip of upcoming runs derived from the cadence column.
 - **Registry** — the project estate, linked out to each repo.
 - **Ontology lint** — front-matter in the instance validated against the framework's
   `ontology.yaml`; violations surface here instead of rotting silently.
-- **Vault activity** — recent instance commits.
+- **Activity** — one event feed with source filters: instance commits, automation runs,
+  and sprint open/close transitions from the backlog mirrors.
 
 Every widget degrades visibly instead of guessing: a missing feed shows its reason, not
 a zero.

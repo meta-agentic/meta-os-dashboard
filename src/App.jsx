@@ -7,7 +7,7 @@ import Activity from './widgets/Activity.jsx'
 import Graph from './widgets/Graph.jsx'
 import Lint from './widgets/Lint.jsx'
 
-const FEEDS = ['meta', 'ontology', 'registry', 'automations', 'memory', 'activity', 'lanes', 'lint']
+const FEEDS = ['meta', 'ontology', 'registry', 'automations', 'memory', 'events', 'lanes', 'lint']
 
 export default function App() {
   const [data, setData] = useState({})
@@ -42,7 +42,7 @@ export default function App() {
         <Automations data={data.automations} />
         <Registry data={data.registry} />
         <Lint data={data.lint} />
-        <Activity data={data.activity} />
+        <Activity data={data.events} />
       </main>
     </>
   )
