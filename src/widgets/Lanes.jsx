@@ -21,18 +21,28 @@ function Points({ n }) {
 }
 
 // One slot per story, done → wip → todo (progress reads left to right), filling the
-// whole rectangle.
+// whole rectangle. Blocked stories (unfinished dependencies in the mirror) get a
+// warn outline on their slot.
 function QueueBar({ queues }) {
   const slots = [
-    ...queues.done.map(() => 'done'),
-    ...queues['in-progress'].map(() => 'wip'),
-    ...queues.todo.map(() => 'todo'),
+    ...queues.done.map((i) => ({ cls: 'done', item: i })),
+    ...queues['in-progress'].map((i) => ({ cls: 'wip', item: i })),
+    ...queues.todo.map((i) => ({ cls: 'todo', item: i })),
   ]
   if (!slots.length) return null
-  const title = `${queues.todo.length} todo · ${queues['in-progress'].length} wip · ${queues.done.length} done`
+  const blocked = slots.filter((s) => s.item.blockedBy).length
+  const title =
+    `${queues.todo.length} todo · ${queues['in-progress'].length} wip · ${queues.done.length} done` +
+    (blocked ? ` · ${blocked} blocked` : '')
   return (
     <div className="queueslots" title={title}>
-      {slots.map((s, i) => <span key={i} className={`slot ${s}`} />)}
+      {slots.map((s, i) => (
+        <span
+          key={i}
+          className={`slot ${s.cls}${s.item.blockedBy ? ' blocked' : ''}`}
+          title={s.item.blockedBy ? `${s.item.id} blocked by ${s.item.blockedBy.join(', ')}` : undefined}
+        />
+      ))}
     </div>
   )
 }
@@ -81,7 +91,10 @@ export default function Lanes({ data }) {
               <tbody>
                 {s.lanes.map((l) => (
                   <tr key={l.lane}>
-                    <td className="mono">{l.lane}</td>
+                    <td className="mono">
+                      {l.lane}
+                      {l.blocked > 0 && <div className="warn small">{l.blocked} blocked</div>}
+                    </td>
                     <td><QueueBar queues={l.queues} /></td>
                     <td className="num">{l.depth}<Points n={l.points?.todo} /></td>
                     <td className="num">{l.wip}<Points n={l.points?.wip} /></td>
@@ -92,6 +105,7 @@ export default function Lanes({ data }) {
             </table>
             <div className="dim small">
               forecast: {s.forecast.basis} · cycle-time n/a — {s.forecast.cycleTimeReason}
+              {s.lanes.some((l) => l.blocked > 0) && ' · blocked age n/a — same reason'}
             </div>
           </div>
         ),
