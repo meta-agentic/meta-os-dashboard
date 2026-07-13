@@ -17,6 +17,10 @@ try {
   process.exit(1)
 }
 
+// Expand ${var} references (config.vars) across the whole config — so backlog paths and any
+// other prefixes follow a single variable. Project paths in projects/*.md are expanded in registry().
+config = read.expandVars(config, config.vars ?? {})
+
 const instanceRoot = config.instanceRoot
 // Framework root defaults to wherever the instance's systems/ symlink points.
 const frameworkRoot =
@@ -29,7 +33,7 @@ app.get('/api/meta', api(async () => ({
   instance: path.basename(instanceRoot), instanceRoot, frameworkRoot,
 })))
 app.get('/api/ontology', api(() => read.ontology(frameworkRoot)))
-app.get('/api/registry', api(() => read.registry(instanceRoot)))
+app.get('/api/registry', api(() => read.registry(instanceRoot, config.vars ?? {})))
 app.get('/api/automations', api(() => read.automations(instanceRoot)))
 app.get('/api/memory', api(() => read.memory(instanceRoot)))
 app.get('/api/activity', api(() => read.activity(instanceRoot)))
@@ -37,17 +41,17 @@ app.get('/api/lanes', api(() => read.lanes(config.backlogs)))
 app.get('/api/events', api(() => read.events(instanceRoot, config.backlogs)))
 app.get('/api/outputs', api(() => read.outputs(instanceRoot)))
 app.get('/api/usage', api(async () => {
-  const reg = await read.registry(instanceRoot)
+  const reg = await read.registry(instanceRoot, config.vars ?? {})
   return usage(config.claudeHome, reg.projects ?? [])
 }))
 app.get('/api/lint', api(() => lint(instanceRoot, frameworkRoot)))
 app.get('/api/graphs', api(async () => {
-  const reg = await read.registry(instanceRoot)
+  const reg = await read.registry(instanceRoot, config.vars ?? {})
   return graphSources(instanceRoot, reg.projects ?? [])
 }))
 app.get('/api/graph', api(async (req) => {
   const { name, ...opts } = req.query
-  const reg = await read.registry(instanceRoot)
+  const reg = await read.registry(instanceRoot, config.vars ?? {})
   const { sources } = await graphSources(instanceRoot, reg.projects ?? [])
   const src = sources.find((s) => s.name === name) ?? sources[0]
   if (!src) return { available: false, reason: 'no graphs found' }

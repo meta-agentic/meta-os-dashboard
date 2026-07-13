@@ -25,7 +25,21 @@ export async function ontology(frameworkRoot) {
   }
 }
 
-export async function registry(instanceRoot) {
+// Expand ${var} references from instance.config.json `vars` — recursively over strings,
+// arrays and objects. Lets a single prefix variable (e.g. a shared repo root) repoint every
+// project/backlog path in one shot, instead of hardcoding absolute paths that rot on a move.
+export function expandVars(value, vars = {}) {
+  if (typeof value === 'string') {
+    return value.replace(/\$\{(\w+)\}/g, (m, k) => (k in vars ? vars[k] : m))
+  }
+  if (Array.isArray(value)) return value.map((v) => expandVars(v, vars))
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, expandVars(v, vars)]))
+  }
+  return value
+}
+
+export async function registry(instanceRoot, vars = {}) {
   const dir = path.join(instanceRoot, 'projects')
   try {
     const files = (await fs.readdir(dir)).filter((f) => f.endsWith('.md') && f !== '_index.md')
@@ -33,7 +47,7 @@ export async function registry(instanceRoot) {
       files.map(async (f) => {
         const { data, content } = matter(await fs.readFile(path.join(dir, f), 'utf8'))
         const purpose = content.match(/\*\*(.+?)\*\*/)?.[1] ?? ''
-        return { note: f, purpose: plain(purpose), ...data }
+        return { note: f, purpose: plain(purpose), ...data, path: expandVars(data.path, vars) }
       }),
     )
     return { available: true, projects }

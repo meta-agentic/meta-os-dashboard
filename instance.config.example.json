@@ -1,8 +1,12 @@
 {
-  "instanceRoot": "/absolute/path/to/your/instance-vault",
-  "frameworkRoot": "(optional) /absolute/path/to/meta-os — defaults to resolving the instance's systems/ symlink",
+  "vars": {
+    "_comment": "Optional. Reusable prefixes; ${name} in any config value or a projects/*.md 'path:' expands to these, so a repo-root move is a one-line change.",
+    "code": "/absolute/path/to/your/code-root"
+  },
+  "instanceRoot": "${code}/your-instance-vault",
+  "frameworkRoot": "(optional) ${code}/meta-os — defaults to resolving the instance's systems/ symlink",
   "claudeHome": "(optional) /Users/you/.claude — engine home whose session logs feed the usage widget; defaults to ~/.claude",
   "backlogs": [
-    { "space": "example", "path": "/absolute/path/to/scrum/<space>/backlog.json" }
+    { "space": "example", "path": "${code}/scrum/<space>/backlog.json" }
   ]
 }
