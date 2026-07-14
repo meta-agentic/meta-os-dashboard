@@ -30,7 +30,7 @@ const app = express()
 const api = (fn) => async (req, res) => res.json(await fn(req))
 
 app.get('/api/meta', api(async () => ({
-  instance: path.basename(instanceRoot), instanceRoot, frameworkRoot,
+  instance: path.basename(instanceRoot), instanceRoot, frameworkRoot, vars: config.vars ?? {},
 })))
 app.get('/api/ontology', api(() => read.ontology(frameworkRoot)))
 app.get('/api/registry', api(() => read.registry(instanceRoot, config.vars ?? {})))

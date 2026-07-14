@@ -11,6 +11,7 @@ import Graph from './widgets/Graph.jsx'
 import Lint from './widgets/Lint.jsx'
 import Outputs from './widgets/Outputs.jsx'
 import Usage from './widgets/Usage.jsx'
+import Nav from './Nav.jsx'
 
 const FEEDS = ['meta', 'ontology', 'registry', 'automations', 'memory', 'events', 'lanes', 'lint', 'outputs', 'usage']
 
@@ -42,6 +43,19 @@ const withFloors = (layout) => (layout || []).filter((l) => FLOORS[l.i]).map((l)
 
 const BOARDS_KEY = 'meta-os.boards.v1'
 const LEGACY_LAYOUT_KEY = 'meta-os.layout.v1'
+const PREFS_KEY = 'meta-os.prefs.v1'
+const DEFAULT_PREFS = { theme: 'system', density: 'comfortable', refreshSec: 30 }
+const DENSITY = {
+  comfortable: { margin: [14, 14], rowHeight: 30 },
+  compact: { margin: [8, 8], rowHeight: 24 },
+}
+function loadPrefs() {
+  try {
+    return { ...DEFAULT_PREFS, ...(JSON.parse(localStorage.getItem(PREFS_KEY) || 'null') || {}) }
+  } catch {
+    return { ...DEFAULT_PREFS }
+  }
+}
 const Grid = WidthProvider(GridLayout)
 const newId = (p = 'b') => p + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36)
 const normBoard = (b) => ({ groups: [], membership: {}, ...b, layout: withFloors(b.layout) })
@@ -72,6 +86,8 @@ export default function App() {
   const [error, setError] = useState(null)
   const [{ boards, activeId }, setState] = useState(loadBoards)
   const [editingId, setEditingId] = useState(null)
+  const [prefs, setPrefs] = useState(loadPrefs)
+  const [navOpen, setNavOpen] = useState(false)
 
   const refresh = () =>
     Promise.all(FEEDS.map((f) => fetch(`/api/${f}`).then((r) => r.json()).then((d) => [f, d])))
@@ -80,9 +96,23 @@ export default function App() {
 
   useEffect(() => {
     refresh()
-    const t = setInterval(refresh, 30_000)
+    const t = setInterval(refresh, prefs.refreshSec * 1000)
     return () => clearInterval(t)
-  }, [])
+  }, [prefs.refreshSec])
+
+  useEffect(() => {
+    const el = document.documentElement
+    if (prefs.theme === 'system') delete el.dataset.theme
+    else el.dataset.theme = prefs.theme
+  }, [prefs.theme])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(PREFS_KEY, JSON.stringify(prefs))
+    } catch {
+      /* storage disabled */
+    }
+  }, [prefs])
 
   useEffect(() => {
     try {
@@ -156,9 +186,13 @@ export default function App() {
   const gridLayout = active.layout.filter((l) => visibleIds.has(l.i))
   const countIn = (gid) => Object.values(active.membership).filter((v) => v === gid).length
 
+  const dens = DENSITY[prefs.density] || DENSITY.comfortable
+
   return (
     <>
+      <Nav open={navOpen} onClose={() => setNavOpen(false)} prefs={prefs} setPrefs={setPrefs} meta={data.meta} />
       <header>
+        <button className="nav-toggle" onClick={() => setNavOpen(true)} title="Settings & navigation" aria-label="Open settings">☰</button>
         <h1>
           meta-os <span className="dim">/</span> {data.meta.instance}
         </h1>
@@ -229,8 +263,8 @@ export default function App() {
         className="wgrid"
         layout={gridLayout}
         cols={12}
-        rowHeight={30}
-        margin={[14, 14]}
+        rowHeight={dens.rowHeight}
+        margin={dens.margin}
         containerPadding={[20, 18]}
         draggableHandle=".wgt-head"
         resizeHandles={['se', 'e', 's']}

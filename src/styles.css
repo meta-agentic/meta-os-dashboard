@@ -9,6 +9,32 @@
   --wip: #d29922;
   --warn: #f85149;
 }
+/* light palette — applied for explicit light mode and for system mode on a light OS */
+:root[data-theme="light"],
+.light-tokens {
+  --bg: #ffffff;
+  --card: #f6f8fa;
+  --border: #d0d7de;
+  --fg: #1f2328;
+  --dim: #636c76;
+  --accent: #0969da;
+  --ok: #1a7f37;
+  --wip: #9a6700;
+  --warn: #cf222e;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    --bg: #ffffff;
+    --card: #f6f8fa;
+    --border: #d0d7de;
+    --fg: #1f2328;
+    --dim: #636c76;
+    --accent: #0969da;
+    --ok: #1a7f37;
+    --wip: #9a6700;
+    --warn: #cf222e;
+  }
+}
 * { box-sizing: border-box; }
 body {
   margin: 0;
@@ -279,3 +305,35 @@ line.zap { stroke: var(--accent); stroke-opacity: 0.9; }
   background: var(--accent);
   border-radius: 3px 3px 0 0;
 }
+
+/* ── Nav drawer + settings ─────────────────────────────────────────────── */
+.nav-toggle { font: inherit; font-size: 1.05rem; line-height: 1; color: var(--dim); background: transparent; border: 1px solid var(--border); border-radius: 7px; cursor: pointer; padding: 0.28rem 0.55rem; align-self: center; }
+.nav-toggle:hover { color: var(--accent); border-color: var(--accent); }
+.nav-scrim { position: fixed; inset: 0; background: rgba(1, 4, 9, 0.55); opacity: 0; pointer-events: none; transition: opacity 0.18s ease; z-index: 40; }
+.nav-scrim.show { opacity: 1; pointer-events: auto; }
+.nav { position: fixed; top: 0; left: 0; bottom: 0; width: 320px; max-width: 86vw; background: var(--card); border-right: 1px solid var(--border); transform: translateX(-101%); transition: transform 0.2s ease; z-index: 41; overflow-y: auto; padding-bottom: 1.5rem; }
+.nav.open { transform: translateX(0); box-shadow: 2px 0 24px rgba(1, 4, 9, 0.4); }
+.nav-head { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.1rem; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--card); }
+.nav-title { font-weight: 600; letter-spacing: 0.02em; }
+.nav-x { font: inherit; font-size: 1.3rem; line-height: 1; color: var(--dim); background: transparent; border: none; cursor: pointer; }
+.nav-x:hover { color: var(--fg); }
+.nav-sec { border-bottom: 1px solid var(--border); padding: 0.5rem 1.1rem 0.85rem; }
+.nav-sec > summary { cursor: pointer; list-style: none; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.09em; color: var(--accent); padding: 0.5rem 0; user-select: none; }
+.nav-sec > summary::-webkit-details-marker { display: none; }
+.nav-sec > summary::before { content: '▸'; display: inline-block; margin-right: 0.45rem; font-size: 0.65rem; transition: transform 0.15s ease; color: var(--dim); }
+.nav-sec[open] > summary::before { transform: rotate(90deg); }
+.nav-lbl { display: block; font-size: 0.7rem; color: var(--dim); margin: 0.55rem 0 0.3rem; }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 7px; overflow: hidden; }
+.seg-b { font: inherit; font-size: 0.75rem; color: var(--dim); background: transparent; border: none; border-right: 1px solid var(--border); padding: 0.32rem 0.7rem; cursor: pointer; }
+.seg-b:last-child { border-right: none; }
+.seg-b:hover { color: var(--fg); }
+.seg-b.on { background: var(--accent); color: #fff; }
+.nav-num { font: inherit; width: 6rem; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 6px; padding: 0.3rem 0.5rem; }
+.nav-num:focus { outline: none; border-color: var(--accent); }
+.nav-kv { display: flex; justify-content: space-between; gap: 0.75rem; font-size: 0.75rem; padding: 0.28rem 0; border-bottom: 1px dashed var(--border); }
+.nav-kv span { color: var(--dim); white-space: nowrap; }
+.nav-kv code { color: var(--fg); font-size: 0.72rem; text-align: right; }
+.nav-kv code.wrap { word-break: break-all; text-align: right; }
+.nav-note { font-size: 0.72rem; color: var(--dim); line-height: 1.45; margin: 0.6rem 0 0.4rem; }
+.nav-btn { font: inherit; font-size: 0.78rem; color: var(--fg); background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 0.4rem 0.8rem; cursor: pointer; }
+.nav-btn:disabled { opacity: 0.5; cursor: not-allowed; }
