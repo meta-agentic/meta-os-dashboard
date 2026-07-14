@@ -26,6 +26,7 @@ const WIDGETS = [
   { i: 'lint', title: 'Lint', render: (d) => <Lint data={d.lint} /> },
   { i: 'activity', title: 'Activity', render: (d) => <Activity data={d.events} /> },
 ]
+const WIDGET_BY_ID = Object.fromEntries(WIDGETS.map((w) => [w.i, w]))
 
 // Default disposition on a 12-column grid; minW/minH are the per-widget floors.
 const DEFAULT_LAYOUT = [
@@ -39,28 +40,42 @@ const DEFAULT_LAYOUT = [
   { i: 'lint', x: 9, y: 19, w: 3, h: 8, minW: 3, minH: 5 },
   { i: 'activity', x: 0, y: 27, w: 12, h: 7, minW: 4, minH: 5 },
 ]
+const FLOORS = Object.fromEntries(DEFAULT_LAYOUT.map((d) => [d.i, { minW: d.minW, minH: d.minH }]))
+// re-assert per-widget floors and drop items for widgets that no longer exist
+const withFloors = (layout) =>
+  (layout || []).filter((l) => FLOORS[l.i]).map((l) => ({ ...l, ...FLOORS[l.i] }))
 
-const LS_KEY = 'meta-os.layout.v1'
+const BOARDS_KEY = 'meta-os.boards.v1'
+const LEGACY_LAYOUT_KEY = 'meta-os.layout.v1'
 const Grid = WidthProvider(GridLayout)
+const newId = () => 'b' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36)
 
-function loadLayout() {
+function loadBoards() {
   try {
-    const saved = JSON.parse(localStorage.getItem(LS_KEY) || 'null')
-    if (!Array.isArray(saved) || !saved.length) return DEFAULT_LAYOUT
-    // merge: keep saved geometry, but re-assert min floors from the default (so old saves stay valid)
-    const floors = Object.fromEntries(DEFAULT_LAYOUT.map((d) => [d.i, d]))
-    return saved
-      .filter((s) => floors[s.i])
-      .map((s) => ({ ...s, minW: floors[s.i].minW, minH: floors[s.i].minH }))
+    const saved = JSON.parse(localStorage.getItem(BOARDS_KEY) || 'null')
+    if (saved && Array.isArray(saved.boards) && saved.boards.length) {
+      const boards = saved.boards.map((b) => ({ ...b, layout: withFloors(b.layout) }))
+      const activeId = boards.some((b) => b.id === saved.activeId) ? saved.activeId : boards[0].id
+      return { boards, activeId }
+    }
   } catch {
-    return DEFAULT_LAYOUT
+    /* fall through to migration */
   }
+  let layout = DEFAULT_LAYOUT
+  try {
+    const legacy = JSON.parse(localStorage.getItem(LEGACY_LAYOUT_KEY) || 'null')
+    if (Array.isArray(legacy) && legacy.length) layout = legacy
+  } catch {
+    /* ignore */
+  }
+  return { boards: [{ id: 'overview', name: 'Overview', layout: withFloors(layout) }], activeId: 'overview' }
 }
 
 export default function App() {
   const [data, setData] = useState({})
   const [error, setError] = useState(null)
-  const [layout, setLayout] = useState(loadLayout)
+  const [{ boards, activeId }, setState] = useState(loadBoards)
+  const [editingId, setEditingId] = useState(null)
 
   const refresh = () =>
     Promise.all(FEEDS.map((f) => fetch(`/api/${f}`).then((r) => r.json()).then((d) => [f, d])))
@@ -73,26 +88,45 @@ export default function App() {
     return () => clearInterval(t)
   }, [])
 
-  const onLayoutChange = (next) => {
-    setLayout(next)
+  // persist boards + active tab
+  useEffect(() => {
     try {
-      localStorage.setItem(LS_KEY, JSON.stringify(next))
+      localStorage.setItem(BOARDS_KEY, JSON.stringify({ boards, activeId }))
     } catch {
-      /* storage disabled — layout stays in-memory only */
+      /* storage disabled */
     }
-  }
+  }, [boards, activeId])
 
-  const resetLayout = () => {
-    try {
-      localStorage.removeItem(LS_KEY)
-    } catch {
-      /* ignore */
-    }
-    setLayout(DEFAULT_LAYOUT.map((d) => ({ ...d })))
+  const active = boards.find((b) => b.id === activeId) || boards[0]
+
+  const patchBoards = (fn) => setState((s) => ({ ...s, boards: fn(s.boards) }))
+  const onLayoutChange = (next) =>
+    patchBoards((bs) => bs.map((b) => (b.id === active.id ? { ...b, layout: withFloors(next) } : b)))
+
+  const addBoard = () => {
+    const id = newId()
+    // start a new tab from the default disposition so it has widgets to arrange
+    setState((s) => ({
+      boards: [...s.boards, { id, name: `Board ${s.boards.length + 1}`, layout: withFloors(DEFAULT_LAYOUT) }],
+      activeId: id,
+    }))
+    setEditingId(id)
   }
+  const closeBoard = (id) =>
+    setState((s) => {
+      if (s.boards.length <= 1) return s
+      const boards = s.boards.filter((b) => b.id !== id)
+      const activeId = s.activeId === id ? boards[0].id : s.activeId
+      return { boards, activeId }
+    })
+  const renameBoard = (id, name) =>
+    patchBoards((bs) => bs.map((b) => (b.id === id ? { ...b, name: name.trim() || b.name } : b)))
+  const resetActive = () => onLayoutChange(withFloors(DEFAULT_LAYOUT))
 
   if (error) return <div className="degraded">API unreachable: {error}</div>
   if (!data.meta) return <div className="degraded">loading…</div>
+
+  const shown = WIDGETS.filter((w) => active.layout.some((l) => l.i === w.i))
 
   return (
     <>
@@ -103,13 +137,56 @@ export default function App() {
         <span className="dim mono">{data.meta.instanceRoot}</span>
         <span className="spacer" />
         <span className="dim hint">drag the header · resize from the edges</span>
-        <button className="ghostbtn" onClick={resetLayout} title="Restore the default widget layout">
+        <button className="ghostbtn" onClick={resetActive} title="Restore the default widget layout on this board">
           Reset layout
         </button>
       </header>
+
+      <nav className="tabbar" role="tablist">
+        {boards.map((b) => (
+          <div key={b.id} className={'tab' + (b.id === active.id ? ' active' : '')}>
+            {editingId === b.id ? (
+              <input
+                className="tab-edit"
+                autoFocus
+                defaultValue={b.name}
+                onBlur={(e) => {
+                  renameBoard(b.id, e.target.value)
+                  setEditingId(null)
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') e.target.blur()
+                  if (e.key === 'Escape') setEditingId(null)
+                }}
+              />
+            ) : (
+              <button
+                className="tab-name"
+                role="tab"
+                aria-selected={b.id === active.id}
+                onClick={() => setState((s) => ({ ...s, activeId: b.id }))}
+                onDoubleClick={() => setEditingId(b.id)}
+                title="Click to switch · double-click to rename"
+              >
+                {b.name}
+              </button>
+            )}
+            {boards.length > 1 && (
+              <button className="tab-x" onClick={() => closeBoard(b.id)} title="Close board" aria-label={`Close ${b.name}`}>
+                ×
+              </button>
+            )}
+          </div>
+        ))}
+        <button className="tab-add" onClick={addBoard} title="New board" aria-label="New board">
+          +
+        </button>
+      </nav>
+
       <Grid
+        key={active.id}
         className="wgrid"
-        layout={layout}
+        layout={active.layout}
         cols={12}
         rowHeight={30}
         margin={[14, 14]}
@@ -119,7 +196,7 @@ export default function App() {
         onLayoutChange={onLayoutChange}
         compactType="vertical"
       >
-        {WIDGETS.map((w) => (
+        {shown.map((w) => (
           <div key={w.i} className="wgt">
             <div className="wgt-head">
               <span className="wgt-grip" aria-hidden="true">⠿</span>

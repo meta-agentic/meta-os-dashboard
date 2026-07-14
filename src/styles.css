@@ -48,6 +48,24 @@ h2 {
   overflow-x: auto;
 }
 
+/* ── Tabs (boards) ─────────────────────────────────────────────────────── */
+.tabbar {
+  display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
+  padding: 0.45rem 1.25rem 0;
+  max-width: 1560px; margin: 0 auto;
+  border-bottom: 1px solid var(--border);
+}
+.tab { display: inline-flex; align-items: center; border: 1px solid transparent; border-bottom: none; border-radius: 7px 7px 0 0; }
+.tab.active { background: var(--card); border-color: var(--border); margin-bottom: -1px; }
+.tab-name { font: inherit; font-size: 0.8rem; color: var(--dim); background: transparent; border: none; padding: 0.4rem 0.7rem; cursor: pointer; border-radius: 7px 7px 0 0; }
+.tab.active .tab-name, .tab-name:hover { color: var(--fg); }
+.tab-x { font: inherit; color: var(--dim); background: transparent; border: none; cursor: pointer; padding: 0 0.5rem 0 0; line-height: 1; opacity: 0.6; }
+.tab-x:hover { color: var(--warn); opacity: 1; }
+.tab-edit { font: inherit; font-size: 0.8rem; background: var(--bg); color: var(--fg); border: 1px solid var(--accent); border-radius: 5px; padding: 0.25rem 0.5rem; margin: 0.15rem; width: 8rem; }
+.tab-add { font: inherit; font-size: 1rem; line-height: 1; color: var(--dim); background: transparent; border: none; cursor: pointer; padding: 0.3rem 0.6rem; border-radius: 6px; }
+.tab-add:hover { color: var(--accent); background: var(--card); }
+.tab-name:focus-visible, .tab-x:focus-visible, .tab-add:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
 /* ── Widget grid shell (react-grid-layout) ─────────────────────────────── */
 .wgrid { max-width: 1560px; margin: 0 auto; }
 .wgt {
