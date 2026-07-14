@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import GridLayout, { WidthProvider } from 'react-grid-layout'
 import 'react-grid-layout/css/styles.css'
 import 'react-resizable/css/styles.css'
@@ -7,7 +7,8 @@ import Memory from './widgets/Memory.jsx'
 import Automations from './widgets/Automations.jsx'
 import Registry from './widgets/Registry.jsx'
 import Activity from './widgets/Activity.jsx'
-import Graph from './widgets/Graph.jsx'
+import GraphView from './widgets/graph/GraphView.jsx'
+import GraphTable from './widgets/graph/GraphTable.jsx'
 import Lint from './widgets/Lint.jsx'
 import Outputs from './widgets/Outputs.jsx'
 import Usage from './widgets/Usage.jsx'
@@ -22,7 +23,8 @@ const FEEDS = ['meta', 'ontology', 'registry', 'automations', 'memory', 'events'
 
 const WIDGETS = [
   { i: 'lanes', title: 'Sprint Lanes', render: (d) => <Lanes data={d.lanes} /> },
-  { i: 'graph', title: 'Knowledge Graph', render: (d) => <Graph ontology={d.ontology} /> },
+  { i: 'graph', title: 'Knowledge Graph', render: (d) => <GraphView ontology={d.ontology} /> },
+  { i: 'graph-table', title: 'Graph Hubs', render: (d) => <GraphTable ontology={d.ontology} /> },
   { i: 'memory', title: 'Memory', render: (d) => <Memory data={d.memory} ontology={d.ontology} /> },
   { i: 'outputs', title: 'Outputs', render: (d) => <Outputs data={d.outputs} /> },
   { i: 'automations', title: 'Automations', render: (d) => <Automations data={d.automations} /> },
@@ -50,6 +52,7 @@ const DEFAULT_LAYOUT = [
   { i: 'files', x: 0, y: 36, w: 6, h: 11, minW: 3, minH: 7 },
   { i: 'gantt', x: 6, y: 36, w: 6, h: 11, minW: 4, minH: 7 },
   { i: 'report', x: 0, y: 47, w: 12, h: 12, minW: 5, minH: 9 },
+  { i: 'graph-table', x: 0, y: 59, w: 6, h: 8, minW: 3, minH: 5 },
 ]
 const FLOORS = Object.fromEntries(DEFAULT_LAYOUT.map((d) => [d.i, { minW: d.minW, minH: d.minH }]))
 const withFloors = (layout) => (layout || []).filter((l) => FLOORS[l.i]).map((l) => ({ ...l, ...FLOORS[l.i] }))
@@ -140,7 +143,39 @@ export default function App() {
   const patchBoards = (fn) => setState((s) => ({ ...s, boards: fn(s.boards) }))
   const patchActive = (fn) => patchBoards((bs) => bs.map((b) => (b.id === active.id ? fn(b) : b)))
 
-  const onLayoutChange = (next) => patchActive((b) => ({ ...b, layout: withFloors(next) }))
+  const pendingRemove = useRef(null)
+  const onLayoutChange = (next) =>
+    patchActive((b) => {
+      const rm = pendingRemove.current
+      pendingRemove.current = null
+      let layout = withFloors(next)
+      let membership = b.membership
+      if (rm) {
+        layout = layout.filter((l) => l.i !== rm)
+        membership = { ...b.membership }
+        delete membership[rm]
+      }
+      return { ...b, layout, membership }
+    })
+
+  const titleOf = (id) => WIDGETS.find((w) => w.i === id)?.title ?? id
+  const removeWidget = (id) => {
+    if (!window.confirm(`Remove "${titleOf(id)}" from this board?`)) return
+    patchActive((b) => {
+      const membership = { ...b.membership }
+      delete membership[id]
+      return { ...b, layout: b.layout.filter((l) => l.i !== id), membership }
+    })
+  }
+  // Drag a widget clear out of the grid to remove it (confirmed). onDragStop fires
+  // before onLayoutChange, which then drops the flagged item from the layout.
+  const onDragStop = (layout, oldItem, newItem, ph, e, element) => {
+    const grid = element?.closest('.react-grid-layout')
+    const r = grid?.getBoundingClientRect()
+    if (!r || !e) return
+    const out = e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom
+    if (out && window.confirm(`Remove "${titleOf(newItem.i)}" from this board?`)) pendingRemove.current = newItem.i
+  }
 
   // boards
   const addBoard = () => {
@@ -303,6 +338,7 @@ export default function App() {
         draggableHandle=".wgt-head"
         resizeHandles={['se', 'e', 's']}
         onLayoutChange={onLayoutChange}
+        onDragStop={onDragStop}
         compactType="vertical"
       >
         {visible.map((w) => (
@@ -324,6 +360,15 @@ export default function App() {
                 ))}
                 <option value="__new">＋ New group…</option>
               </select>
+              <button
+                className="wgt-x"
+                title="Remove from board"
+                aria-label={`Remove ${w.title}`}
+                onMouseDown={(e) => e.stopPropagation()}
+                onClick={() => removeWidget(w.i)}
+              >
+                ×
+              </button>
             </div>
             <div className="wgt-body">{w.render(data)}</div>
           </div>

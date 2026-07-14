@@ -478,3 +478,7 @@ line.zap { stroke: var(--accent); stroke-opacity: 0.9; }
 .dist-hint { margin: 0.1rem 0 0; }
 .line-svg .ax-tick { fill: var(--dim); font-size: 8px; font-variant-numeric: tabular-nums; }
 .line-svg .ax-unit { fill: var(--dim); font-size: 8px; text-transform: uppercase; letter-spacing: 0.04em; }
+
+/* remove-widget affordance */
+.wgt-x { font: inherit; font-size: 1rem; line-height: 1; color: var(--dim); background: transparent; border: none; cursor: pointer; padding: 0 0.2rem; opacity: 0.55; }
+.wgt-x:hover { color: var(--warn); opacity: 1; }

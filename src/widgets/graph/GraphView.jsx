@@ -1,14 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { forceSimulation, forceLink, forceManyBody, forceCenter, forceCollide, forceX, forceY } from 'd3-force'
-import Card from './Card.jsx'
+import Card from '../Card.jsx'
+import { useGraph, TYPE_COLOR, typeLabel } from './GraphContext.jsx'
 
-const TYPE_COLOR = {
-  code: '#58a6ff', document: '#3fb950', paper: '#d29922',
-  concept: '#bc8cff', rationale: '#f85149', image: '#8b949e',
-}
-// Display aliases only — graph.json and ontology.yaml keep graphify's vocabulary.
-const TYPE_LABEL = { paper: 'spike' }
-const typeLabel = (t) => TYPE_LABEL[t] ?? t
 const CONF_OPACITY = { EXTRACTED: 0.7, INFERRED: 0.35, AMBIGUOUS: 0.15 }
 const W = 900, H = 560
 
@@ -20,15 +14,11 @@ function layout(nodes, links) {
     .force('link', forceLink(ls).id((d) => d.id).distance(30).strength(0.4))
     .force('charge', forceManyBody().strength(-40))
     .force('center', forceCenter(W / 2, H / 2))
-    // Positional forces keep disconnected nodes on-canvas — charge repulsion alone
-    // flings them far outside the viewBox.
     .force('x', forceX(W / 2).strength(0.06))
     .force('y', forceY(H / 2).strength(0.1))
     .force('collide', forceCollide().radius((d) => radius(d) + 1))
     .stop()
   sim.tick(200)
-  // No clamping — fit the home viewBox to the layout's natural bounding box instead
-  // (clamping squeezed stray nodes into a wall on the rectangle border).
   const pad = 30
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity
   for (const n of ns) {
@@ -36,7 +26,6 @@ function layout(nodes, links) {
     x1 = Math.max(x1, n.x); y1 = Math.max(y1, n.y)
   }
   let bw = x1 - x0 + 2 * pad, bh = y1 - y0 + 2 * pad
-  // Expand to the widget's W:H aspect so the SVG element keeps a sane shape.
   if (bw / bh > W / H) bh = bw * (H / W)
   else bw = bh * (W / H)
   const home = { x: (x0 + x1) / 2 - bw / 2, y: (y0 + y1) / 2 - bh / 2, w: bw, h: bh }
@@ -45,13 +34,8 @@ function layout(nodes, links) {
 
 const radius = (n) => Math.min(3 + Math.sqrt(n.degree ?? 0), 14)
 
-export default function Graph({ ontology }) {
-  const [sources, setSources] = useState(null)
-  const [name, setName] = useState('')
-  const [type, setType] = useState('')
-  const [q, setQ] = useState('')
-  const [community, setCommunity] = useState('')
-  const [data, setData] = useState(null)
+export default function GraphView({ ontology }) {
+  const { sources, name, setName, type, setType, q, setQ, community, setCommunity, data, pendingSparks } = useGraph()
   const [vb, setVb] = useState({ x: 0, y: 0, w: W, h: H })
   const svgRef = useRef(null)
   const drag = useRef(null)
@@ -94,40 +78,6 @@ export default function Graph({ ontology }) {
   const onPointerUp = () => { setTimeout(() => (drag.current = null), 0) }
   const zoomed = vb.x !== homeVb.current.x || vb.y !== homeVb.current.y || vb.w !== homeVb.current.w
 
-  useEffect(() => {
-    fetch('/api/graphs').then((r) => r.json()).then((d) => {
-      setSources(d)
-      if (d.sources?.[0]) setName(d.sources[0].name)
-    })
-  }, [])
-
-  const fetchKey = useRef(null)
-  const pendingSparks = useRef([])
-
-  useEffect(() => {
-    if (!name) return
-    const key = `${name}|${type}|${q}|${community}`
-    const load = () => {
-      const params = new URLSearchParams({ name, ...(type && { type }), ...(q && { q }), ...(community !== '' && { community }) })
-      fetch(`/api/graph?${params}`).then((r) => r.json()).then((d) => {
-        setData((prev) => {
-          // Same filters, same file mtime → keep the object: no re-layout, no view reset.
-          if (prev && fetchKey.current === key && prev.mtime === d.mtime) return prev
-          // Same filters but the graph FILE changed (graphify re-ran): spark the new nodes.
-          if (prev && fetchKey.current === key && d.nodes) {
-            const old = new Set(prev.nodes.map((n) => n.id))
-            pendingSparks.current = d.nodes.filter((n) => !old.has(n.id)).slice(0, 8).map((n) => n.id)
-          }
-          fetchKey.current = key
-          return d
-        })
-      })
-    }
-    load()
-    const t = setInterval(load, 60_000)
-    return () => clearInterval(t)
-  }, [name, type, q, community])
-
   const laid = useMemo(() => (data?.nodes ? layout(data.nodes, data.links) : null), [data])
   useEffect(() => {
     if (laid?.home) {
@@ -136,9 +86,7 @@ export default function Graph({ ontology }) {
     }
   }, [laid])
 
-  // Fisheye repel on hover — imperative DOM updates (no React re-render per mousemove):
-  // nodes within 64 units of the cursor (Chebyshev) push away and grow, full effect at
-  // distance 0 fading to nothing at the radius. Link endpoints follow their nodes.
+  // Fisheye repel on hover — imperative DOM updates (no React re-render per mousemove).
   const nodeEls = useRef(new Map())
   const lineEls = useRef(new Map())
   const displaced = useRef(new Set())
@@ -191,8 +139,6 @@ export default function Graph({ ontology }) {
   const fisheyeReset = () => {
     cancelAnimationFrame(raf.current)
     if (!laid) return
-    // Brute-force: clear every transform and restore every line endpoint — bookkeeping
-    // sets can go stale across re-renders/HMR, and 2k attribute writes are trivial once.
     for (const el of nodeEls.current.values()) el.style.transform = ''
     laid.ls.forEach((l, i) => {
       const le = lineEls.current.get(i)
@@ -202,8 +148,6 @@ export default function Graph({ ontology }) {
     })
     displaced.current.clear()
   }
-  // No manual map clearing: the ref callbacks add/remove entries themselves, and an
-  // effect here would wipe the maps AFTER refs populate them (effects run post-commit).
 
   // Spark: one node flares, its neighbors jiggle, the links between them flash.
   const [spark, setSpark] = useState(null)
@@ -219,8 +163,7 @@ export default function Graph({ ontology }) {
     setTimeout(() => setSpark((s) => (s?.id === id ? null : s)), 1200)
   }
 
-  // Ambient pulse: a random node sparks every few seconds — biased toward connected
-  // nodes by picking a random link endpoint half the time.
+  // Ambient pulse: a random node sparks every few seconds — biased toward connected nodes.
   useEffect(() => {
     if (!laid?.ns.length) return
     let timer
@@ -244,6 +187,7 @@ export default function Graph({ ontology }) {
     pendingSparks.current = []
     ids.forEach((id, i) => setTimeout(() => fire(id), i * 400))
   }, [laid])
+
   const godIds = useMemo(() => {
     if (!laid) return new Set()
     return new Set([...laid.ns].sort((a, b) => b.degree - a.degree).slice(0, 10).map((n) => n.id))
@@ -306,35 +250,6 @@ export default function Graph({ ontology }) {
             </g>
           ))}
         </svg>
-      )}
-      {data?.hubsByType && Object.keys(data.hubsByType).length > 0 && (
-        <details className="hubs">
-          <summary className="dim small">top hubs per node type</summary>
-          <table>
-            <thead>
-              <tr><th>type</th><th>node</th><th className="num">degree</th><th>community</th><th>source</th></tr>
-            </thead>
-            <tbody>
-              {nodeTypes.filter((t) => data.hubsByType[t]).flatMap((t) =>
-                data.hubsByType[t].map((n, i) => (
-                <tr key={n.id}>
-                  <td>
-                    {i === 0 && <><span className="dot" style={{ background: TYPE_COLOR[t] ?? '#8b949e' }} />{typeLabel(t)}</>}
-                  </td>
-                  <td className="mono">{n.label}</td>
-                  <td className="num">{n.degree}</td>
-                  <td>
-                    {n.community != null ? (
-                      <button className="chip" onClick={() => setCommunity(String(n.community))}>#{n.community}</button>
-                    ) : <span className="dim">—</span>}
-                  </td>
-                  <td className="dim mono small">{n.source}</td>
-                </tr>
-                )),
-              )}
-            </tbody>
-          </table>
-        </details>
       )}
       <div className="legend">
         {nodeTypes.map((t) => (
