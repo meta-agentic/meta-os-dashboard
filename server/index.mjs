@@ -8,6 +8,7 @@ import { graphSources, graphView } from './graph.mjs'
 import { lint } from './lint.mjs'
 import { usage } from './usage.mjs'
 import * as files from './files.mjs'
+import { reports } from './reports.mjs'
 
 const configPath = process.env.META_OS_CONFIG ?? new URL('../instance.config.json', import.meta.url).pathname
 let config
@@ -49,6 +50,7 @@ app.get('/api/automations', api(() => read.automations(instanceRoot)))
 app.get('/api/memory', api(() => read.memory(instanceRoot)))
 app.get('/api/activity', api(() => read.activity(instanceRoot)))
 app.get('/api/lanes', api(() => read.lanes(config.backlogs)))
+app.get('/api/report', api(() => reports(config.backlogs)))
 app.get('/api/events', api(() => read.events(instanceRoot, config.backlogs)))
 app.get('/api/outputs', api(() => read.outputs(instanceRoot)))
 app.get('/api/usage', api(async () => {
