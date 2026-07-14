@@ -12,6 +12,7 @@ import Lint from './widgets/Lint.jsx'
 import Outputs from './widgets/Outputs.jsx'
 import Usage from './widgets/Usage.jsx'
 import Nav from './Nav.jsx'
+import Distribution from './widgets/Distribution.jsx'
 
 const FEEDS = ['meta', 'ontology', 'registry', 'automations', 'memory', 'events', 'lanes', 'lint', 'outputs', 'usage']
 
@@ -25,6 +26,7 @@ const WIDGETS = [
   { i: 'registry', title: 'Registry', render: (d) => <Registry data={d.registry} /> },
   { i: 'lint', title: 'Lint', render: (d) => <Lint data={d.lint} /> },
   { i: 'activity', title: 'Activity', render: (d) => <Activity data={d.events} /> },
+  { i: 'distribution', title: 'Distribution', render: (d) => <Distribution data={d.lanes} /> },
 ]
 
 const DEFAULT_LAYOUT = [
@@ -36,7 +38,8 @@ const DEFAULT_LAYOUT = [
   { i: 'usage', x: 0, y: 19, w: 6, h: 8, minW: 3, minH: 5 },
   { i: 'registry', x: 6, y: 19, w: 3, h: 8, minW: 3, minH: 5 },
   { i: 'lint', x: 9, y: 19, w: 3, h: 8, minW: 3, minH: 5 },
-  { i: 'activity', x: 0, y: 27, w: 12, h: 7, minW: 4, minH: 5 },
+  { i: 'activity', x: 0, y: 27, w: 8, h: 7, minW: 4, minH: 5 },
+  { i: 'distribution', x: 8, y: 27, w: 4, h: 9, minW: 3, minH: 7 },
 ]
 const FLOORS = Object.fromEntries(DEFAULT_LAYOUT.map((d) => [d.i, { minW: d.minW, minH: d.minH }]))
 const withFloors = (layout) => (layout || []).filter((l) => FLOORS[l.i]).map((l) => ({ ...l, ...FLOORS[l.i] }))
@@ -145,6 +148,12 @@ export default function App() {
     })
   const renameBoard = (id, name) => patchBoards((bs) => bs.map((b) => (b.id === id ? { ...b, name: name.trim() || b.name } : b)))
   const resetActive = () => patchActive((b) => ({ ...b, layout: withFloors(DEFAULT_LAYOUT), groups: [], membership: {} }))
+  const addWidget = (id) => {
+    if (!id) return
+    const def = DEFAULT_LAYOUT.find((d) => d.i === id) || { w: 6, h: 8, minW: 3, minH: 5 }
+    const y = active.layout.reduce((m, l) => Math.max(m, l.y + l.h), 0)
+    patchActive((b) => ({ ...b, layout: withFloors([...b.layout, { ...def, i: id, x: 0, y }]) }))
+  }
 
   // groups
   const assignGroup = (widgetId, value) => {
@@ -185,6 +194,7 @@ export default function App() {
   const visibleIds = new Set(visible.map((w) => w.i))
   const gridLayout = active.layout.filter((l) => visibleIds.has(l.i))
   const countIn = (gid) => Object.values(active.membership).filter((v) => v === gid).length
+  const missing = WIDGETS.filter((w) => !inLayout.has(w.i))
 
   const dens = DENSITY[prefs.density] || DENSITY.comfortable
 
@@ -199,6 +209,19 @@ export default function App() {
         <span className="dim mono">{data.meta.instanceRoot}</span>
         <span className="spacer" />
         <span className="dim hint">drag the header · resize from the edges</span>
+        {missing.length > 0 && (
+          <select
+            className="ghostbtn addwgt"
+            value=""
+            onChange={(e) => { addWidget(e.target.value); e.target.value = '' }}
+            title="Add a widget to this board"
+          >
+            <option value="">＋ Add widget</option>
+            {missing.map((w) => (
+              <option key={w.i} value={w.i}>{w.title}</option>
+            ))}
+          </select>
+        )}
         <button className="ghostbtn" onClick={resetActive} title="Restore the default layout & clear groups on this board">
           Reset layout
         </button>
