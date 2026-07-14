@@ -14,8 +14,10 @@ import Usage from './widgets/Usage.jsx'
 import Nav from './Nav.jsx'
 import Distribution from './widgets/Distribution.jsx'
 import FilePreview from './widgets/FilePreview.jsx'
+import Gantt from './widgets/Gantt.jsx'
+import Report from './widgets/Report.jsx'
 
-const FEEDS = ['meta', 'ontology', 'registry', 'automations', 'memory', 'events', 'lanes', 'lint', 'outputs', 'usage']
+const FEEDS = ['meta', 'ontology', 'registry', 'automations', 'memory', 'events', 'lanes', 'lint', 'outputs', 'usage', 'report']
 
 const WIDGETS = [
   { i: 'lanes', title: 'Sprint Lanes', render: (d) => <Lanes data={d.lanes} /> },
@@ -29,6 +31,8 @@ const WIDGETS = [
   { i: 'activity', title: 'Activity', render: (d) => <Activity data={d.events} /> },
   { i: 'distribution', title: 'Distribution', render: (d) => <Distribution data={d.lanes} /> },
   { i: 'files', title: 'File Preview', render: (d) => <FilePreview roots={d.meta?.roots} /> },
+  { i: 'gantt', title: 'Roadmap', render: (d) => <Gantt data={d.report} /> },
+  { i: 'report', title: 'Scrum Report', render: (d) => <Report data={d.report} /> },
 ]
 
 const DEFAULT_LAYOUT = [
@@ -43,6 +47,8 @@ const DEFAULT_LAYOUT = [
   { i: 'activity', x: 0, y: 27, w: 8, h: 7, minW: 4, minH: 5 },
   { i: 'distribution', x: 8, y: 27, w: 4, h: 9, minW: 3, minH: 7 },
   { i: 'files', x: 0, y: 36, w: 6, h: 11, minW: 3, minH: 7 },
+  { i: 'gantt', x: 6, y: 36, w: 6, h: 11, minW: 4, minH: 7 },
+  { i: 'report', x: 0, y: 47, w: 12, h: 12, minW: 5, minH: 9 },
 ]
 const FLOORS = Object.fromEntries(DEFAULT_LAYOUT.map((d) => [d.i, { minW: d.minW, minH: d.minH }]))
 const withFloors = (layout) => (layout || []).filter((l) => FLOORS[l.i]).map((l) => ({ ...l, ...FLOORS[l.i] }))
