@@ -383,3 +383,31 @@ line.zap { stroke: var(--accent); stroke-opacity: 0.9; }
 .line-svg .line-path { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; }
 .line-svg .dot { fill: var(--card); stroke: var(--accent); stroke-width: 1.5; }
 .line-svg .dot.end { fill: var(--accent); }
+
+/* ── File / hex preview widget ─────────────────────────────────────────── */
+.fp { display: flex; flex-direction: column; height: 100%; gap: 0.4rem; }
+.fp-bar { display: flex; align-items: center; gap: 0.5rem; }
+.fp-root { font: inherit; font-size: 0.72rem; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 5px; padding: 0.1rem 0.3rem; }
+.fp-path { font-size: 0.72rem; color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fp-btn { font: inherit; font-size: 0.72rem; color: var(--dim); background: transparent; border: 1px solid var(--border); border-radius: 5px; padding: 0.15rem 0.5rem; cursor: pointer; }
+.fp-btn:hover { color: var(--fg); border-color: var(--accent); }
+.fp-btn.on { color: #fff; background: var(--accent); border-color: var(--accent); }
+.fp-list { list-style: none; margin: 0; padding: 0; overflow: auto; flex: 1; min-height: 0; }
+.fp-entry { display: flex; align-items: center; gap: 0.5rem; width: 100%; font: inherit; font-size: 0.78rem; text-align: left; background: transparent; border: none; color: var(--fg); padding: 0.2rem 0.3rem; cursor: pointer; border-radius: 4px; }
+.fp-entry:hover { background: var(--bg); }
+.fp-entry.dir .fp-name { color: var(--accent); }
+.fp-ic { color: var(--dim); width: 1ch; flex: none; }
+.fp-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fp-size { font-size: 0.68rem; font-variant-numeric: tabular-nums; }
+.fp-view { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 0.3rem; }
+.fp-meta { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
+.code { flex: 1; min-height: 0; overflow: auto; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 0.72rem; line-height: 1.5; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 0.3rem 0; }
+.cl { display: flex; }
+.cl:hover { background: rgba(127, 127, 127, 0.08); }
+.ln { flex: none; width: 3.2em; text-align: right; padding-right: 0.7em; color: var(--dim); user-select: none; }
+.lc { white-space: pre; padding-right: 0.7em; }
+.hex { flex: 1; min-height: 0; overflow: auto; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 0.72rem; line-height: 1.5; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 0.3rem 0.4rem; }
+.hex-row { display: flex; gap: 0.9rem; white-space: pre; }
+.hex-off { color: var(--dim); }
+.hex-bytes { color: var(--fg); }
+.hex-ascii { color: var(--accent); }

@@ -13,6 +13,7 @@ import Outputs from './widgets/Outputs.jsx'
 import Usage from './widgets/Usage.jsx'
 import Nav from './Nav.jsx'
 import Distribution from './widgets/Distribution.jsx'
+import FilePreview from './widgets/FilePreview.jsx'
 
 const FEEDS = ['meta', 'ontology', 'registry', 'automations', 'memory', 'events', 'lanes', 'lint', 'outputs', 'usage']
 
@@ -27,6 +28,7 @@ const WIDGETS = [
   { i: 'lint', title: 'Lint', render: (d) => <Lint data={d.lint} /> },
   { i: 'activity', title: 'Activity', render: (d) => <Activity data={d.events} /> },
   { i: 'distribution', title: 'Distribution', render: (d) => <Distribution data={d.lanes} /> },
+  { i: 'files', title: 'File Preview', render: (d) => <FilePreview roots={d.meta?.roots} /> },
 ]
 
 const DEFAULT_LAYOUT = [
@@ -40,6 +42,7 @@ const DEFAULT_LAYOUT = [
   { i: 'lint', x: 9, y: 19, w: 3, h: 8, minW: 3, minH: 5 },
   { i: 'activity', x: 0, y: 27, w: 8, h: 7, minW: 4, minH: 5 },
   { i: 'distribution', x: 8, y: 27, w: 4, h: 9, minW: 3, minH: 7 },
+  { i: 'files', x: 0, y: 36, w: 6, h: 11, minW: 3, minH: 7 },
 ]
 const FLOORS = Object.fromEntries(DEFAULT_LAYOUT.map((d) => [d.i, { minW: d.minW, minH: d.minH }]))
 const withFloors = (layout) => (layout || []).filter((l) => FLOORS[l.i]).map((l) => ({ ...l, ...FLOORS[l.i] }))

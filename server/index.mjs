@@ -7,6 +7,7 @@ import * as read from './readers.mjs'
 import { graphSources, graphView } from './graph.mjs'
 import { lint } from './lint.mjs'
 import { usage } from './usage.mjs'
+import * as files from './files.mjs'
 
 const configPath = process.env.META_OS_CONFIG ?? new URL('../instance.config.json', import.meta.url).pathname
 let config
@@ -26,12 +27,22 @@ const instanceRoot = config.instanceRoot
 const frameworkRoot =
   config.frameworkRoot ?? path.dirname(await fs.realpath(path.join(instanceRoot, 'systems')))
 
+// File-preview roots — the only folders the browse/file endpoints may reach.
+const fileRoots = { instance: instanceRoot, framework: frameworkRoot }
+
 const app = express()
 const api = (fn) => async (req, res) => res.json(await fn(req))
+// like api(), but surfaces thrown status codes (403/404/…) instead of hanging.
+const guard = (fn) => async (req, res) => {
+  try { res.json(await fn(req)) } catch (e) { res.status(e.status ?? 500).json({ error: e.message }) }
+}
 
 app.get('/api/meta', api(async () => ({
   instance: path.basename(instanceRoot), instanceRoot, frameworkRoot, vars: config.vars ?? {},
+  roots: Object.keys(fileRoots),
 })))
+app.get('/api/browse', guard((req) => files.browse(fileRoots, req.query.root || 'instance', req.query.path || '')))
+app.get('/api/file', guard((req) => files.readFile(fileRoots, req.query.root || 'instance', req.query.path || '', req.query.mode)))
 app.get('/api/ontology', api(() => read.ontology(frameworkRoot)))
 app.get('/api/registry', api(() => read.registry(instanceRoot, config.vars ?? {})))
 app.get('/api/automations', api(() => read.automations(instanceRoot)))
