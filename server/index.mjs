@@ -8,6 +8,7 @@ import { graphSources, graphView } from './graph.mjs'
 import { lint } from './lint.mjs'
 import { usage } from './usage.mjs'
 import * as files from './files.mjs'
+import * as boards from './boards.mjs'
 import { reports } from './reports.mjs'
 
 const configPath = process.env.META_OS_CONFIG ?? new URL('../instance.config.json', import.meta.url).pathname
@@ -30,8 +31,11 @@ const frameworkRoot =
 
 // File-preview roots — the only folders the browse/file endpoints may reach.
 const fileRoots = { instance: instanceRoot, framework: frameworkRoot }
+// Where per-user dashboard boards persist (gitignored). Configurable via config.dataDir.
+const dataDir = config.dataDir ?? new URL('../.data', import.meta.url).pathname
 
 const app = express()
+app.use(express.json({ limit: '4mb' }))
 const api = (fn) => async (req, res) => res.json(await fn(req))
 // like api(), but surfaces thrown status codes (403/404/…) instead of hanging.
 const guard = (fn) => async (req, res) => {
@@ -68,6 +72,8 @@ app.get('/api/memory', api(() => read.memory(instanceRoot)))
 app.get('/api/activity', api(() => read.activity(instanceRoot)))
 app.get('/api/lanes', api(() => read.lanes(config.backlogs)))
 app.get('/api/report', api(() => reports(config.backlogs)))
+app.get('/api/boards', guard((req) => boards.loadBoards(dataDir, req.query.user).then((doc) => ({ doc }))))
+app.put('/api/boards', guard((req) => boards.saveBoards(dataDir, req.query.user, req.body)))
 app.get('/api/events', api(() => read.events(instanceRoot, config.backlogs)))
 app.get('/api/outputs', api(() => read.outputs(instanceRoot)))
 app.get('/api/usage', api(async () => {

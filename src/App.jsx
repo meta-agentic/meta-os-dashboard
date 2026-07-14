@@ -105,6 +105,8 @@ export default function App() {
   const [prefs, setPrefs] = useState(loadPrefs)
   const [navOpen, setNavOpen] = useState(false)
   const auth = useAuth()
+  const userKey = auth?.user?.sub || auth?.user?.email || 'local'
+  const serverReady = useRef(false)
 
   const refresh = () =>
     Promise.all(FEEDS.map((f) => fetch(`/api/${f}`).then((r) => r.json()).then((d) => [f, d])))
@@ -131,13 +133,44 @@ export default function App() {
     }
   }, [prefs])
 
+  // Load this user's boards from the server (source of truth when reachable). Falls
+  // back to the localStorage-seeded state on empty/unreachable. Re-runs per user.
+  useEffect(() => {
+    let cancelled = false
+    serverReady.current = false
+    fetch(`/api/boards?user=${encodeURIComponent(userKey)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((res) => {
+        if (cancelled) return
+        const doc = res?.doc
+        if (doc && Array.isArray(doc.boards) && doc.boards.length) {
+          const bs = doc.boards.map(normBoard)
+          const activeId = bs.some((b) => b.id === doc.activeId) ? doc.activeId : bs[0].id
+          setState({ boards: bs, activeId })
+        }
+        serverReady.current = true
+      })
+      .catch(() => { serverReady.current = true })
+    return () => { cancelled = true }
+  }, [userKey])
+
+  // Persist: localStorage always (offline cache), server debounced once it's ready.
   useEffect(() => {
     try {
       localStorage.setItem(BOARDS_KEY, JSON.stringify({ boards, activeId }))
     } catch {
       /* storage disabled */
     }
-  }, [boards, activeId])
+    if (!serverReady.current) return
+    const t = setTimeout(() => {
+      fetch(`/api/boards?user=${encodeURIComponent(userKey)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ boards, activeId }),
+      }).catch(() => {})
+    }, 600)
+    return () => clearTimeout(t)
+  }, [boards, activeId, userKey])
 
   const active = boards.find((b) => b.id === activeId) || boards[0]
   const patchBoards = (fn) => setState((s) => ({ ...s, boards: fn(s.boards) }))
@@ -186,12 +219,16 @@ export default function App() {
     }))
     setEditingId(id)
   }
-  const closeBoard = (id) =>
+  const closeBoard = (id) => {
+    if (boards.length <= 1) return
+    const b = boards.find((x) => x.id === id)
+    if (!window.confirm(`Delete board "${b?.name ?? id}"? This can't be undone.`)) return
     setState((s) => {
       if (s.boards.length <= 1) return s
-      const bs = s.boards.filter((b) => b.id !== id)
+      const bs = s.boards.filter((x) => x.id !== id)
       return { boards: bs, activeId: s.activeId === id ? bs[0].id : s.activeId }
     })
+  }
   const renameBoard = (id, name) => patchBoards((bs) => bs.map((b) => (b.id === id ? { ...b, name: name.trim() || b.name } : b)))
   const resetActive = () => patchActive((b) => ({ ...b, layout: withFloors(DEFAULT_LAYOUT), groups: [], membership: {} }))
   const addWidget = (id) => {
