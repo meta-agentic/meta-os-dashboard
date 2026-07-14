@@ -74,11 +74,11 @@ export default function Report({ data }) {
       <div className="report-charts">
         <div className="rc">
           <h3 className="rc-h">Velocity — delivered pts / closed sprint</h3>
-          {s.velocity.length >= 2 ? <LineChart data={s.velocity} /> : <div className="dim small">not enough closed sprints</div>}
+          {s.velocity.length >= 2 ? <LineChart data={s.velocity} unit="story points" xLabel="sprint" /> : <div className="dim small">not enough closed sprints</div>}
         </div>
         <div className="rc">
           <h3 className="rc-h">Status mix</h3>
-          <PieChart data={s.statusMix.map((m) => ({ label: m.label, value: m.value }))} onSelect={() => {}} />
+          <PieChart data={s.statusMix.map((m) => ({ label: m.label, value: m.value }))} onSelect={() => {}} unit="stories" />
         </div>
       </div>
     </div>

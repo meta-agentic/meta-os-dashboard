@@ -49,6 +49,10 @@ export default function FilePreview({ roots }) {
       })
       .catch((e) => setErr(String(e)))
   }
+  const reveal = () => {
+    const p = file ? file.path : cwd
+    fetch(`/api/reveal?root=${root}&path=${encodeURIComponent(p)}`).catch(() => {})
+  }
   const toggleHex = () => {
     const next = !hex
     setHex(next)
@@ -66,6 +70,7 @@ export default function FilePreview({ roots }) {
         )}
         <span className="fp-path mono">/{file ? file.path : listing?.path || ''}</span>
         <span className="spacer" />
+        <button className="fp-btn" onClick={reveal} title="Reveal in the OS file manager (Finder / Explorer)">⤴ reveal</button>
         {file && <button className="fp-btn" onClick={() => setFile(null)} title="Back to folder">← files</button>}
         {file && <button className={'fp-btn' + (hex ? ' on' : '')} onClick={toggleHex} title="Toggle hex view">hex</button>}
       </div>

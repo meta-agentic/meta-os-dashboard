@@ -60,6 +60,7 @@ app.get('/api/meta', api(async () => ({
 })))
 app.get('/api/browse', guard((req) => files.browse(fileRoots, req.query.root || 'instance', req.query.path || '')))
 app.get('/api/file', guard((req) => files.readFile(fileRoots, req.query.root || 'instance', req.query.path || '', req.query.mode)))
+app.get('/api/reveal', guard((req) => files.reveal(fileRoots, req.query.root || 'instance', req.query.path || '')))
 app.get('/api/ontology', api(() => read.ontology(frameworkRoot)))
 app.get('/api/registry', api(() => read.registry(instanceRoot, config.vars ?? {})))
 app.get('/api/automations', api(() => read.automations(instanceRoot)))

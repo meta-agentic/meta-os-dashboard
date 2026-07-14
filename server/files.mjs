@@ -2,6 +2,7 @@
 // Every path is resolved and re-checked to sit inside its root (no traversal).
 import fs from 'node:fs/promises'
 import path from 'node:path'
+import { execFile } from 'node:child_process'
 
 const TEXT_MAX = 128 * 1024 // text preview byte cap
 const HEX_MAX = 16 * 1024 // hex preview byte cap (keeps the DOM bounded)
@@ -53,6 +54,21 @@ function looksBinary(buf) {
     if (c < 9 || (c > 13 && c < 32)) bad++
   }
   return n > 0 && bad / n > 0.3
+}
+
+// Reveal a path in the host OS file manager (Finder / Explorer / xdg). Local-only
+// convenience; the path is root-checked and passed as an argv element (no shell).
+export async function reveal(roots, key, rel) {
+  const root = pickRoot(roots, key)
+  const abs = safe(root, rel)
+  const st = await fs.stat(abs)
+  const isDir = st.isDirectory()
+  let cmd, args
+  if (process.platform === 'darwin') { cmd = 'open'; args = isDir ? [abs] : ['-R', abs] }
+  else if (process.platform === 'win32') { cmd = 'explorer'; args = isDir ? [abs] : ['/select,', abs] }
+  else { cmd = 'xdg-open'; args = [isDir ? abs : path.dirname(abs)] }
+  await new Promise((res) => execFile(cmd, args, () => res())) // explorer/xdg exit codes are unreliable — don't fail on them
+  return { revealed: path.relative(root, abs), isDir }
 }
 
 export async function readFile(roots, key, rel, mode) {

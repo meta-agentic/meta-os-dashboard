@@ -459,3 +459,22 @@ line.zap { stroke: var(--accent); stroke-opacity: 0.9; }
 .authtitle { font-size: 1.15rem; margin: 0.2rem 0 0; }
 .authbtn { font: inherit; font-weight: 600; color: #fff; background: var(--accent); border: none; border-radius: 8px; padding: 0.6rem 1rem; cursor: pointer; margin-top: 0.4rem; }
 .authbtn:hover { filter: brightness(1.08); }
+
+/* ── Memory: federated vaults (first-class) + compact pipeline ──────────── */
+.vaults { display: flex; flex-direction: column; gap: 0.28rem; margin-bottom: 0.7rem; }
+.vaults-head { display: flex; align-items: baseline; justify-content: space-between; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent); font-weight: 600; margin-bottom: 0.15rem; }
+.vault-row { display: grid; grid-template-columns: minmax(4rem, 30%) 1fr auto auto; align-items: center; gap: 0.5rem; }
+.vault-name { font-size: 0.75rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vault-bar { height: 10px; background: var(--bg); border-radius: 3px; overflow: hidden; }
+.vault-bar i { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
+.vault-n { font-size: 0.75rem; min-width: 2ch; text-align: right; }
+.vault-age { min-width: 4.5rem; text-align: right; }
+.pipeline-label { margin-bottom: 0.25rem; }
+.pipeline.compact .stage { padding: 0.2rem 0.4rem; }
+.pipeline.compact .count { font-size: 1rem; }
+
+/* chart axis labels */
+.chart-unit { margin-bottom: 0.3rem; }
+.dist-hint { margin: 0.1rem 0 0; }
+.line-svg .ax-tick { fill: var(--dim); font-size: 8px; font-variant-numeric: tabular-nums; }
+.line-svg .ax-unit { fill: var(--dim); font-size: 8px; text-transform: uppercase; letter-spacing: 0.04em; }

@@ -59,6 +59,12 @@ export default function Distribution({ data }) {
 
   if (!roots.length) return <div className="degraded">no active-sprint data to chart</div>
 
+  const unit = metric === 'points' ? 'story points' : 'items'
+  const DIMS = ['space', 'lane', 'status']
+  const xLabel = DIMS[Math.min(path.length, DIMS.length - 1)]
+  const canDrill = current.some((c) => c.children?.length)
+  const nextDim = DIMS[Math.min(path.length + 1, DIMS.length - 1)]
+
   return (
     <div className="dist">
       <div className="dist-ctl">
@@ -86,13 +92,18 @@ export default function Distribution({ data }) {
         ))}
       </nav>
       <div className="dist-chart">
-        {type === 'pie' && <PieChart data={current} onSelect={select} />}
-        {type === 'bar' && <BarChart data={current} onSelect={select} />}
-        {type === 'line' && <LineChart data={current} />}
+        {type === 'pie' && <PieChart data={current} onSelect={select} unit={unit} />}
+        {type === 'bar' && <BarChart data={current} onSelect={select} unit={unit} />}
+        {type === 'line' && <LineChart data={current} unit={unit} xLabel={xLabel} />}
       </div>
-      {type === 'line' && current.some((c) => c.children?.length) && (
-        <p className="dim small">x-y plots values in order — switch to Pie or Bar to drill in.</p>
-      )}
+      <p className="dim small dist-hint">
+        {unit} per <strong>{xLabel}</strong>
+        {type === 'line'
+          ? ' — x-y plots each ' + xLabel + ' in order; use Pie or Bar to drill in.'
+          : canDrill
+            ? ` — click a ${xLabel} to drill into its ${nextDim}s.`
+            : ' — deepest level.'}
+      </p>
     </div>
   )
 }

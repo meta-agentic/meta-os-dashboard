@@ -166,11 +166,14 @@ export async function memory(instanceRoot) {
         try {
           const target = await fs.realpath(path.join(dir, name))
           if (!(await fs.stat(target)).isDirectory()) continue
-          vaults.push({ name, notes: (await mdFiles(target)).length })
+          const notes = await mdFiles(target)
+          vaults.push({ name, notes: notes.length, newest: notes.length ? Math.max(...notes.map((n) => n.mtime)) : null })
         } catch { /* broken symlink — skip */ }
       }
     } catch { /* no vaults/ folder — fine */ }
-    return { available: true, stages, federated: { vaults, total: vaults.reduce((a, v) => a + v.notes, 0) } }
+    vaults.sort((a, b) => b.notes - a.notes)
+    const newest = vaults.reduce((m, v) => Math.max(m, v.newest ?? 0), 0) || null
+    return { available: true, stages, federated: { vaults, total: vaults.reduce((a, v) => a + v.notes, 0), newest } }
   } catch (e) {
     return unavailable(`memory/ unreadable: ${e.message}`)
   }
