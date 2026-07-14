@@ -66,6 +66,18 @@ h2 {
 .tab-add:hover { color: var(--accent); background: var(--card); }
 .tab-name:focus-visible, .tab-x:focus-visible, .tab-add:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
+/* ── Groups ────────────────────────────────────────────────────────────── */
+.groupbar { display: flex; flex-wrap: wrap; gap: 6px; max-width: 1560px; margin: 0.6rem auto -0.3rem; padding: 0 1.25rem; }
+.gchip { display: inline-flex; align-items: center; border: 1px solid var(--border); border-radius: 999px; background: var(--card); }
+.gchip.collapsed { border-style: dashed; opacity: 0.85; }
+.gchip-toggle { font: inherit; font-size: 0.75rem; color: var(--fg); background: transparent; border: none; cursor: pointer; padding: 0.28rem 0.2rem 0.28rem 0.7rem; display: inline-flex; align-items: center; gap: 0.35rem; }
+.gchip .chev { color: var(--accent); font-size: 0.7rem; }
+.gchip .gcount { color: var(--dim); font-variant-numeric: tabular-nums; font-size: 0.68rem; background: var(--bg); border-radius: 999px; padding: 0 0.4rem; }
+.gchip-x { font: inherit; color: var(--dim); background: transparent; border: none; cursor: pointer; padding: 0 0.5rem; opacity: 0.6; }
+.gchip-x:hover { color: var(--warn); opacity: 1; }
+.wgt-group { font: inherit; font-size: 0.68rem; color: var(--dim); background: var(--bg); border: 1px solid var(--border); border-radius: 5px; padding: 0.1rem 0.3rem; max-width: 8rem; cursor: pointer; }
+.wgt-group:hover { color: var(--fg); border-color: var(--accent); }
+
 /* ── Widget grid shell (react-grid-layout) ─────────────────────────────── */
 .wgrid { max-width: 1560px; margin: 0 auto; }
 .wgt {
