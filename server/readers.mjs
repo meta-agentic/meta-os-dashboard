@@ -163,6 +163,7 @@ export async function memory(instanceRoot) {
     try {
       const dir = path.join(instanceRoot, 'vaults')
       for (const name of await fs.readdir(dir)) {
+        if (name.startsWith('.')) continue // tooling dirs (.claude-flow, …) aren't project memory
         try {
           const target = await fs.realpath(path.join(dir, name))
           if (!(await fs.stat(target)).isDirectory()) continue
