@@ -47,6 +47,50 @@ h2 {
   padding: 1rem 1.25rem;
   overflow-x: auto;
 }
+
+/* ── Widget grid shell (react-grid-layout) ─────────────────────────────── */
+.wgrid { max-width: 1560px; margin: 0 auto; }
+.wgt {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+.wgt-head {
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 0.45rem 0.7rem;
+  border-bottom: 1px solid var(--border);
+  cursor: move; user-select: none;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent);
+}
+.wgt-grip { color: var(--dim); font-size: 0.85rem; line-height: 1; letter-spacing: -1px; }
+.wgt-title { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim); font-weight: 600; }
+.wgt-body { flex: 1; min-height: 0; overflow: auto; padding: 0.9rem 1.1rem; }
+/* the frame is the panel now — flatten the inner card chrome */
+.wgt-body > .card { border: none; border-radius: 0; padding: 0; background: none; overflow: visible; }
+.wgt-body h2 { margin-top: 0; }
+
+.spacer { flex: 1; }
+.hint { font-size: 0.72rem; }
+.ghostbtn {
+  font: inherit; font-size: 0.75rem; color: var(--dim);
+  background: transparent; border: 1px solid var(--border); border-radius: 6px;
+  padding: 0.3rem 0.7rem; cursor: pointer;
+}
+.ghostbtn:hover { color: var(--fg); border-color: var(--accent); }
+.ghostbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* react-grid-layout chrome, themed */
+.react-grid-item.react-grid-placeholder { background: var(--accent); opacity: 0.16; border-radius: 8px; }
+.react-grid-item > .react-resizable-handle { opacity: 0; transition: opacity 0.15s; }
+.wgt:hover .react-resizable-handle,
+.react-grid-item.resizing .react-resizable-handle { opacity: 0.55; }
+.react-grid-item > .react-resizable-handle::after { border-color: var(--dim); }
+@media (prefers-reduced-motion: reduce) { .react-grid-item { transition: none !important; } }
+
 table { width: 100%; border-collapse: collapse; }
 th {
   text-align: left;
