@@ -337,3 +337,49 @@ line.zap { stroke: var(--accent); stroke-opacity: 0.9; }
 .nav-note { font-size: 0.72rem; color: var(--dim); line-height: 1.45; margin: 0.6rem 0 0.4rem; }
 .nav-btn { font: inherit; font-size: 0.78rem; color: var(--fg); background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 0.4rem 0.8rem; cursor: pointer; }
 .nav-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Data-viz widgets (charts + drill-down) ────────────────────────────── */
+.addwgt { cursor: pointer; }
+.dist { display: flex; flex-direction: column; gap: 0.55rem; height: 100%; }
+.dist-ctl { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.crumbs { display: flex; flex-wrap: wrap; align-items: center; font-size: 0.75rem; gap: 0.15rem; }
+.crumb { font: inherit; font-size: 0.75rem; background: transparent; border: none; color: var(--accent); cursor: pointer; padding: 0.1rem 0.15rem; }
+.crumb:hover { text-decoration: underline; }
+.crumb.cur { color: var(--fg); cursor: default; }
+.crumb-sep { color: var(--dim); margin: 0 0.1rem; }
+.dist-chart { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; }
+
+/* horizontal bars */
+.bars { display: flex; flex-direction: column; gap: 0.3rem; width: 100%; }
+.bar-row { display: grid; grid-template-columns: minmax(4rem, 34%) 1fr auto; align-items: center; gap: 0.5rem; font: inherit; text-align: left; background: transparent; border: none; padding: 0.12rem 0; color: var(--fg); }
+.bar-row.drillable { cursor: pointer; }
+.bar-row.drillable:hover .bar-label { color: var(--accent); }
+.bar-label { font-size: 0.75rem; color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bar-track { height: 12px; background: var(--bg); border-radius: 3px; overflow: hidden; }
+.bar-track i { display: block; height: 100%; border-radius: 3px; }
+.bar-val { font-size: 0.72rem; font-variant-numeric: tabular-nums; color: var(--fg); min-width: 2ch; text-align: right; }
+
+/* donut + legend */
+.pie-wrap { display: flex; align-items: center; gap: 0.9rem; width: 100%; flex-wrap: wrap; justify-content: center; }
+.pie-svg { width: 120px; height: 120px; flex: none; }
+.slice { stroke: var(--card); stroke-width: 1; }
+.slice.drillable { cursor: pointer; }
+.slice.drillable:hover { opacity: 0.82; }
+.pie-hole { fill: var(--card); }
+.pie-total { fill: var(--fg); font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.pie-total-lbl { fill: var(--dim); font-size: 7px; text-transform: uppercase; letter-spacing: 0.1em; }
+.legend { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.15rem; min-width: 8rem; }
+.legend-b { display: flex; align-items: center; gap: 0.45rem; width: 100%; font: inherit; font-size: 0.75rem; background: transparent; border: none; color: var(--fg); text-align: left; padding: 0.1rem 0; }
+.legend-b.drillable { cursor: pointer; }
+.legend-b.drillable:hover .legend-lbl { color: var(--accent); }
+.legend-b i { width: 10px; height: 10px; border-radius: 2px; flex: none; }
+.legend-lbl { flex: 1; color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.legend-val { font-variant-numeric: tabular-nums; }
+
+/* x-y line */
+.line-svg { width: 100%; height: auto; }
+.line-svg .axis { stroke: var(--border); stroke-width: 1; }
+.line-svg .line-area { fill: var(--accent); opacity: 0.12; }
+.line-svg .line-path { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; }
+.line-svg .dot { fill: var(--card); stroke: var(--accent); stroke-width: 1.5; }
+.line-svg .dot.end { fill: var(--accent); }
