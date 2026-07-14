@@ -10,7 +10,7 @@ const DENSITIES = [
   { v: 'compact', label: 'Compact' },
 ]
 
-export default function Nav({ open, onClose, prefs, setPrefs, meta }) {
+export default function Nav({ open, onClose, prefs, setPrefs, meta, auth }) {
   const set = (patch) => setPrefs((p) => ({ ...p, ...patch }))
   const vars = meta?.vars && Object.keys(meta.vars).length ? meta.vars : null
 
@@ -85,13 +85,23 @@ export default function Nav({ open, onClose, prefs, setPrefs, meta }) {
 
         <details className="nav-sec">
           <summary>Account</summary>
-          <p className="nav-note">
-            Sign-in via <strong>Tessera IAM</strong> arrives with multi-user deployment — profiles and
-            per-user boards will live here.
-          </p>
-          <button className="nav-btn" disabled title="Available after Tessera IAM integration">
-            Sign in (coming soon)
-          </button>
+          {auth?.status === 'authed' ? (
+            <>
+              <div className="nav-kv"><span>User</span><code>{auth.user?.name || auth.user?.preferred_username || auth.user?.email || 'signed in'}</code></div>
+              {auth.user?.email && <div className="nav-kv"><span>Email</span><code className="wrap">{auth.user.email}</code></div>}
+              <button className="nav-btn" onClick={auth.logout}>Sign out</button>
+            </>
+          ) : auth?.status === 'disabled' || !auth ? (
+            <p className="nav-note">
+              Single-user mode. Set <code>auth</code> in <code>instance.config.json</code> to require
+              sign-in via <strong>Tessera IAM</strong> — profiles and per-user boards will live here.
+            </p>
+          ) : (
+            <>
+              <p className="nav-note">Sign in against your <strong>Tessera IAM</strong> server.</p>
+              <button className="nav-btn" onClick={auth.login}>Sign in with Tessera</button>
+            </>
+          )}
         </details>
       </aside>
     </>

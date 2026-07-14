@@ -38,6 +38,22 @@ const guard = (fn) => async (req, res) => {
   try { res.json(await fn(req)) } catch (e) { res.status(e.status ?? 500).json({ error: e.message }) }
 }
 
+// Auth config for the client login flow — non-secret OIDC params only (public
+// client + PKCE, so there is no client secret to leak). Absent/disabled ⇒ open.
+app.get('/api/auth/config', api(async () => config.auth ?? { enabled: false }))
+
+// DEPLOY-TIME STEP: server-side token *verification* (JWKS signature check against
+// Tessera's issuer) is NOT wired yet. The client OIDC flow is complete, but the API
+// is not protected. This gate fails CLOSED: setting auth.enforce before verification
+// is implemented returns 501 everywhere, so nobody deploys thinking it's secured.
+const requireAuth = (req, res, next) => {
+  if (!config.auth?.enforce) return next()
+  return res.status(501).json({
+    error: 'auth.enforce is set but server-side token verification (JWKS) is not wired — implement it before deploying',
+  })
+}
+app.use(requireAuth)
+
 app.get('/api/meta', api(async () => ({
   instance: path.basename(instanceRoot), instanceRoot, frameworkRoot, vars: config.vars ?? {},
   roots: Object.keys(fileRoots),

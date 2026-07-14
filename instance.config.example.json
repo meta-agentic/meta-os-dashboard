@@ -8,5 +8,13 @@
   "claudeHome": "(optional) /Users/you/.claude — engine home whose session logs feed the usage widget; defaults to ~/.claude",
   "backlogs": [
     { "space": "example", "path": "${code}/scrum/<space>/backlog.json" }
-  ]
+  ],
+  "auth": {
+    "_comment": "Optional. Omit or set enabled:false for single-user (open) mode. When enabled, the client runs OIDC Authorization Code + PKCE against your Tessera IAM issuer. `enforce` gates the API server-side and currently fails closed (501) until JWKS token verification is implemented — leave it false until then.",
+    "enabled": false,
+    "enforce": false,
+    "issuer": "https://tessera.your-domain/realms/mova77",
+    "clientId": "meta-os-dashboard",
+    "scope": "openid profile email"
+  }
 }

@@ -16,6 +16,7 @@ import Distribution from './widgets/Distribution.jsx'
 import FilePreview from './widgets/FilePreview.jsx'
 import Gantt from './widgets/Gantt.jsx'
 import Report from './widgets/Report.jsx'
+import { useAuth } from './auth/AuthProvider.jsx'
 
 const FEEDS = ['meta', 'ontology', 'registry', 'automations', 'memory', 'events', 'lanes', 'lint', 'outputs', 'usage', 'report']
 
@@ -100,6 +101,7 @@ export default function App() {
   const [editingId, setEditingId] = useState(null)
   const [prefs, setPrefs] = useState(loadPrefs)
   const [navOpen, setNavOpen] = useState(false)
+  const auth = useAuth()
 
   const refresh = () =>
     Promise.all(FEEDS.map((f) => fetch(`/api/${f}`).then((r) => r.json()).then((d) => [f, d])))
@@ -209,7 +211,7 @@ export default function App() {
 
   return (
     <>
-      <Nav open={navOpen} onClose={() => setNavOpen(false)} prefs={prefs} setPrefs={setPrefs} meta={data.meta} />
+      <Nav open={navOpen} onClose={() => setNavOpen(false)} prefs={prefs} setPrefs={setPrefs} meta={data.meta} auth={auth} />
       <header>
         <button className="nav-toggle" onClick={() => setNavOpen(true)} title="Settings & navigation" aria-label="Open settings">☰</button>
         <h1>

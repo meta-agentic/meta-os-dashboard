@@ -451,3 +451,11 @@ line.zap { stroke: var(--accent); stroke-opacity: 0.9; }
 .burn-svg .burn-dot { fill: var(--accent); }
 .report-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 0.9rem; }
 .rc-h { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--dim); margin: 0 0 0.4rem; font-weight: 600; }
+
+/* ── Auth login gate ───────────────────────────────────────────────────── */
+.authscreen { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1.5rem; }
+.authcard { max-width: 24rem; width: 100%; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 2rem 1.8rem; display: flex; flex-direction: column; gap: 0.7rem; text-align: center; }
+.authmark { font-weight: 700; letter-spacing: 0.04em; color: var(--accent); }
+.authtitle { font-size: 1.15rem; margin: 0.2rem 0 0; }
+.authbtn { font: inherit; font-weight: 600; color: #fff; background: var(--accent); border: none; border-radius: 8px; padding: 0.6rem 1rem; cursor: pointer; margin-top: 0.4rem; }
+.authbtn:hover { filter: brightness(1.08); }
