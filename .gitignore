@@ -3,3 +3,6 @@ dist/
 instance.config.json
 .cache/
 .DS_Store
+
+# per-user dashboard boards (server persistence)
+.data/
