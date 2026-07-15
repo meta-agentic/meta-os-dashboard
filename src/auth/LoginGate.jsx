@@ -9,17 +9,19 @@ export default function LoginGate({ children }) {
   if (a.status === 'authed') return children
   if (a.status === 'disabled') return children
 
-  const label = a.config?.loginLabel ?? 'Sign in'
+  const label = a.config?.loginLabel ?? 'Sign in with Google'
   const hint = a.config?.loginHint ?? 'Sign in to access this instance dashboard.'
+  const apiDown = a.status === 'error' && !a.config
 
   return (
     <div className="authscreen">
       <div className="authcard">
         <div className="authmark">meta-os</div>
-        <h1 className="authtitle">Sign in to observe the mission</h1>
-        <p className="dim">{hint}</p>
-        {a.status === 'error' && <div className="degraded">Sign-in error: {a.error}</div>}
-        <button className="authbtn" onClick={a.login}>{label}</button>
+        <h1 className="authtitle">{apiDown ? 'API not reachable' : 'Sign in to observe the mission'}</h1>
+        <p className="dim">{apiDown ? 'The dashboard UI is live on GitHub Pages, but the hosted API is not running yet.' : hint}</p>
+        {a.status === 'error' && <div className="degraded">{a.error}</div>}
+        {!apiDown && <button className="authbtn" onClick={a.login}>{label}</button>}
+        {apiDown && <button className="authbtn" onClick={() => window.location.reload()}>Retry</button>}
       </div>
     </div>
   )

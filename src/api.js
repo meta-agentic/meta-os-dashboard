@@ -6,6 +6,7 @@ const BASE = import.meta.env.BASE_URL
 const API_ROOT = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
 
 export const isStatic = STATIC
+export const isHosted = !!API_ROOT
 
 function apiUrl(path) {
   if (!path.startsWith('/')) path = `/${path}`

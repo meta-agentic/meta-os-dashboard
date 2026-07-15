@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
-import { apiGet } from '../api.js'
+import { apiGet, isHosted } from '../api.js'
 import { beginLogin, completeLogin, currentSession, logout } from './oidc.js'
 
 // status: loading | disabled (auth off ⇒ open) | anon (must sign in) | authed | error
@@ -13,7 +13,17 @@ export function AuthProvider({ children }) {
     let cancelled = false
     ;(async () => {
       let cfg = { enabled: false }
-      try { cfg = await apiGet('/api/auth/config') } catch { /* open on failure */ }
+      try {
+        cfg = await apiGet('/api/auth/config')
+      } catch (e) {
+        if (isHosted) {
+          return setState({
+            status: 'error',
+            error: `Hosted API unreachable at ${import.meta.env.VITE_API_URL} — deploy the API (Fly/Render) then retry.`,
+            config: null,
+          })
+        }
+      }
       if (cancelled) return
       if (!cfg?.enabled && !cfg?.enforce) return setState({ status: 'disabled', user: null, config: cfg })
       try {
