@@ -160,7 +160,7 @@ export class GitRepo {
 }
 
 export function createGithubContext(config) {
-  const token = process.env.GITHUB_TOKEN ?? config.github?.token
+  const token = process.env.META_OS_GITHUB_TOKEN ?? process.env.GITHUB_TOKEN ?? config.github?.token
   if (!token) throw new Error('GITHUB_TOKEN is required for source=github')
 
   const mk = (spec, fallback) => {
