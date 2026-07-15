@@ -11,7 +11,7 @@ services:
         value: 8080
       - key: CORS_ORIGINS
         value: https://mova77.github.io,http://localhost:5173
-      - key: GITHUB_TOKEN
+      - key: META_OS_GITHUB_TOKEN
         sync: false
       - key: META_OS_CONFIG_JSON
         sync: false
