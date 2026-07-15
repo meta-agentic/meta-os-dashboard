@@ -12,6 +12,15 @@ const rand = (n = 48) => {
 }
 const sha256 = (s) => crypto.subtle.digest('SHA-256', new TextEncoder().encode(s))
 
+// Must match Google Console "Authorized redirect URIs" exactly (slash included).
+function resolveRedirectUri(cfg) {
+  if (cfg.redirectUri) return cfg.redirectUri
+  const base = import.meta.env.BASE_URL || '/'
+  const path = base.startsWith('/') ? base : `/${base}`
+  const normalized = path.endsWith('/') ? path : `${path}/`
+  return `${window.location.origin}${normalized}`
+}
+
 async function endpoints(cfg) {
   if (cfg.authorizeUrl && cfg.tokenUrl) return { authorize: cfg.authorizeUrl, token: cfg.tokenUrl, userinfo: cfg.userinfoUrl }
   const r = await fetch(cfg.issuer.replace(/\/$/, '') + '/.well-known/openid-configuration')
@@ -25,7 +34,7 @@ export async function beginLogin(cfg) {
   const verifier = rand()
   const challenge = b64url(await sha256(verifier))
   const state = rand(16)
-  const redirectUri = cfg.redirectUri || window.location.origin + window.location.pathname
+  const redirectUri = resolveRedirectUri(cfg)
   sessionStorage.setItem(PENDING_KEY, JSON.stringify({ verifier, state, redirectUri }))
   const u = new URL(ep.authorize)
   for (const [k, v] of Object.entries({
