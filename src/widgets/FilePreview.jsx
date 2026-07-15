@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { isStatic } from '../api.js'
 
 const join = (dir, name) => (dir ? `${dir}/${name}` : name)
 const parent = (p) => p.split('/').slice(0, -1).join('/')
@@ -30,6 +31,7 @@ export default function FilePreview({ roots }) {
 
   useEffect(() => {
     setFile(null)
+    if (isStatic) return setErr('File preview needs the live API — not available on static GitHub Pages')
     setErr(null)
     fetch(`/api/browse?root=${root}&path=${encodeURIComponent(cwd)}`)
       .then((r) => r.json())

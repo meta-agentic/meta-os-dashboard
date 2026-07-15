@@ -10,11 +10,16 @@
     { "space": "example", "path": "${code}/scrum/<space>/backlog.json" }
   ],
   "auth": {
-    "_comment": "Optional. Omit or set enabled:false for single-user (open) mode. When enabled, the client runs OIDC Authorization Code + PKCE against your Tessera IAM issuer. `enforce` gates the API server-side and currently fails closed (501) until JWKS token verification is implemented — leave it false until then.",
+    "_comment": "OIDC — Google (now) or Tessera (later). enabled = UI login gate. enforce = API requires JWT (Google id_token). allowedEmails strongly recommended so random Google accounts cannot access your vault.",
     "enabled": false,
     "enforce": false,
-    "issuer": "https://tessera.your-domain/realms/mova77",
-    "clientId": "meta-os-dashboard",
-    "scope": "openid profile email"
+    "provider": "google",
+    "issuer": "https://accounts.google.com",
+    "clientId": "YOUR_GOOGLE_OAUTH_CLIENT_ID.apps.googleusercontent.com",
+    "audience": "YOUR_GOOGLE_OAUTH_CLIENT_ID.apps.googleusercontent.com",
+    "redirectUri": "http://localhost:5173/",
+    "scope": "openid email profile",
+    "loginLabel": "Sign in with Google",
+    "allowedEmails": ["you@example.com"]
   }
 }

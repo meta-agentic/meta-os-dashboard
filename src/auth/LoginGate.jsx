@@ -6,16 +6,20 @@ export default function LoginGate({ children }) {
   const a = useAuth()
 
   if (a.status === 'loading') return <div className="authscreen"><div className="dim">connecting…</div></div>
-  if (a.status === 'disabled' || a.status === 'authed') return children
+  if (a.status === 'authed') return children
+  if (a.status === 'disabled') return children
+
+  const label = a.config?.loginLabel ?? 'Sign in'
+  const hint = a.config?.loginHint ?? 'Sign in to access this instance dashboard.'
 
   return (
     <div className="authscreen">
       <div className="authcard">
         <div className="authmark">meta-os</div>
         <h1 className="authtitle">Sign in to observe the mission</h1>
-        <p className="dim">Authenticate against your <strong>Tessera IAM</strong> server to access this instance.</p>
+        <p className="dim">{hint}</p>
         {a.status === 'error' && <div className="degraded">Sign-in error: {a.error}</div>}
-        <button className="authbtn" onClick={a.login}>Sign in with Tessera</button>
+        <button className="authbtn" onClick={a.login}>{label}</button>
       </div>
     </div>
   )

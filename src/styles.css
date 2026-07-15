@@ -131,6 +131,7 @@ h2 {
 
 .spacer { flex: 1; }
 .hint { font-size: 0.72rem; }
+.static-badge { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; padding: 0.15rem 0.45rem; border-radius: 4px; background: var(--wip); color: var(--bg); font-weight: 600; }
 .ghostbtn {
   font: inherit; font-size: 0.75rem; color: var(--dim);
   background: transparent; border: 1px solid var(--border); border-radius: 6px;

@@ -6,13 +6,18 @@
   "scripts": {
     "dev": "concurrently -n api,web -c blue,magenta \"node server/index.mjs\" \"vite\"",
     "server": "node server/index.mjs",
+    "server:github": "META_OS_CONFIG=github.config.json node server/index.mjs",
+    "snapshot": "node scripts/snapshot.mjs",
     "build": "vite build",
-    "preview": "vite preview"
+    "build:pages": "npm run snapshot && VITE_STATIC=true vite build",
+    "preview": "vite preview",
+    "preview:pages": "npm run build:pages && vite preview"
   },
   "dependencies": {
     "d3-force": "^3.0.0",
     "express": "^4.21.2",
     "gray-matter": "^4.0.3",
+    "jose": "^5.10.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-grid-layout": "^1.4.4",

@@ -18,8 +18,7 @@ function membersOf(sprint, stories) {
 }
 const sum = (xs, f) => xs.reduce((a, x) => a + (f(x) || 0), 0)
 
-async function reportSpace(space, p) {
-  const d = JSON.parse(await fs.readFile(p, 'utf8'))
+export function reportFromData(space, d) {
   const stories = d.stories ?? []
   const sprints = d.sprints ?? []
   const statusById = new Map(stories.map((s) => [s.jiraId, s.status]))
@@ -89,6 +88,10 @@ async function reportSpace(space, p) {
     : null
 
   return { space, scorecard, velocity, statusMix, burndown, sprints: sprintRows }
+}
+
+async function reportSpace(space, p) {
+  return reportFromData(space, JSON.parse(await fs.readFile(p, 'utf8')))
 }
 
 export async function reports(backlogs) {

@@ -1,0 +1,29 @@
+{
+  "_comment": "Deployed API mode — server reads private repos via GITHUB_TOKEN (env var, never in the browser). Pair with GitHub Pages frontend using VITE_API_URL.",
+  "source": "github",
+  "corsOrigins": "https://mova77.github.io,http://localhost:5173",
+  "vars": {},
+  "github": {
+    "instance": { "owner": "mova77", "repo": "mova-os", "ref": "main" },
+    "vault": { "owner": "mova77", "repo": "vault", "ref": "main" },
+    "framework": { "owner": "mova77", "repo": "meta-os", "ref": "main" },
+    "backlogs": [
+      { "space": "example", "owner": "mova77", "repo": "scrum", "path": "scrum/ios/backlog.json", "ref": "main" },
+      { "space": "example", "owner": "mova77", "repo": "scrum", "path": "scrum/iam/backlog.json", "ref": "main" },
+      { "space": "example", "owner": "mova77", "repo": "scrum", "path": "scrum/vec/backlog.json", "ref": "main" }
+    ]
+  },
+  "auth": {
+    "enabled": true,
+    "enforce": true,
+    "provider": "google",
+    "issuer": "https://accounts.google.com",
+    "clientId": "YOUR_GOOGLE_OAUTH_CLIENT_ID.apps.googleusercontent.com",
+    "audience": "YOUR_GOOGLE_OAUTH_CLIENT_ID.apps.googleusercontent.com",
+    "redirectUri": "https://mova77.github.io/meta-os-dashboard/",
+    "scope": "openid email profile",
+    "loginLabel": "Sign in with Google",
+    "loginHint": "Use your Google account. Only allow-listed emails can access this instance.",
+    "allowedEmails": ["you@example.com"]
+  }
+}

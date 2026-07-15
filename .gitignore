@@ -1,6 +1,10 @@
 node_modules/
 dist/
 instance.config.json
+github.config.json
+pages.config.json
+.pages/
+public/snapshots/
 .cache/
 .DS_Store
 

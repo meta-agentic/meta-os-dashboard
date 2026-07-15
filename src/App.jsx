@@ -17,6 +17,7 @@ import Distribution from './widgets/Distribution.jsx'
 import FilePreview from './widgets/FilePreview.jsx'
 import Gantt from './widgets/Gantt.jsx'
 import Report from './widgets/Report.jsx'
+import { apiFetch, isStatic } from './api.js'
 import { useAuth } from './auth/AuthProvider.jsx'
 
 const FEEDS = ['meta', 'ontology', 'registry', 'automations', 'memory', 'events', 'lanes', 'lint', 'outputs', 'usage', 'report']
@@ -109,7 +110,7 @@ export default function App() {
   const serverReady = useRef(false)
 
   const refresh = () =>
-    Promise.all(FEEDS.map((f) => fetch(`/api/${f}`).then((r) => r.json()).then((d) => [f, d])))
+    Promise.all(FEEDS.map((f) => apiFetch(`/api/${f}`).then((r) => r.json()).then((d) => [f, d])))
       .then((pairs) => setData(Object.fromEntries(pairs)))
       .catch((e) => setError(String(e)))
 
@@ -138,7 +139,7 @@ export default function App() {
   useEffect(() => {
     let cancelled = false
     serverReady.current = false
-    fetch(`/api/boards?user=${encodeURIComponent(userKey)}`)
+    apiFetch(`/api/boards?user=${encodeURIComponent(userKey)}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((res) => {
         if (cancelled) return
@@ -161,7 +162,7 @@ export default function App() {
     } catch {
       /* storage disabled */
     }
-    if (!serverReady.current) return
+    if (!serverReady.current || isStatic) return
     const t = setTimeout(() => {
       fetch(`/api/boards?user=${encodeURIComponent(userKey)}`, {
         method: 'PUT',
@@ -290,6 +291,10 @@ export default function App() {
           meta-os <span className="dim">/</span> {data.meta.instance}
         </h1>
         <span className="dim mono">{data.meta.instanceRoot}</span>
+        {isStatic && <span className="static-badge" title="Read-only snapshot — rebuild CI to refresh">static snapshot</span>}
+        {!isStatic && data.meta?.source === 'github' && (
+          <span className="static-badge" title="Live reads via hosted API + GITHUB_TOKEN">github live</span>
+        )}
         <span className="spacer" />
         <span className="dim hint">drag the header · resize from the edges</span>
         {missing.length > 0 && (

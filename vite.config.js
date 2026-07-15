@@ -2,6 +2,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 export default defineConfig(({ mode }) => ({
+  base: process.env.VITE_BASE || '/',
   plugins: [react()],
   // react-grid-layout / react-draggable read process.env.NODE_ENV at runtime; the
   // dev server doesn't define `process` in the browser, so without this the drag

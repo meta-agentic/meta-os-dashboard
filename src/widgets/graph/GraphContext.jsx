@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react'
+import { apiFetch } from '../../api.js'
 
 // Shared visual vocabulary for both graph widgets.
 export const TYPE_COLOR = {
@@ -25,7 +26,7 @@ export function GraphProvider({ children }) {
   const pendingSparks = useRef([])
 
   useEffect(() => {
-    fetch('/api/graphs').then((r) => r.json()).then((d) => {
+    apiFetch('/api/graphs').then((r) => r.json()).then((d) => {
       setSources(d)
       if (d.sources?.[0]) setName(d.sources[0].name)
     })
@@ -36,7 +37,7 @@ export function GraphProvider({ children }) {
     const key = `${name}|${type}|${q}|${community}`
     const load = () => {
       const params = new URLSearchParams({ name, ...(type && { type }), ...(q && { q }), ...(community !== '' && { community }) })
-      fetch(`/api/graph?${params}`).then((r) => r.json()).then((d) => {
+      apiFetch(`/api/graph?${params}`).then((r) => r.json()).then((d) => {
         setData((prev) => {
           if (prev && fetchKey.current === key && prev.mtime === d.mtime) return prev
           if (prev && fetchKey.current === key && d.nodes) {

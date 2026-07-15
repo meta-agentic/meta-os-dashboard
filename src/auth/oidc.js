@@ -1,6 +1,5 @@
-// Standard OIDC Authorization Code + PKCE for a public SPA client. Works against
-// any compliant provider (Tessera IAM once configured) — endpoints come from the
-// issuer's discovery document unless overridden in instance.config.json > auth.
+// OIDC Authorization Code + PKCE for a public SPA. Works with Google, Tessera, or any
+// compliant provider. Google access tokens are opaque — we send the JWT id_token to the API.
 const SESSION_KEY = 'oidc.session'
 const PENDING_KEY = 'oidc.pending'
 
@@ -64,15 +63,31 @@ export async function completeLogin(cfg) {
   if (!tr.ok) throw new Error('token exchange failed')
   const tok = await tr.json()
   let user = {}
-  if (ep.userinfo) {
+  if (tok.id_token) {
+    try { user = parseJwt(tok.id_token) } catch { /* fall through */ }
+  }
+  if (ep.userinfo && tok.access_token && !user.email) {
     const ur = await fetch(ep.userinfo, { headers: { Authorization: `Bearer ${tok.access_token}` } })
-    if (ur.ok) user = await ur.json()
+    if (ur.ok) user = { ...user, ...(await ur.json()) }
   }
   sessionStorage.removeItem(PENDING_KEY)
   window.history.replaceState({}, '', saved.redirectUri)
-  const session = { user, accessToken: tok.access_token, expiresAt: Date.now() + (tok.expires_in ? tok.expires_in * 1000 : 3600e3) }
+  const expMs = tok.id_token
+    ? (parseJwt(tok.id_token).exp ?? 0) * 1000
+    : Date.now() + (tok.expires_in ? tok.expires_in * 1000 : 3600e3)
+  const session = {
+    user,
+    idToken: tok.id_token ?? null,
+    accessToken: tok.access_token ?? null,
+    expiresAt: expMs || Date.now() + 3600e3,
+  }
   sessionStorage.setItem(SESSION_KEY, JSON.stringify(session))
   return session
+}
+
+function parseJwt(jwt) {
+  const body = jwt.split('.')[1]
+  return JSON.parse(atob(body.replace(/-/g, '+').replace(/_/g, '/')))
 }
 
 export function currentSession() {
@@ -82,6 +97,14 @@ export function currentSession() {
   } catch { /* ignore */ }
   return null
 }
+
+// API Bearer token — id_token for Google (JWT); access_token for providers that issue JWT access tokens.
+export function getAccessToken() {
+  const s = currentSession()
+  if (!s) return null
+  return s.idToken ?? s.accessToken ?? null
+}
+
 export function logout() {
   sessionStorage.removeItem(SESSION_KEY)
 }

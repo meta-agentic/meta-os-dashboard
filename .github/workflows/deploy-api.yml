@@ -1,0 +1,25 @@
+# Deploy the GitHub-backed API to Fly.io. Requires repo secrets:
+#   FLY_API_TOKEN, GITHUB_TOKEN, META_OS_CONFIG_JSON
+name: Deploy API (Fly.io)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Set Fly secrets
+        run: |
+          flyctl secrets set \
+            "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" \
+            "META_OS_CONFIG_JSON=${{ secrets.META_OS_CONFIG_JSON }}" \
+            --app meta-os-dashboard-api --stage
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      - name: Deploy
+        run: flyctl deploy --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}

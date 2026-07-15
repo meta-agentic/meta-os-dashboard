@@ -1,0 +1,21 @@
+app = 'meta-os-dashboard-api'
+primary_region = 'ams'
+
+[build]
+  dockerfile = 'Dockerfile'
+
+[env]
+  API_HOST = '0.0.0.0'
+  API_PORT = '8080'
+  CORS_ORIGINS = 'https://mova77.github.io,http://localhost:5173'
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[vm]]
+  size = 'shared-cpu-1x'
+  memory = '256mb'

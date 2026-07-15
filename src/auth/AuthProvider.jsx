@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
+import { apiGet } from '../api.js'
 import { beginLogin, completeLogin, currentSession, logout } from './oidc.js'
 
 // status: loading | disabled (auth off ⇒ open) | anon (must sign in) | authed | error
@@ -12,9 +13,9 @@ export function AuthProvider({ children }) {
     let cancelled = false
     ;(async () => {
       let cfg = { enabled: false }
-      try { cfg = await (await fetch('/api/auth/config')).json() } catch { /* open on failure */ }
+      try { cfg = await apiGet('/api/auth/config') } catch { /* open on failure */ }
       if (cancelled) return
-      if (!cfg?.enabled) return setState({ status: 'disabled', user: null, config: cfg })
+      if (!cfg?.enabled && !cfg?.enforce) return setState({ status: 'disabled', user: null, config: cfg })
       try {
         const done = await completeLogin(cfg) // consumes a ?code redirect if present
         if (cancelled) return
@@ -27,6 +28,12 @@ export function AuthProvider({ children }) {
       setState(s ? { status: 'authed', user: s.user, config: cfg } : { status: 'anon', user: null, config: cfg })
     })()
     return () => { cancelled = true }
+  }, [])
+
+  useEffect(() => {
+    const onExpired = () => setState((s) => ({ ...s, status: 'anon', user: null }))
+    window.addEventListener('meta-os.auth-expired', onExpired)
+    return () => window.removeEventListener('meta-os.auth-expired', onExpired)
   }, [])
 
   const value = {

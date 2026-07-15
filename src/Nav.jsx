@@ -93,13 +93,13 @@ export default function Nav({ open, onClose, prefs, setPrefs, meta, auth }) {
             </>
           ) : auth?.status === 'disabled' || !auth ? (
             <p className="nav-note">
-              Single-user mode. Set <code>auth</code> in <code>instance.config.json</code> to require
-              sign-in via <strong>Tessera IAM</strong> — profiles and per-user boards will live here.
+              Single-user mode. Set <code>auth</code> in config to require OIDC sign-in — profiles and
+              per-user boards will live here.
             </p>
           ) : (
             <>
-              <p className="nav-note">Sign in against your <strong>Tessera IAM</strong> server.</p>
-              <button className="nav-btn" onClick={auth.login}>Sign in with Tessera</button>
+              <p className="nav-note">{auth.config?.loginHint ?? 'Sign in to access this dashboard.'}</p>
+              <button className="nav-btn" onClick={auth.login}>{auth.config?.loginLabel ?? 'Sign in'}</button>
             </>
           )}
         </details>

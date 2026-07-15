@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: meta-os-dashboard-api
+    runtime: docker
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: API_HOST
+        value: 0.0.0.0
+      - key: API_PORT
+        value: 8080
+      - key: CORS_ORIGINS
+        value: https://mova77.github.io,http://localhost:5173
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: META_OS_CONFIG_JSON
+        sync: false

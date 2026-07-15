@@ -1,5 +1,5 @@
-// meta-os dashboard API — reads a private instance vault from disk (read-only).
-// Configure via instance.config.json (gitignored) or META_OS_CONFIG env var.
+// meta-os dashboard API — reads instance data from disk or GitHub (read-only).
+// Configure via instance.config.json (local) or github.config.json (deployed API).
 import express from 'express'
 import fs from 'node:fs/promises'
 import path from 'node:path'
@@ -10,90 +10,148 @@ import { usage } from './usage.mjs'
 import * as files from './files.mjs'
 import * as boards from './boards.mjs'
 import { reports } from './reports.mjs'
+import { createGithubContext } from './github.mjs'
+import * as gh from './github-readers.mjs'
+import * as ghGraph from './github-graph.mjs'
+import * as ghFiles from './github-files.mjs'
+import { createAuthMiddleware } from './auth.mjs'
 
-const configPath = process.env.META_OS_CONFIG ?? new URL('../instance.config.json', import.meta.url).pathname
+const defaultConfig = new URL('../instance.config.json', import.meta.url).pathname
+const configPath = process.env.META_OS_CONFIG ?? defaultConfig
 let config
 try {
-  config = JSON.parse(await fs.readFile(configPath, 'utf8'))
-} catch {
-  console.error(`No config at ${configPath} — copy instance.config.example.json and point it at your instance.`)
+  if (process.env.META_OS_CONFIG_JSON) {
+    config = JSON.parse(process.env.META_OS_CONFIG_JSON)
+  } else {
+    config = JSON.parse(await fs.readFile(configPath, 'utf8'))
+  }
+} catch (e) {
+  console.error(`Config load failed (${configPath}): ${e.message}`)
   process.exit(1)
 }
 
-// Expand ${var} references (config.vars) across the whole config — so backlog paths and any
-// other prefixes follow a single variable. Project paths in projects/*.md are expanded in registry().
-config = read.expandVars(config, config.vars ?? {})
+const isGithub = config.source === 'github'
+let ghCtx = null
+let instanceRoot, frameworkRoot, fileRoots, dataDir
 
-const instanceRoot = config.instanceRoot
-// Framework root defaults to wherever the instance's systems/ symlink points.
-const frameworkRoot =
-  config.frameworkRoot ?? path.dirname(await fs.realpath(path.join(instanceRoot, 'systems')))
+if (isGithub) {
+  ghCtx = createGithubContext(config)
+  instanceRoot = `github:${ghCtx.instance.label()}`
+  frameworkRoot = `github:${ghCtx.framework.label()}`
+  fileRoots = null
+} else {
+  config = read.expandVars(config, config.vars ?? {})
+  instanceRoot = config.instanceRoot
+  frameworkRoot =
+    config.frameworkRoot ?? path.dirname(await fs.realpath(path.join(instanceRoot, 'systems')))
+  fileRoots = { instance: instanceRoot, framework: frameworkRoot }
+}
 
-// File-preview roots — the only folders the browse/file endpoints may reach.
-const fileRoots = { instance: instanceRoot, framework: frameworkRoot }
-// Where per-user dashboard boards persist (gitignored). Configurable via config.dataDir.
-const dataDir = config.dataDir ?? new URL('../.data', import.meta.url).pathname
+dataDir = config.dataDir ?? new URL('../.data', import.meta.url).pathname
 
 const app = express()
 app.use(express.json({ limit: '4mb' }))
+
+// CORS for GitHub Pages frontend → hosted API (token stays server-side).
+const corsOrigins = (process.env.CORS_ORIGINS ?? config.corsOrigins ?? '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean)
+if (corsOrigins.length) {
+  app.use((req, res, next) => {
+    const origin = req.headers.origin
+    if (origin && corsOrigins.includes(origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin)
+      res.setHeader('Vary', 'Origin')
+      res.setHeader('Access-Control-Allow-Methods', 'GET,PUT,OPTIONS')
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+    }
+    if (req.method === 'OPTIONS') return res.sendStatus(204)
+    next()
+  })
+}
+
 const api = (fn) => async (req, res) => res.json(await fn(req))
-// like api(), but surfaces thrown status codes (403/404/…) instead of hanging.
 const guard = (fn) => async (req, res) => {
   try { res.json(await fn(req)) } catch (e) { res.status(e.status ?? 500).json({ error: e.message }) }
 }
 
-// Auth config for the client login flow — non-secret OIDC params only (public
-// client + PKCE, so there is no client secret to leak). Absent/disabled ⇒ open.
-app.get('/api/auth/config', api(async () => config.auth ?? { enabled: false }))
+app.get('/api/auth/config', api(async () => {
+  const auth = config.auth ?? { enabled: false }
+  return { enabled: false, enforce: false, ...auth }
+}))
 
-// DEPLOY-TIME STEP: server-side token *verification* (JWKS signature check against
-// Tessera's issuer) is NOT wired yet. The client OIDC flow is complete, but the API
-// is not protected. This gate fails CLOSED: setting auth.enforce before verification
-// is implemented returns 501 everywhere, so nobody deploys thinking it's secured.
-const requireAuth = (req, res, next) => {
-  if (!config.auth?.enforce) return next()
-  return res.status(501).json({
-    error: 'auth.enforce is set but server-side token verification (JWKS) is not wired — implement it before deploying',
-  })
-}
-app.use(requireAuth)
+app.use(createAuthMiddleware(config))
 
-app.get('/api/meta', api(async () => ({
-  instance: path.basename(instanceRoot), instanceRoot, frameworkRoot, vars: config.vars ?? {},
-  roots: Object.keys(fileRoots),
+app.get('/api/health', api(async () => ({
+  ok: true,
+  source: isGithub ? 'github' : 'local',
+  instance: isGithub ? ghCtx.instance.label() : path.basename(instanceRoot),
 })))
-app.get('/api/browse', guard((req) => files.browse(fileRoots, req.query.root || 'instance', req.query.path || '')))
-app.get('/api/file', guard((req) => files.readFile(fileRoots, req.query.root || 'instance', req.query.path || '', req.query.mode)))
-app.get('/api/reveal', guard((req) => files.reveal(fileRoots, req.query.root || 'instance', req.query.path || '')))
-app.get('/api/ontology', api(() => read.ontology(frameworkRoot)))
-app.get('/api/registry', api(() => read.registry(instanceRoot, config.vars ?? {})))
-app.get('/api/automations', api(() => read.automations(instanceRoot)))
-app.get('/api/memory', api(() => read.memory(instanceRoot)))
-app.get('/api/activity', api(() => read.activity(instanceRoot)))
-app.get('/api/lanes', api(() => read.lanes(config.backlogs)))
-app.get('/api/report', api(() => reports(config.backlogs)))
+
+if (isGithub) {
+  app.get('/api/meta', api(() => gh.meta(ghCtx)))
+  app.get('/api/browse', guard((req) => ghFiles.browse(ghCtx, req.query.root || 'instance', req.query.path || '')))
+  app.get('/api/file', guard((req) => ghFiles.readFile(ghCtx, req.query.root || 'instance', req.query.path || '')))
+  app.get('/api/reveal', guard(() => ghFiles.reveal()))
+  app.get('/api/ontology', api(() => gh.ontology(ghCtx)))
+  app.get('/api/registry', api(() => gh.registry(ghCtx, config.vars ?? {})))
+  app.get('/api/automations', api(() => gh.automations(ghCtx)))
+  app.get('/api/memory', api(() => gh.memory(ghCtx)))
+  app.get('/api/activity', api(() => gh.activity(ghCtx)))
+  app.get('/api/lanes', api(() => gh.lanes(ghCtx)))
+  app.get('/api/report', api(() => gh.reports(ghCtx)))
+  app.get('/api/events', api(() => gh.events(ghCtx)))
+  app.get('/api/outputs', api(() => gh.outputs(ghCtx)))
+  app.get('/api/usage', api(() => gh.usage()))
+  app.get('/api/lint', api(() => gh.lint(ghCtx)))
+  app.get('/api/graphs', api(() => ghGraph.graphSources(ghCtx)))
+  app.get('/api/graph', api(async (req) => {
+    const { name, ...opts } = req.query
+    const view = await ghGraph.graphView(ghCtx, name, opts)
+    return { name: name || ghCtx.instance.repo, ...view }
+  }))
+} else {
+  app.get('/api/meta', api(async () => ({
+    instance: path.basename(instanceRoot), instanceRoot, frameworkRoot, vars: config.vars ?? {},
+    roots: Object.keys(fileRoots), source: 'local',
+  })))
+  app.get('/api/browse', guard((req) => files.browse(fileRoots, req.query.root || 'instance', req.query.path || '')))
+  app.get('/api/file', guard((req) => files.readFile(fileRoots, req.query.root || 'instance', req.query.path || '', req.query.mode)))
+  app.get('/api/reveal', guard((req) => files.reveal(fileRoots, req.query.root || 'instance', req.query.path || '')))
+  app.get('/api/ontology', api(() => read.ontology(frameworkRoot)))
+  app.get('/api/registry', api(() => read.registry(instanceRoot, config.vars ?? {})))
+  app.get('/api/automations', api(() => read.automations(instanceRoot)))
+  app.get('/api/memory', api(() => read.memory(instanceRoot)))
+  app.get('/api/activity', api(() => read.activity(instanceRoot)))
+  app.get('/api/lanes', api(() => read.lanes(config.backlogs)))
+  app.get('/api/report', api(() => reports(config.backlogs)))
+  app.get('/api/events', api(() => read.events(instanceRoot, config.backlogs)))
+  app.get('/api/outputs', api(() => read.outputs(instanceRoot)))
+  app.get('/api/usage', api(async () => {
+    const reg = await read.registry(instanceRoot, config.vars ?? {})
+    return usage(config.claudeHome, reg.projects ?? [])
+  }))
+  app.get('/api/lint', api(() => lint(instanceRoot, frameworkRoot)))
+  app.get('/api/graphs', api(async () => {
+    const reg = await read.registry(instanceRoot, config.vars ?? {})
+    return graphSources(instanceRoot, reg.projects ?? [])
+  }))
+  app.get('/api/graph', api(async (req) => {
+    const { name, ...opts } = req.query
+    const reg = await read.registry(instanceRoot, config.vars ?? {})
+    const { sources } = await graphSources(instanceRoot, reg.projects ?? [])
+    const src = sources.find((s) => s.name === name) ?? sources[0]
+    if (!src) return { available: false, reason: 'no graphs found' }
+    return { name: src.name, ...(await graphView(src.file, opts)) }
+  }))
+}
+
 app.get('/api/boards', guard((req) => boards.loadBoards(dataDir, req.query.user).then((doc) => ({ doc }))))
 app.put('/api/boards', guard((req) => boards.saveBoards(dataDir, req.query.user, req.body)))
-app.get('/api/events', api(() => read.events(instanceRoot, config.backlogs)))
-app.get('/api/outputs', api(() => read.outputs(instanceRoot)))
-app.get('/api/usage', api(async () => {
-  const reg = await read.registry(instanceRoot, config.vars ?? {})
-  return usage(config.claudeHome, reg.projects ?? [])
-}))
-app.get('/api/lint', api(() => lint(instanceRoot, frameworkRoot)))
-app.get('/api/graphs', api(async () => {
-  const reg = await read.registry(instanceRoot, config.vars ?? {})
-  return graphSources(instanceRoot, reg.projects ?? [])
-}))
-app.get('/api/graph', api(async (req) => {
-  const { name, ...opts } = req.query
-  const reg = await read.registry(instanceRoot, config.vars ?? {})
-  const { sources } = await graphSources(instanceRoot, reg.projects ?? [])
-  const src = sources.find((s) => s.name === name) ?? sources[0]
-  if (!src) return { available: false, reason: 'no graphs found' }
-  return { name: src.name, ...(await graphView(src.file, opts)) }
-}))
 
-// API_PORT, not PORT — dev harnesses set PORT for the web server and we must not collide.
 const port = process.env.API_PORT ?? 3777
-app.listen(port, () => console.log(`meta-os dashboard api → http://localhost:${port} (instance: ${instanceRoot})`))
+const host = process.env.API_HOST ?? '0.0.0.0'
+app.listen(port, host, () => {
+  console.log(`meta-os dashboard api → http://${host}:${port} (${isGithub ? `github: ${ghCtx.instance.label()} + ${ghCtx.vault.label()}` : `instance: ${instanceRoot}`})`)
+})
