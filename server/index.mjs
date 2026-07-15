@@ -26,7 +26,11 @@ try {
     config = JSON.parse(await fs.readFile(configPath, 'utf8'))
   }
 } catch (e) {
-  console.error(`Config load failed (${configPath}): ${e.message}`)
+  console.error(
+    process.env.META_OS_CONFIG_JSON
+      ? `Config load failed (META_OS_CONFIG_JSON): ${e.message}`
+      : `Config load failed — set Fly secret META_OS_CONFIG_JSON (or META_OS_CONFIG file path). Tried: ${configPath}`,
+  )
   process.exit(1)
 }
 
@@ -150,7 +154,7 @@ if (isGithub) {
 app.get('/api/boards', guard((req) => boards.loadBoards(dataDir, req.query.user).then((doc) => ({ doc }))))
 app.put('/api/boards', guard((req) => boards.saveBoards(dataDir, req.query.user, req.body)))
 
-const port = process.env.API_PORT ?? 3777
+const port = Number(process.env.API_PORT ?? process.env.PORT ?? 3777)
 const host = process.env.API_HOST ?? '0.0.0.0'
 app.listen(port, host, () => {
   console.log(`meta-os dashboard api → http://${host}:${port} (${isGithub ? `github: ${ghCtx.instance.label()} + ${ghCtx.vault.label()}` : `instance: ${instanceRoot}`})`)
