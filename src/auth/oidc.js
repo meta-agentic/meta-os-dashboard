@@ -60,7 +60,15 @@ export async function completeLogin(cfg) {
       code_verifier: saved.verifier,
     }),
   })
-  if (!tr.ok) throw new Error('token exchange failed')
+  if (!tr.ok) {
+    const raw = await tr.text()
+    let detail = raw
+    try {
+      const err = JSON.parse(raw)
+      detail = err.error_description || err.error || raw
+    } catch { /* use raw */ }
+    throw new Error(`token exchange failed: ${detail || tr.status}`)
+  }
   const tok = await tr.json()
   let user = {}
   if (tok.id_token) {
