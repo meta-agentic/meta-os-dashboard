@@ -293,6 +293,28 @@ export async function events(instanceRoot, backlogs, limit = 40) {
     sources.push({ name: 'automations', available: false, reason: 'no automations/runs.jsonl yet' })
   }
 
+  // Framework-hook events: automations/events.jsonl, one JSON object per line
+  // { ts, actor, action, target, note? } (see ontology `events`). Same degrade
+  // contract as runs.jsonl: a missing file reports the source unavailable; a
+  // malformed line is skipped, and an entry with no ts can't be placed on the
+  // timeline so it is dropped rather than sorted as an invalid date.
+  try {
+    const jsonl = await fs.readFile(path.join(instanceRoot, 'automations/events.jsonl'), 'utf8')
+    for (const l of jsonl.split('\n').filter(Boolean)) {
+      try {
+        const e = JSON.parse(l)
+        if (!e.ts) continue
+        out.push({
+          ts: e.ts, source: 'events', actor: e.actor ?? '', action: e.action ?? '',
+          target: e.target ?? '', ...(e.note ? { note: e.note } : {}),
+        })
+      } catch { /* malformed line — skip */ }
+    }
+    sources.push({ name: 'events', available: true })
+  } catch {
+    sources.push({ name: 'events', available: false, reason: 'no automations/events.jsonl yet' })
+  }
+
   // Sprint open/close from the backlog mirrors. Closed sprints report their delivered
   // count (stories DONE linked to the sprint) — sprint-close accounting, the only
   // timestamps the mirror has. Future/planned sprints emit nothing.
