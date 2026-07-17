@@ -15,6 +15,7 @@ import * as gh from './github-readers.mjs'
 import * as ghGraph from './github-graph.mjs'
 import * as ghFiles from './github-files.mjs'
 import { createAuthMiddleware } from './auth.mjs'
+import { createStream } from './stream.mjs'
 
 const defaultConfig = new URL('../instance.config.json', import.meta.url).pathname
 const configPath = process.env.META_OS_CONFIG ?? defaultConfig
@@ -131,6 +132,10 @@ if (isGithub) {
   app.get('/api/lanes', api(() => read.lanes(config.backlogs)))
   app.get('/api/report', api(() => reports(config.backlogs)))
   app.get('/api/events', api(() => read.events(instanceRoot, config.backlogs)))
+  // Live delta stream over the same normalized timeline (local source only — SSE relies
+  // on fs.watch, which has no remote-GitHub equivalent). Guarded by the auth middleware
+  // above, same as every other /api/* read. Not wrapped in api()/guard(): it owns res.
+  app.get('/api/stream', createStream(instanceRoot, config.backlogs))
   app.get('/api/outputs', api(() => read.outputs(instanceRoot)))
   app.get('/api/usage', api(async () => {
     const reg = await read.registry(instanceRoot, config.vars ?? {})
