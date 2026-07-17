@@ -19,6 +19,8 @@ import Gantt from './widgets/Gantt.jsx'
 import Report from './widgets/Report.jsx'
 import { apiFetch, isStatic } from './api.js'
 import { useAuth } from './auth/AuthProvider.jsx'
+import Onboarding from './Onboarding.jsx'
+import { deriveOnboarding } from './onboarding.js'
 
 const FEEDS = ['meta', 'ontology', 'registry', 'automations', 'memory', 'events', 'lanes', 'lint', 'outputs', 'usage', 'report']
 
@@ -73,6 +75,14 @@ function loadPrefs() {
     return { ...DEFAULT_PREFS }
   }
 }
+const ONBOARDING_KEY = 'meta-os.onboarding.v1'
+function loadOnboarding() {
+  try {
+    return { dismissed: false, ...(JSON.parse(localStorage.getItem(ONBOARDING_KEY) || 'null') || {}) }
+  } catch {
+    return { dismissed: false }
+  }
+}
 const Grid = WidthProvider(GridLayout)
 const newId = (p = 'b') => p + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36)
 const normBoard = (b) => ({ groups: [], membership: {}, ...b, layout: withFloors(b.layout) })
@@ -104,6 +114,8 @@ export default function App() {
   const [{ boards, activeId }, setState] = useState(loadBoards)
   const [editingId, setEditingId] = useState(null)
   const [prefs, setPrefs] = useState(loadPrefs)
+  const [onboarding, setOnboarding] = useState(loadOnboarding)
+  const [showGridAnyway, setShowGridAnyway] = useState(false)
   const [navOpen, setNavOpen] = useState(false)
   const auth = useAuth()
   const userKey = auth?.user?.sub || auth?.user?.email || 'local'
@@ -133,6 +145,14 @@ export default function App() {
       /* storage disabled */
     }
   }, [prefs])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(ONBOARDING_KEY, JSON.stringify(onboarding))
+    } catch {
+      /* storage disabled */
+    }
+  }, [onboarding])
 
   // Load this user's boards from the server (source of truth when reachable). Falls
   // back to the localStorage-seeded state on empty/unreachable. Re-runs per user.
@@ -270,6 +290,12 @@ export default function App() {
   if (error) return <div className="degraded">API unreachable: {error}</div>
   if (!data.meta) return <div className="degraded">loading…</div>
 
+  // First-run onboarding (MOS-19): derived live from feed availability. Auto-hides
+  // once nothing is unavailable (complete) or once the user dismisses it (persisted).
+  const onb = deriveOnboarding(data)
+  const showOnboarding = onb.steps.length > 0 && !onboarding.dismissed
+  const suppressGrid = onb.fresh && !onboarding.dismissed && !showGridAnyway
+
   const collapsed = new Set(active.groups.filter((g) => g.collapsed).map((g) => g.id))
   const inLayout = new Set(active.layout.map((l) => l.i))
   const visible = WIDGETS.filter(
@@ -369,6 +395,18 @@ export default function App() {
         </div>
       )}
 
+      {showOnboarding && (
+        <div className="ob-wrap">
+          <Onboarding model={onb} meta={data.meta} onDismiss={() => setOnboarding((o) => ({ ...o, dismissed: true }))} />
+          {suppressGrid && (
+            <button className="ghostbtn ob-reveal" onClick={() => setShowGridAnyway(true)}>
+              Show dashboard anyway
+            </button>
+          )}
+        </div>
+      )}
+
+      {!suppressGrid && (
       <Grid
         key={active.id}
         className="wgrid"
@@ -416,6 +454,7 @@ export default function App() {
           </div>
         ))}
       </Grid>
+      )}
     </>
   )
 }
