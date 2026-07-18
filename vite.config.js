@@ -13,7 +13,7 @@ export default defineConfig(({ mode }) => ({
     global: 'globalThis',
   },
   server: {
-    port: 5173,
-    proxy: { '/api': 'http://localhost:3777' },
+    port: Number(process.env.PORT || 5173),
+    proxy: { '/api': process.env.VITE_API_PROXY || 'http://localhost:3777' },
   },
 }))
