@@ -480,6 +480,28 @@ line.zap { stroke: var(--accent); stroke-opacity: 0.9; }
 .line-svg .ax-tick { fill: var(--dim); font-size: 8px; font-variant-numeric: tabular-nums; }
 .line-svg .ax-unit { fill: var(--dim); font-size: 8px; text-transform: uppercase; letter-spacing: 0.04em; }
 
+/* ── infoviz primitives: strip · scatter · flow ────────────────────────── */
+.strip-svg, .scatter-svg, .flow-svg { width: 100%; height: auto; }
+.strip-svg .axis, .scatter-svg .axis { stroke: var(--border); stroke-width: 1; }
+.scatter-svg .grid { stroke: var(--border); stroke-width: 1; opacity: 0.4; }
+.strip-svg .ax-tick, .scatter-svg .ax-tick, .flow-svg .ax-tick { fill: var(--dim); font-size: 8px; font-variant-numeric: tabular-nums; }
+.strip-svg .ax-unit, .scatter-svg .ax-unit, .flow-svg .ax-unit { fill: var(--dim); font-size: 8px; text-transform: uppercase; letter-spacing: 0.04em; }
+/* distribution: one hue by default; text/position carry identity, not colour. */
+.strip-dot { fill: var(--accent); opacity: 0.72; }
+.strip-dot.done { fill: var(--ok); }
+.strip-dot.err { fill: var(--warn); }
+.strip-median { stroke: var(--dim); stroke-width: 1; stroke-dasharray: 2 2; }
+.scatter-dot { fill: var(--accent); opacity: 0.6; stroke: var(--accent); stroke-width: 0.5; }
+.scatter-dot.warn { fill: var(--warn); opacity: 0.7; }
+.flow-node { fill: var(--accent); }
+.flow-ribbon { fill: var(--accent); opacity: 0.28; }
+.flow-val { fill: var(--fg); font-size: 9px; font-variant-numeric: tabular-nums; }
+
+/* ── memory widgets: summary row + chart captions ──────────────────────── */
+.mem-kpis { display: flex; flex-wrap: wrap; gap: 0.35rem 0.9rem; font-size: 0.78rem; color: var(--dim); margin-bottom: 0.6rem; }
+.mem-kpis b { color: var(--fg); font-weight: 600; }
+.chart-cap { text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.68rem; margin: 0.55rem 0 0.15rem; }
+
 /* remove-widget affordance */
 .wgt-x { font: inherit; font-size: 1rem; line-height: 1; color: var(--dim); background: transparent; border: none; cursor: pointer; padding: 0 0.2rem; opacity: 0.55; }
 .wgt-x:hover { color: var(--warn); opacity: 1; }

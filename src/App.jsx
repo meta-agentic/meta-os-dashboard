@@ -4,6 +4,7 @@ import 'react-grid-layout/css/styles.css'
 import 'react-resizable/css/styles.css'
 import Lanes from './widgets/Lanes.jsx'
 import Memory from './widgets/Memory.jsx'
+import MemoryFlux from './widgets/MemoryFlux.jsx'
 import Automations from './widgets/Automations.jsx'
 import Registry from './widgets/Registry.jsx'
 import Activity from './widgets/Activity.jsx'
@@ -27,6 +28,7 @@ const WIDGETS = [
   { i: 'graph', title: 'Knowledge Graph', render: (d) => <GraphView ontology={d.ontology} /> },
   { i: 'graph-table', title: 'Graph Hubs', render: (d) => <GraphTable ontology={d.ontology} /> },
   { i: 'memory', title: 'Memory', render: (d) => <Memory data={d.memory} ontology={d.ontology} /> },
+  { i: 'memory-flux', title: 'Memory Flux', render: (d) => <MemoryFlux memory={d.memory} events={d.events} ontology={d.ontology} /> },
   { i: 'outputs', title: 'Outputs', render: (d) => <Outputs data={d.outputs} /> },
   { i: 'automations', title: 'Automations', render: (d) => <Automations data={d.automations} /> },
   { i: 'usage', title: 'Usage', render: (d) => <Usage data={d.usage} /> },
@@ -43,8 +45,9 @@ const DEFAULT_LAYOUT = [
   { i: 'lanes', x: 0, y: 0, w: 7, h: 11, minW: 4, minH: 6 },
   { i: 'graph', x: 7, y: 0, w: 5, h: 11, minW: 3, minH: 6 },
   { i: 'memory', x: 0, y: 11, w: 4, h: 8, minW: 3, minH: 5 },
-  { i: 'outputs', x: 4, y: 11, w: 4, h: 8, minW: 3, minH: 5 },
-  { i: 'automations', x: 8, y: 11, w: 4, h: 8, minW: 3, minH: 5 },
+  { i: 'memory-flux', x: 4, y: 11, w: 4, h: 9, minW: 3, minH: 7 },
+  { i: 'outputs', x: 8, y: 11, w: 4, h: 8, minW: 3, minH: 5 },
+  { i: 'automations', x: 0, y: 20, w: 4, h: 8, minW: 3, minH: 5 },
   { i: 'usage', x: 0, y: 19, w: 6, h: 8, minW: 3, minH: 5 },
   { i: 'registry', x: 6, y: 19, w: 3, h: 8, minW: 3, minH: 5 },
   { i: 'lint', x: 9, y: 19, w: 3, h: 8, minW: 3, minH: 5 },
@@ -55,8 +58,57 @@ const DEFAULT_LAYOUT = [
   { i: 'report', x: 0, y: 47, w: 12, h: 12, minW: 5, minH: 9 },
   { i: 'graph-table', x: 0, y: 59, w: 6, h: 8, minW: 3, minH: 5 },
 ]
+// DEFAULT_LAYOUT above is the widget catalogue: the source of per-widget size floors
+// and the template for a freshly-added board. FLOORS is derived from it, so every id
+// used on any preset board below must exist in it (withFloors drops unknown ids).
 const FLOORS = Object.fromEntries(DEFAULT_LAYOUT.map((d) => [d.i, { minW: d.minW, minH: d.minH }]))
 const withFloors = (layout) => (layout || []).filter((l) => FLOORS[l.i]).map((l) => ({ ...l, ...FLOORS[l.i] }))
+
+// Preset tabs — a fresh instance opens organised by question, not as one wall of
+// widgets. Each board groups the widgets that answer one question; a widget may
+// appear on more than one board (e.g. Sprint Lanes on both Overview and Delivery).
+// Sizes here are overridden by FLOORS at load, so they only set the arrangement.
+const DEFAULT_BOARDS = [
+  {
+    id: 'overview', name: 'Overview',
+    layout: [
+      { i: 'lanes', x: 0, y: 0, w: 7, h: 11 },
+      { i: 'usage', x: 7, y: 0, w: 5, h: 11 },
+      { i: 'memory', x: 0, y: 11, w: 4, h: 8 },
+      { i: 'outputs', x: 4, y: 11, w: 4, h: 8 },
+      { i: 'activity', x: 8, y: 11, w: 4, h: 8 },
+    ],
+  },
+  {
+    id: 'knowledge', name: 'Knowledge',
+    layout: [
+      { i: 'graph', x: 0, y: 0, w: 8, h: 11 },
+      { i: 'graph-table', x: 8, y: 0, w: 4, h: 11 },
+      { i: 'memory', x: 0, y: 11, w: 4, h: 8 },
+      { i: 'memory-flux', x: 4, y: 11, w: 4, h: 9 },
+      { i: 'files', x: 8, y: 11, w: 4, h: 11 },
+    ],
+  },
+  {
+    id: 'delivery', name: 'Delivery',
+    layout: [
+      { i: 'lanes', x: 0, y: 0, w: 7, h: 11 },
+      { i: 'distribution', x: 7, y: 0, w: 5, h: 11 },
+      { i: 'gantt', x: 0, y: 11, w: 12, h: 11 },
+      { i: 'report', x: 0, y: 22, w: 12, h: 12 },
+    ],
+  },
+  {
+    id: 'operations', name: 'Operations',
+    layout: [
+      { i: 'usage', x: 0, y: 0, w: 6, h: 9 },
+      { i: 'automations', x: 6, y: 0, w: 6, h: 9 },
+      { i: 'activity', x: 0, y: 9, w: 8, h: 7 },
+      { i: 'lint', x: 8, y: 9, w: 4, h: 7 },
+      { i: 'registry', x: 0, y: 16, w: 12, h: 8 },
+    ],
+  },
+]
 
 const BOARDS_KEY = 'meta-os.boards.v1'
 const LEGACY_LAYOUT_KEY = 'meta-os.layout.v1'
@@ -88,14 +140,15 @@ function loadBoards() {
   } catch {
     /* migrate */
   }
-  let layout = DEFAULT_LAYOUT
+  const boards = DEFAULT_BOARDS.map((b) => ({ ...b, layout: b.layout.map((l) => ({ ...l })) }))
   try {
+    // Legacy single-layout users keep their arrangement on the Overview tab.
     const legacy = JSON.parse(localStorage.getItem(LEGACY_LAYOUT_KEY) || 'null')
-    if (Array.isArray(legacy) && legacy.length) layout = legacy
+    if (Array.isArray(legacy) && legacy.length) boards[0] = { ...boards[0], layout: legacy }
   } catch {
     /* ignore */
   }
-  return { boards: [normBoard({ id: 'overview', name: 'Overview', layout })], activeId: 'overview' }
+  return { boards: boards.map(normBoard), activeId: 'overview' }
 }
 
 export default function App() {
@@ -231,7 +284,10 @@ export default function App() {
     })
   }
   const renameBoard = (id, name) => patchBoards((bs) => bs.map((b) => (b.id === id ? { ...b, name: name.trim() || b.name } : b)))
-  const resetActive = () => patchActive((b) => ({ ...b, layout: withFloors(DEFAULT_LAYOUT), groups: [], membership: {} }))
+  const resetActive = () => {
+    const preset = DEFAULT_BOARDS.find((p) => p.id === active.id)
+    patchActive((b) => ({ ...b, layout: withFloors(preset?.layout ?? DEFAULT_LAYOUT), groups: [], membership: {} }))
+  }
   const addWidget = (id) => {
     if (!id) return
     const def = DEFAULT_LAYOUT.find((d) => d.i === id) || { w: 6, h: 8, minW: 3, minH: 5 }

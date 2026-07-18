@@ -13,9 +13,12 @@ const fileCache = new Map() // file → { mtimeMs, agg }
 
 async function aggregateFile(file, mtimeMs) {
   const hit = fileCache.get(file)
-  if (hit && hit.mtimeMs === mtimeMs) return hit.agg
+  if (hit && hit.mtimeMs === mtimeMs) return { agg: hit.agg, session: hit.session }
   // day → model → counters (tokens only; a "turn" = one usage-bearing line)
   const agg = new Map()
+  // File-level roll-up: one .jsonl is one engine session, so its totals + first/last
+  // timestamps give a per-session row for the distribution/scatter widgets.
+  const session = { out: 0, in: 0, cacheRead: 0, cacheWrite: 0, turns: 0, first: null, last: null }
   const text = await fs.readFile(file, 'utf8')
   for (const line of text.split('\n')) {
     if (!line) continue
@@ -27,16 +30,20 @@ async function aggregateFile(file, mtimeMs) {
     const day = e.timestamp.slice(0, 10)
     const byModel = agg.get(day) ?? new Map()
     const c = byModel.get(model) ?? { in: 0, out: 0, cacheRead: 0, cacheWrite: 0, turns: 0 }
-    c.in += u.input_tokens ?? 0
-    c.out += u.output_tokens ?? 0
-    c.cacheRead += u.cache_read_input_tokens ?? 0
-    c.cacheWrite += u.cache_creation_input_tokens ?? 0
-    c.turns += 1
+    const din = u.input_tokens ?? 0, dout = u.output_tokens ?? 0
+    const dcr = u.cache_read_input_tokens ?? 0, dcw = u.cache_creation_input_tokens ?? 0
+    c.in += din; c.out += dout; c.cacheRead += dcr; c.cacheWrite += dcw; c.turns += 1
     byModel.set(model, c)
     agg.set(day, byModel)
+    session.in += din; session.out += dout; session.cacheRead += dcr; session.cacheWrite += dcw; session.turns += 1
+    const ts = Date.parse(e.timestamp)
+    if (Number.isFinite(ts)) {
+      if (session.first === null || ts < session.first) session.first = ts
+      if (session.last === null || ts > session.last) session.last = ts
+    }
   }
-  fileCache.set(file, { mtimeMs, agg })
-  return agg
+  fileCache.set(file, { mtimeMs, agg, session })
+  return { agg, session }
 }
 
 // Map an engine project slug (path with / → -) back to a registry project by its
@@ -65,6 +72,7 @@ export async function usage(claudeHome, projects) {
   const cutoff = new Date(Date.now() - WINDOW_DAYS * 864e5).toISOString().slice(0, 10)
   const byDay = new Map() // day → model → counters
   const byProject = new Map() // label → out-tokens + turns
+  const sessionList = [] // one row per session file (for distribution + scatter)
   let sessions = 0
   for (const d of slugs) {
     const dir = path.join(root, d.name)
@@ -74,11 +82,13 @@ export async function usage(claudeHome, projects) {
       const full = path.join(dir, f)
       let st
       try { st = await fs.stat(full) } catch { continue }
-      const agg = await aggregateFile(full, st.mtimeMs)
+      const { agg, session } = await aggregateFile(full, st.mtimeMs)
       let touched = false
+      let lastDay = ''
       for (const [day, models] of agg) {
         if (day < cutoff) continue
         touched = true
+        if (day > lastDay) lastDay = day
         const dm = byDay.get(day) ?? new Map()
         for (const [model, c] of models) {
           const t = dm.get(model) ?? { in: 0, out: 0, cacheRead: 0, cacheWrite: 0, turns: 0 }
@@ -91,9 +101,24 @@ export async function usage(claudeHome, projects) {
         }
         byDay.set(day, dm)
       }
-      if (touched) sessions += 1
+      if (touched) {
+        sessions += 1
+        sessionList.push({
+          project: label,
+          day: lastDay,
+          out: session.out,
+          in: session.in,
+          cacheRead: session.cacheRead,
+          cacheWrite: session.cacheWrite,
+          turns: session.turns,
+          durationMs: session.first !== null && session.last !== null ? session.last - session.first : 0,
+        })
+      }
     }
   }
+  // Keep the heaviest sessions — the strip/scatter care about the spend distribution,
+  // and a long tail of tiny sessions would just crowd the axis near zero.
+  sessionList.sort((a, b) => b.out - a.out)
 
   const days = [...byDay.entries()]
     .map(([day, models]) => ({
@@ -123,6 +148,7 @@ export async function usage(claudeHome, projects) {
       .map(([name, v]) => ({ name, ...v }))
       .sort((a, b) => b.out - a.out)
       .slice(0, 8),
+    sessionList: sessionList.slice(0, 80),
     cost: null,
     costReason: 'session logs carry no cost field; prices are not estimated in code',
   }
