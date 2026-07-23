@@ -138,43 +138,204 @@ async function sampleCounts(counts) {
   return samples
 }
 
-export async function memory(instanceRoot) {
-  try {
-    const stages = {}
-    for (const stage of ['raw', 'wiki', 'output']) {
-      const notes = await mdFiles(path.join(instanceRoot, 'memory', stage))
-      notes.sort((a, b) => a.mtime - b.mtime)
-      stages[stage] = {
-        count: notes.length,
-        oldest: notes[0] ?? null,
-        newest: notes.at(-1) ?? null,
-      }
-    }
-    const counts = Object.fromEntries(Object.entries(stages).map(([k, v]) => [k, v.count]))
-    const samples = await sampleCounts(counts)
-    for (const stage of Object.keys(stages)) {
-      stages[stage].capacity = Math.max(stages[stage].count, ...samples.map((s) => s[stage] ?? 0))
-    }
+const TIERS = ['raw', 'wiki', 'output']
+const LAYOUTS = ['flat', 'tier/project', 'project/tier']
 
-    // Federated vaults (vaults/ symlinks) are navigation, not canon — reported as
-    // context so pipeline zeros don't read as "the OS knows nothing". Symlinks must be
-    // resolved per-vault: recursive readdir does not descend into linked directories.
-    const vaults = []
-    try {
-      const dir = path.join(instanceRoot, 'vaults')
-      for (const name of await fs.readdir(dir)) {
-        if (name.startsWith('.')) continue // tooling dirs (.claude-flow, …) aren't project memory
-        try {
-          const target = await fs.realpath(path.join(dir, name))
-          if (!(await fs.stat(target)).isDirectory()) continue
-          const notes = await mdFiles(target)
-          vaults.push({ name, notes: notes.length, newest: notes.length ? Math.max(...notes.map((n) => n.mtime)) : null })
-        } catch { /* broken symlink — skip */ }
+// Count .md notes under a directory, degrading to [] when the dir is absent or
+// unreadable — a missing tier is a zero, never a throw.
+async function safeNotes(dir) {
+  try { return await mdFiles(dir) } catch { return [] }
+}
+
+// A federated/navigation mount's note count (recursive .md walk over the realpath —
+// symlinked mounts must be resolved; recursive readdir does not descend into links).
+async function mountRow(name, absPath) {
+  try {
+    const target = await fs.realpath(absPath)
+    if (!(await fs.stat(target)).isDirectory()) return null
+    const notes = await mdFiles(target)
+    return { name, notes: notes.length, newest: notes.length ? Math.max(...notes.map((n) => n.mtime)) : null }
+  } catch {
+    return null // broken symlink / unreadable — caller reports as skipped
+  }
+}
+
+// Enumerate one canon root per its declared layout. Returns per-tier note lists
+// (canon — feeds the pipeline stages) and per-project rows (context — feeds the
+// federated.vaults breakdown). A project-partitioned layout contributes to both:
+// its tier totals into stages, its projects into the vault rows.
+async function enumerateRoot(absPath, layout) {
+  const tiers = { raw: [], wiki: [], output: [] }
+  const projects = new Map() // name -> { notes, newest }
+  const addProject = (name, notes) => {
+    const p = projects.get(name) ?? { notes: 0, newest: null }
+    p.notes += notes.length
+    const n = notes.length ? Math.max(...notes.map((x) => x.mtime)) : null
+    if (n && (p.newest === null || n > p.newest)) p.newest = n
+    projects.set(name, p)
+  }
+  // Child directory names, following symlinks — a project can legitimately be a
+  // symlink to its own repo (the "centralize a mix" topology), and Dirent.isDirectory()
+  // is false for a symlink, so stat the resolved target. A broken symlink is skipped.
+  const subdirs = async (dir) => {
+    let entries
+    try { entries = await fs.readdir(dir, { withFileTypes: true }) } catch { return [] }
+    const out = []
+    for (const e of entries) {
+      if (e.name.startsWith('.')) continue
+      if (e.isDirectory()) { out.push(e.name); continue }
+      if (e.isSymbolicLink()) {
+        try { if ((await fs.stat(path.join(dir, e.name))).isDirectory()) out.push(e.name) } catch { /* broken symlink — skip */ }
       }
-    } catch { /* no vaults/ folder — fine */ }
-    vaults.sort((a, b) => b.notes - a.notes)
-    const newest = vaults.reduce((m, v) => Math.max(m, v.newest ?? 0), 0) || null
-    return { available: true, stages, federated: { vaults, total: vaults.reduce((a, v) => a + v.notes, 0), newest } }
+    }
+    return out
+  }
+
+  if (layout === 'flat') {
+    for (const tier of TIERS) tiers[tier] = await safeNotes(path.join(absPath, tier))
+  } else if (layout === 'tier/project') {
+    for (const tier of TIERS) {
+      for (const proj of await subdirs(path.join(absPath, tier))) {
+        const notes = await safeNotes(path.join(absPath, tier, proj))
+        tiers[tier].push(...notes)
+        addProject(proj, notes)
+      }
+    }
+  } else { // project/tier
+    for (const proj of await subdirs(absPath)) {
+      const projNotes = []
+      for (const tier of TIERS) {
+        const notes = await safeNotes(path.join(absPath, proj, tier))
+        tiers[tier].push(...notes)
+        projNotes.push(...notes)
+      }
+      addProject(proj, projNotes)
+    }
+  }
+  return { tiers, projects }
+}
+
+// Assemble stages (with sampled 24h capacity) from aggregated per-tier note lists.
+async function stagesFrom(tierNotes) {
+  const stages = {}
+  for (const tier of TIERS) {
+    const notes = tierNotes[tier].slice().sort((a, b) => a.mtime - b.mtime)
+    stages[tier] = { count: notes.length, oldest: notes[0] ?? null, newest: notes.at(-1) ?? null }
+  }
+  const counts = Object.fromEntries(TIERS.map((t) => [t, stages[t].count]))
+  const samples = await sampleCounts(counts)
+  for (const tier of TIERS) {
+    stages[tier].capacity = Math.max(stages[tier].count, ...samples.map((s) => s[tier] ?? 0))
+  }
+  return stages
+}
+
+const federatedBlock = (vaults) => {
+  vaults.sort((a, b) => b.notes - a.notes)
+  return {
+    vaults,
+    total: vaults.reduce((a, v) => a + v.notes, 0),
+    newest: vaults.reduce((m, v) => Math.max(m, v.newest ?? 0), 0) || null,
+  }
+}
+
+// Default topology (no `memory` config): the instance's own memory/{raw,wiki,output}
+// is the sole canon root and vaults/* are federated mounts. Kept byte-for-byte
+// identical to the prior behaviour so upgrading without a `memory` block is a
+// no-op for every existing adopter.
+async function legacyMemory(instanceRoot) {
+  const tierNotes = { raw: [], wiki: [], output: [] }
+  for (const tier of TIERS) tierNotes[tier] = await mdFiles(path.join(instanceRoot, 'memory', tier))
+  const stages = await stagesFrom(tierNotes)
+
+  const vaults = []
+  try {
+    const dir = path.join(instanceRoot, 'vaults')
+    for (const name of await fs.readdir(dir)) {
+      if (name.startsWith('.')) continue // tooling dirs (.claude-flow, …) aren't project memory
+      const row = await mountRow(name, path.join(dir, name))
+      if (row) vaults.push(row)
+    }
+  } catch { /* no vaults/ folder — fine */ }
+  return { available: true, stages, federated: federatedBlock(vaults) }
+}
+
+// Configured topology: canon `roots[]` (each {label, path, layout}) feed the
+// pipeline stages; `federated[]` mounts are navigation context. Per-project rows from
+// partitioned roots and the federated mounts share the existing federated.vaults shape,
+// so the Memory / Memory Flux widgets need zero changes. Broken paths skip-and-report
+// via the additive `topology` diagnostics; existing keys keep their shape.
+async function configuredMemory(memoryConfig, vars, instanceRoot) {
+  const roots = (memoryConfig.roots ?? []).map((r) => ({ ...r, path: expandVars(r.path, vars) }))
+  const mounts = (memoryConfig.federated ?? []).map((f) => ({ ...f, path: expandVars(f.path, vars) }))
+  const skipped = []
+  const rootReport = []
+  const tierNotes = { raw: [], wiki: [], output: [] }
+  const projectRows = new Map() // name -> { notes, newest }
+
+  for (const [i, r] of roots.entries()) {
+    const label = r.label ?? `root[${i}]`
+    const layout = r.layout ?? 'flat'
+    if (!LAYOUTS.includes(layout)) {
+      skipped.push({ label, path: r.path, reason: `unknown layout "${layout}" (expected ${LAYOUTS.join(' | ')})` })
+      continue
+    }
+    let isDir = false
+    try { isDir = (await fs.stat(r.path)).isDirectory() } catch { /* missing */ }
+    if (!isDir) {
+      skipped.push({ label, path: r.path, reason: 'root path missing or not a directory' })
+      continue
+    }
+    const { tiers, projects } = await enumerateRoot(r.path, layout)
+    for (const tier of TIERS) tierNotes[tier].push(...tiers[tier])
+    for (const [name, p] of projects) {
+      const cur = projectRows.get(name) ?? { notes: 0, newest: null }
+      cur.notes += p.notes
+      if (p.newest && (cur.newest === null || p.newest > cur.newest)) cur.newest = p.newest
+      projectRows.set(name, cur)
+    }
+    rootReport.push({ label, layout, notes: TIERS.reduce((a, t) => a + tiers[t].length, 0) })
+  }
+
+  const stages = await stagesFrom(tierNotes)
+
+  // Per-project canon rows + federated mounts share the vault-row namespace, keyed by
+  // name. A project can surface from a partitioned canon root and a like-named federated
+  // mount (e.g. a stray estate scaffold folder alongside the project's own doc-repo);
+  // merge by name (sum notes, max newest) so the widget never renders a duplicate chip.
+  const byName = new Map(projectRows)
+  const mergeRow = (name, notes, newest) => {
+    const cur = byName.get(name) ?? { notes: 0, newest: null }
+    cur.notes += notes
+    if (newest && (cur.newest === null || newest > cur.newest)) cur.newest = newest
+    byName.set(name, cur)
+  }
+  const mountReport = []
+  for (const [i, f] of mounts.entries()) {
+    const label = f.label ?? `federated[${i}]`
+    const row = await mountRow(label, f.path)
+    if (row) { mergeRow(label, row.notes, row.newest); mountReport.push({ label, notes: row.notes }) }
+    else skipped.push({ label, path: f.path, reason: 'federated mount missing, not a directory, or a broken symlink' })
+  }
+  const vaults = [...byName].map(([name, p]) => ({ name, notes: p.notes, newest: p.newest }))
+
+  return {
+    available: true,
+    stages,
+    federated: federatedBlock(vaults),
+    topology: { roots: rootReport, federated: mountReport, skipped },
+  }
+}
+
+// `memoryConfig` is the optional instance.config.json `memory` block ({ roots[],
+// federated[] }); absent it, the instance falls back to the default single-root
+// topology. `vars` drives ${...} expansion in configured paths, exactly as for backlogs.
+export async function memory(instanceRoot, memoryConfig = null, vars = {}) {
+  try {
+    if (memoryConfig && Array.isArray(memoryConfig.roots)) {
+      return await configuredMemory(memoryConfig, vars, instanceRoot)
+    }
+    return await legacyMemory(instanceRoot)
   } catch (e) {
     return unavailable(`memory/ unreadable: ${e.message}`)
   }

@@ -9,6 +9,16 @@
   "backlogs": [
     { "space": "example", "path": "${code}/scrum/<space>/backlog.json" }
   ],
+  "memory": {
+    "_comment": "Optional. Configurable memory topology. Omit this whole block and memory falls back to the default: the instance's own memory/{raw,wiki,output} as the sole canon root plus vaults/* as federated mounts — byte-for-byte the prior behaviour. 'roots' are canon (counted as the raw→wiki→output pipeline); each has a 'layout' of flat | tier/project | project/tier. 'federated' mounts are navigation context, never counted as canon. ${var} expands here exactly as in backlogs. Broken/dangling paths are skipped and reported (topology.skipped), never fatal.",
+    "roots": [
+      { "label": "instance", "path": "${code}/your-instance-vault/memory", "layout": "flat" },
+      { "label": "estate", "path": "${code}/vault", "layout": "project/tier" }
+    ],
+    "federated": [
+      { "label": "docs-repo", "path": "${code}/some-project/docs" }
+    ]
+  },
   "auth": {
     "_comment": "OIDC — Google (now) or Tessera (later). enabled = UI login gate. enforce = API requires JWT (Google id_token). allowedEmails strongly recommended so random Google accounts cannot access your vault.",
     "enabled": false,

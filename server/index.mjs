@@ -127,7 +127,7 @@ if (isGithub) {
   app.get('/api/ontology', api(() => read.ontology(frameworkRoot)))
   app.get('/api/registry', api(() => read.registry(instanceRoot, config.vars ?? {})))
   app.get('/api/automations', api(() => read.automations(instanceRoot)))
-  app.get('/api/memory', api(() => read.memory(instanceRoot)))
+  app.get('/api/memory', api(() => read.memory(instanceRoot, config.memory ?? null, config.vars ?? {})))
   app.get('/api/activity', api(() => read.activity(instanceRoot)))
   app.get('/api/lanes', api(() => read.lanes(config.backlogs)))
   app.get('/api/report', api(() => reports(config.backlogs)))
