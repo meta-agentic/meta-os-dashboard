@@ -49,7 +49,21 @@ if (isGithub) {
   instanceRoot = config.instanceRoot
   frameworkRoot =
     config.frameworkRoot ?? path.dirname(await fs.realpath(path.join(instanceRoot, 'systems')))
-  fileRoots = { instance: instanceRoot, framework: frameworkRoot }
+  // Configured memory roots are browsable/readable too, keyed by their label.
+  // Without this the topology added in 36c0fde could COUNT a root's notes but
+  // never open one: /api/file resolved every path under instanceRoot, so a
+  // root living outside the instance reported a full note count and zero
+  // readable files.
+  // Labels are namespaced after the built-ins, so a root cannot shadow them.
+  fileRoots = {
+    instance: instanceRoot,
+    framework: frameworkRoot,
+    ...Object.fromEntries(
+      (config.memory?.roots ?? [])
+        .filter((r) => r.label && r.path && !['instance', 'framework'].includes(r.label))
+        .map((r) => [r.label, r.path]),
+    ),
+  }
 }
 
 dataDir = config.dataDir ?? new URL('../.data', import.meta.url).pathname
