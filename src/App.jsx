@@ -3,6 +3,7 @@ import GridLayout, { WidthProvider } from 'react-grid-layout'
 import 'react-grid-layout/css/styles.css'
 import 'react-resizable/css/styles.css'
 import Lanes from './widgets/Lanes.jsx'
+import SprintSummary from './widgets/SprintSummary.jsx'
 import Memory from './widgets/Memory.jsx'
 import MemoryFlux from './widgets/MemoryFlux.jsx'
 import Automations from './widgets/Automations.jsx'
@@ -27,6 +28,7 @@ const FEEDS = ['meta', 'ontology', 'registry', 'automations', 'memory', 'events'
 
 const WIDGETS = [
   { i: 'lanes', title: 'Sprint Lanes', render: (d) => <Lanes data={d.lanes} /> },
+  { i: 'sprint-summary', title: 'Sprint Summary', render: (d) => <SprintSummary data={d.lanes} /> },
   { i: 'graph', title: 'Knowledge Graph', render: (d) => <GraphView ontology={d.ontology} /> },
   { i: 'graph-table', title: 'Graph Hubs', render: (d) => <GraphTable ontology={d.ontology} /> },
   { i: 'memory', title: 'Memory', render: (d) => <Memory data={d.memory} ontology={d.ontology} /> },
@@ -44,21 +46,22 @@ const WIDGETS = [
 ]
 
 const DEFAULT_LAYOUT = [
-  { i: 'lanes', x: 0, y: 0, w: 7, h: 11, minW: 4, minH: 6 },
-  { i: 'graph', x: 7, y: 0, w: 5, h: 11, minW: 3, minH: 6 },
-  { i: 'memory', x: 0, y: 11, w: 4, h: 8, minW: 3, minH: 5 },
-  { i: 'memory-flux', x: 4, y: 11, w: 4, h: 9, minW: 3, minH: 7 },
-  { i: 'outputs', x: 8, y: 11, w: 4, h: 8, minW: 3, minH: 5 },
-  { i: 'automations', x: 0, y: 20, w: 4, h: 8, minW: 3, minH: 5 },
-  { i: 'usage', x: 0, y: 19, w: 6, h: 8, minW: 3, minH: 5 },
-  { i: 'registry', x: 6, y: 19, w: 3, h: 8, minW: 3, minH: 5 },
-  { i: 'lint', x: 9, y: 19, w: 3, h: 8, minW: 3, minH: 5 },
-  { i: 'activity', x: 0, y: 27, w: 8, h: 7, minW: 4, minH: 5 },
-  { i: 'distribution', x: 8, y: 27, w: 4, h: 9, minW: 3, minH: 7 },
-  { i: 'files', x: 0, y: 36, w: 6, h: 11, minW: 3, minH: 7 },
-  { i: 'gantt', x: 6, y: 36, w: 6, h: 11, minW: 4, minH: 7 },
-  { i: 'report', x: 0, y: 47, w: 12, h: 12, minW: 5, minH: 9 },
-  { i: 'graph-table', x: 0, y: 59, w: 6, h: 8, minW: 3, minH: 5 },
+  { i: 'sprint-summary', x: 0, y: 0, w: 12, h: 5, minW: 4, minH: 4 },
+  { i: 'lanes', x: 0, y: 5, w: 7, h: 11, minW: 4, minH: 6 },
+  { i: 'graph', x: 7, y: 5, w: 5, h: 11, minW: 3, minH: 6 },
+  { i: 'memory', x: 0, y: 16, w: 4, h: 8, minW: 3, minH: 5 },
+  { i: 'memory-flux', x: 4, y: 16, w: 4, h: 9, minW: 3, minH: 7 },
+  { i: 'outputs', x: 8, y: 16, w: 4, h: 8, minW: 3, minH: 5 },
+  { i: 'automations', x: 0, y: 25, w: 4, h: 8, minW: 3, minH: 5 },
+  { i: 'usage', x: 0, y: 24, w: 6, h: 8, minW: 3, minH: 5 },
+  { i: 'registry', x: 6, y: 24, w: 3, h: 8, minW: 3, minH: 5 },
+  { i: 'lint', x: 9, y: 24, w: 3, h: 8, minW: 3, minH: 5 },
+  { i: 'activity', x: 0, y: 32, w: 8, h: 7, minW: 4, minH: 5 },
+  { i: 'distribution', x: 8, y: 32, w: 4, h: 9, minW: 3, minH: 7 },
+  { i: 'files', x: 0, y: 41, w: 6, h: 11, minW: 3, minH: 7 },
+  { i: 'gantt', x: 6, y: 41, w: 6, h: 11, minW: 4, minH: 7 },
+  { i: 'report', x: 0, y: 52, w: 12, h: 12, minW: 5, minH: 9 },
+  { i: 'graph-table', x: 0, y: 64, w: 6, h: 8, minW: 3, minH: 5 },
 ]
 // DEFAULT_LAYOUT above is the widget catalogue: the source of per-widget size floors
 // and the template for a freshly-added board. FLOORS is derived from it, so every id
@@ -74,11 +77,12 @@ const DEFAULT_BOARDS = [
   {
     id: 'overview', name: 'Overview',
     layout: [
-      { i: 'lanes', x: 0, y: 0, w: 7, h: 11 },
-      { i: 'usage', x: 7, y: 0, w: 5, h: 11 },
-      { i: 'memory', x: 0, y: 11, w: 4, h: 8 },
-      { i: 'outputs', x: 4, y: 11, w: 4, h: 8 },
-      { i: 'activity', x: 8, y: 11, w: 4, h: 8 },
+      { i: 'sprint-summary', x: 0, y: 0, w: 12, h: 5 },
+      { i: 'lanes', x: 0, y: 5, w: 7, h: 11 },
+      { i: 'usage', x: 7, y: 5, w: 5, h: 11 },
+      { i: 'memory', x: 0, y: 16, w: 4, h: 8 },
+      { i: 'outputs', x: 4, y: 16, w: 4, h: 8 },
+      { i: 'activity', x: 8, y: 16, w: 4, h: 8 },
     ],
   },
   {
@@ -94,10 +98,11 @@ const DEFAULT_BOARDS = [
   {
     id: 'delivery', name: 'Delivery',
     layout: [
-      { i: 'lanes', x: 0, y: 0, w: 7, h: 11 },
-      { i: 'distribution', x: 7, y: 0, w: 5, h: 11 },
-      { i: 'gantt', x: 0, y: 11, w: 12, h: 11 },
-      { i: 'report', x: 0, y: 22, w: 12, h: 12 },
+      { i: 'sprint-summary', x: 0, y: 0, w: 12, h: 5 },
+      { i: 'lanes', x: 0, y: 5, w: 7, h: 11 },
+      { i: 'distribution', x: 7, y: 5, w: 5, h: 11 },
+      { i: 'gantt', x: 0, y: 16, w: 12, h: 11 },
+      { i: 'report', x: 0, y: 27, w: 12, h: 12 },
     ],
   },
   {
