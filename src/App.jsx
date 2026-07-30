@@ -140,6 +140,21 @@ function loadPrefs() {
     return { ...DEFAULT_PREFS }
   }
 }
+// Group filter is GLOBAL and persisted: groups are an alternative axis to boards,
+// so hiding "diagrams" should mean hiding it everywhere, not per board. It keys on
+// group NAME rather than id, because each board mints its own ids — the "diagrams"
+// on Delivery and a "diagrams" elsewhere are different ids for the same idea.
+// Stored apart from the boards doc: this is a view preference, not layout.
+const GROUPFILTER_KEY = 'meta-os.groupfilter.v1'
+const UNGROUPED = '\u0000ungrouped'   // sentinel; cannot collide with a real name
+function loadGroupFilter() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(GROUPFILTER_KEY) || 'null')
+    if (Array.isArray(raw?.hidden)) return new Set(raw.hidden)
+  } catch { /* private mode */ }
+  return new Set()
+}
+
 const ONBOARDING_KEY = 'meta-os.onboarding.v1'
 function loadOnboarding() {
   try {
@@ -178,6 +193,7 @@ export default function App() {
   const [data, setData] = useState({})
   const [error, setError] = useState(null)
   const [{ boards, activeId }, setState] = useState(loadBoards)
+  const [hiddenGroups, setHiddenGroups] = useState(loadGroupFilter)
   const [editingId, setEditingId] = useState(null)
   const [prefs, setPrefs] = useState(loadPrefs)
   const [onboarding, setOnboarding] = useState(loadOnboarding)
@@ -348,8 +364,6 @@ export default function App() {
       return { ...b, membership }
     })
   }
-  const toggleGroup = (gid) =>
-    patchActive((b) => ({ ...b, groups: b.groups.map((g) => (g.id === gid ? { ...g, collapsed: !g.collapsed } : g)) }))
   const ungroup = (gid) =>
     patchActive((b) => {
       const membership = Object.fromEntries(Object.entries(b.membership).filter(([, v]) => v !== gid))
@@ -365,14 +379,28 @@ export default function App() {
   const showOnboarding = onb.steps.length > 0 && !onboarding.dismissed
   const suppressGrid = onb.fresh && !onboarding.dismissed && !showGridAnyway
 
-  const collapsed = new Set(active.groups.filter((g) => g.collapsed).map((g) => g.id))
   const inLayout = new Set(active.layout.map((l) => l.i))
-  const visible = WIDGETS.filter(
-    (w) => inLayout.has(w.i) && !collapsed.has(active.membership[w.i]),
-  )
+  // Every group name across every board — the filter is global, so a name stays
+  // togglable even while looking at a board with no widget in it.
+  const groupNameById = new Map(boards.flatMap((b) => b.groups.map((g) => [g.id, g.name])))
+  const allGroupNames = [...new Set(boards.flatMap((b) => b.groups.map((g) => g.name)))].sort()
+  const nameOf = (wid) => groupNameById.get(active.membership[wid]) ?? UNGROUPED
+  // Visibility is now the global group filter alone. Per-board `collapsed` is gone:
+  // with the panel moved out of the board there was no control left to un-collapse a
+  // group, so it could only ever hide widgets irrecoverably. The field is still
+  // tolerated in stored docs, just no longer consulted.
+  const visible = WIDGETS.filter((w) => inLayout.has(w.i) && !hiddenGroups.has(nameOf(w.i)))
   const visibleIds = new Set(visible.map((w) => w.i))
   const gridLayout = active.layout.filter((l) => visibleIds.has(l.i))
-  const countIn = (gid) => Object.values(active.membership).filter((v) => v === gid).length
+  // What toggling a name does on THIS board — the number that makes the chip honest.
+  const countByName = (name) => active.layout.filter((l) => nameOf(l.i) === name).length
+  const toggleGroupFilter = (name) => setHiddenGroups((prev) => {
+    const next = new Set(prev)
+    if (next.has(name)) next.delete(name)
+    else next.add(name)
+    try { localStorage.setItem(GROUPFILTER_KEY, JSON.stringify({ hidden: [...next] })) } catch { /* private mode */ }
+    return next
+  })
   const missing = WIDGETS.filter((w) => !inLayout.has(w.i))
 
   const dens = DENSITY[prefs.density] || DENSITY.comfortable
@@ -410,6 +438,41 @@ export default function App() {
         </button>
       </header>
 
+      {(allGroupNames.length > 0 || hiddenGroups.size > 0) && (
+        <div className="groupbar" role="group" aria-label="Group filter">
+          <span className="dim small">groups</span>
+          {[...allGroupNames, UNGROUPED].map((name) => {
+            const on = !hiddenGroups.has(name)
+            const n = countByName(name)
+            const label = name === UNGROUPED ? "ungrouped" : name
+            const gid = active.groups.find((g) => g.name === name)?.id
+            return (
+              <span key={name} className={"gchip" + (on ? "" : " collapsed")}>
+                <button
+                  className="gchip-toggle"
+                  onClick={() => toggleGroupFilter(name)}
+                  title={(on ? "Hide" : "Show") + " " + label + " everywhere — "
+                    + n + " widget" + (n === 1 ? "" : "s") + " on this board"}
+                >
+                  <span className="chev">{on ? "\u25be" : "\u25b8"}</span> {label}
+                  <span className="gcount">{n}</span>
+                </button>
+                {gid && (
+                  <button className="gchip-x" onClick={() => ungroup(gid)}
+                          title={"Dissolve " + label + " on this board"}
+                          aria-label={"Dissolve group " + label}>×</button>
+                )}
+              </span>
+            )
+          })}
+          {hiddenGroups.size > 0 && (
+            <button className="ghostbtn" onClick={() => {
+              setHiddenGroups(new Set())
+              try { localStorage.removeItem(GROUPFILTER_KEY) } catch { /* private mode */ }
+            }} title="Show every group again">show all</button>
+          )}
+        </div>
+      )}
       <nav className="tabbar" role="tablist">
         {boards.map((b) => (
           <div key={b.id} className={'tab' + (b.id === active.id ? ' active' : '')}>
@@ -451,18 +514,6 @@ export default function App() {
         </button>
       </nav>
 
-      {active.groups.length > 0 && (
-        <div className="groupbar">
-          {active.groups.map((g) => (
-            <span key={g.id} className={'gchip' + (g.collapsed ? ' collapsed' : '')}>
-              <button className="gchip-toggle" onClick={() => toggleGroup(g.id)} title={g.collapsed ? 'Expand group' : 'Collapse group'}>
-                <span className="chev">{g.collapsed ? '▸' : '▾'}</span> {g.name} <span className="gcount">{countIn(g.id)}</span>
-              </button>
-              <button className="gchip-x" onClick={() => ungroup(g.id)} title="Ungroup" aria-label={`Ungroup ${g.name}`}>×</button>
-            </span>
-          ))}
-        </div>
-      )}
 
       {showOnboarding && (
         <div className="ob-wrap">
