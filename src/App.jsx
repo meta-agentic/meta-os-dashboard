@@ -4,6 +4,8 @@ import 'react-grid-layout/css/styles.css'
 import 'react-resizable/css/styles.css'
 import Lanes from './widgets/Lanes.jsx'
 import SprintSummary from './widgets/SprintSummary.jsx'
+import Burndown from './widgets/Burndown.jsx'
+import Velocity from './widgets/Velocity.jsx'
 import Memory from './widgets/Memory.jsx'
 import MemoryFlux from './widgets/MemoryFlux.jsx'
 import Automations from './widgets/Automations.jsx'
@@ -42,6 +44,8 @@ const WIDGETS = [
   { i: 'distribution', title: 'Distribution', render: (d) => <Distribution data={d.lanes} /> },
   { i: 'files', title: 'File Preview', render: (d) => <FilePreview roots={d.meta?.roots} /> },
   { i: 'gantt', title: 'Roadmap', render: (d) => <Gantt data={d.report} /> },
+  { i: 'burndown', title: 'Burndown', render: (d) => <Burndown data={d.report} /> },
+  { i: 'velocity', title: 'Velocity', render: (d) => <Velocity data={d.report} /> },
   { i: 'report', title: 'Scrum Report', render: (d) => <Report data={d.report} /> },
 ]
 
@@ -60,8 +64,10 @@ const DEFAULT_LAYOUT = [
   { i: 'distribution', x: 8, y: 36, w: 4, h: 9, minW: 3, minH: 7 },
   { i: 'files', x: 0, y: 45, w: 6, h: 11, minW: 3, minH: 7 },
   { i: 'gantt', x: 6, y: 45, w: 6, h: 11, minW: 4, minH: 7 },
-  { i: 'report', x: 0, y: 56, w: 12, h: 12, minW: 5, minH: 9 },
-  { i: 'graph-table', x: 0, y: 68, w: 6, h: 8, minW: 3, minH: 5 },
+  { i: 'burndown', x: 0, y: 56, w: 6, h: 9, minW: 4, minH: 6 },
+  { i: 'velocity', x: 6, y: 56, w: 6, h: 9, minW: 4, minH: 6 },
+  { i: 'report', x: 0, y: 65, w: 12, h: 12, minW: 5, minH: 9 },
+  { i: 'graph-table', x: 0, y: 77, w: 6, h: 8, minW: 3, minH: 5 },
 ]
 // DEFAULT_LAYOUT above is the widget catalogue: the source of per-widget size floors
 // and the template for a freshly-added board. FLOORS is derived from it, so every id
@@ -102,7 +108,9 @@ const DEFAULT_BOARDS = [
       { i: 'lanes', x: 0, y: 9, w: 7, h: 11 },
       { i: 'distribution', x: 7, y: 9, w: 5, h: 11 },
       { i: 'gantt', x: 0, y: 20, w: 12, h: 11 },
-      { i: 'report', x: 0, y: 31, w: 12, h: 12 },
+      { i: 'burndown', x: 0, y: 31, w: 6, h: 9 },
+      { i: 'velocity', x: 6, y: 31, w: 6, h: 9 },
+      { i: 'report', x: 0, y: 40, w: 12, h: 12 },
     ],
   },
   {

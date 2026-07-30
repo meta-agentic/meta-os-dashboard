@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 
 const day = 864e5
 const statusClass = (s) => (s === 'CLOSED' ? 'done' : s === 'IN PROGRESS' ? 'wip' : 'todo')
@@ -19,9 +19,48 @@ function monthTicks(min, max) {
 }
 
 export default function Gantt({ data }) {
-  const bars = data?.roadmap ?? []
-  if (!bars.length) return <div className="degraded">no dated sprints to plot</div>
+  const all = data?.roadmap ?? []
+  // Toggleable project tags. Every space starts ON, so the default view is the
+  // whole estate and the filter is opt-in. Deselecting all would leave an empty
+  // chart with no way back, so the last active tag cannot be turned off.
+  const tags = [...new Set(all.map((b) => b.space))].sort()
+  const [off, setOff] = useState(() => new Set())
+  const shown = tags.filter((s) => !off.has(s))
+  const toggle = (s) => setOff((prev) => {
+    const next = new Set(prev)
+    if (next.has(s)) next.delete(s)
+    else if (shown.length > 1) next.add(s)
+    return next
+  })
 
+  if (!all.length) return <div className="degraded">no dated sprints to plot</div>
+  const bars = all.filter((b) => !off.has(b.space))
+
+  const TagBar = (
+    <div className="chips">
+      {tags.map((s) => {
+        const on = !off.has(s)
+        const n = all.filter((b) => b.space === s).length
+        return (
+          <button key={s} className={'chip' + (on ? ' on' : '')}
+                  title={on
+                    ? `${s.toUpperCase()}: ${n} sprint${n === 1 ? '' : 's'} — click to hide`
+                    : `${s.toUpperCase()} hidden — click to show`}
+                  onClick={() => toggle(s)}>
+            {s.toUpperCase()} <span className="dim">{n}</span>
+          </button>
+        )
+      })}
+      {off.size > 0 && (
+        <button className="chip" onClick={() => setOff(new Set())} title="show every project">reset</button>
+      )}
+    </div>
+  )
+
+  if (!bars.length) return <>{TagBar}<div className="degraded">every project hidden</div></>
+
+  // Window is recomputed from the VISIBLE bars, so filtering to one project zooms
+  // the axis to that project rather than leaving it stretched across the estate.
   const min = Math.min(...bars.map((b) => +new Date(b.start)))
   const max = Math.max(...bars.map((b) => +new Date(b.end) + day)) // include the end day
   const span = Math.max(max - min, 1)
@@ -32,6 +71,7 @@ export default function Gantt({ data }) {
 
   return (
     <div className="gantt">
+      {TagBar}
       <div className="gantt-axis">
         {ticks.map((tk, i) => (
           <span key={i} className="gantt-tick" style={{ left: `${pct(tk.t)}%` }}>{tk.label}</span>

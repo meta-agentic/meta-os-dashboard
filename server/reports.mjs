@@ -1,7 +1,12 @@
 // Scrum reporting + roadmap, derived from the backlog mirror (scrum/<space>/backlog.json).
-// Honest by construction: the mirror carries no per-story transition timestamps, so we
-// never fabricate a historical burndown curve — only committed vs current-remaining.
+// Honest by construction: nothing here is fabricated. The mirror carries no per-story
+// transition timestamps, so the daily burndown curve cannot come from it — it is read
+// from an optional `burndown.json` written beside the mirror by the scrum tooling
+// (export_burndown.py, which replays Jira's changelog). When that file is absent we
+// still report committed vs current-remaining and say why there is no curve, rather
+// than interpolating one.
 import fs from 'node:fs/promises'
+import path from 'node:path'
 
 const WEEK = 6048e5
 const DONE = 'DONE'
@@ -18,7 +23,23 @@ function membersOf(sprint, stories) {
 }
 const sum = (xs, f) => xs.reduce((a, x) => a + (f(x) || 0), 0)
 
-export function reportFromData(space, d) {
+// Optional daily series, keyed by sprint id. Missing file is normal, not an error:
+// the exporter needs Jira credentials the dashboard deliberately does not hold.
+async function dailySeries(backlogPath) {
+  try {
+    const f = path.join(path.dirname(backlogPath), 'burndown.json')
+    const doc = JSON.parse(await fs.readFile(f, 'utf8'))
+    return {
+      generated: doc.generated ?? null,
+      source: doc.source ?? null,
+      bySprint: new Map((doc.sprints ?? []).map((s) => [s.sprint, s])),
+    }
+  } catch {
+    return null
+  }
+}
+
+export function reportFromData(space, d, daily = null) {
   const stories = d.stories ?? []
   const sprints = d.sprints ?? []
   const statusById = new Map(stories.map((s) => [s.jiraId, s.status]))
@@ -83,15 +104,40 @@ export function reportFromData(space, d) {
     elapsed,
     velocityPerWeek,
   }
+  const hist = active && daily ? daily.bySprint.get(active.id) : null
   const burndown = active
-    ? { committed: activeCommittedPts, remaining: activeCommittedPts - activeDonePts, elapsed, sprint: active.name ?? active.id }
+    ? {
+      committed: activeCommittedPts,
+      remaining: activeCommittedPts - activeDonePts,
+      elapsed,
+      sprint: active.name ?? active.id,
+      start: active.startDate ?? null,
+      end: active.endDate ?? null,
+      // Real observed history when the export exists; otherwise say so, so the
+      // widget degrades visibly instead of drawing a straight line and implying
+      // the work burned down evenly.
+      days: hist?.days ?? null,
+      seriesSource: hist ? daily.source : null,
+      seriesGenerated: hist ? daily.generated : null,
+      seriesReason: hist
+        ? null
+        : 'no burndown.json beside the mirror — run scrum/scripts/export_burndown.py '
+          + '(the mirror itself carries no per-story transition timestamps)',
+    }
     : null
+  // Closed sprints with history too, so the widget can offer past sprints.
+  const history = daily
+    ? [...daily.bySprint.values()].map((s) => ({
+      sprint: s.sprint, name: s.name, status: s.status, start: s.start, end: s.end,
+      committed: s.committed, days: s.days,
+    }))
+    : []
 
-  return { space, scorecard, velocity, statusMix, burndown, sprints: sprintRows }
+  return { space, scorecard, velocity, statusMix, burndown, history, sprints: sprintRows }
 }
 
 async function reportSpace(space, p) {
-  return reportFromData(space, JSON.parse(await fs.readFile(p, 'utf8')))
+  return reportFromData(space, JSON.parse(await fs.readFile(p, 'utf8')), await dailySeries(p))
 }
 
 export async function reports(backlogs) {
