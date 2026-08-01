@@ -95,47 +95,220 @@ export async function automations(ctx) {
   }
 }
 
-export async function memory(ctx) {
+const TIERS = ['raw', 'wiki', 'output']
+const LAYOUTS = ['flat', 'tier/project', 'project/tier']
+const REPO_KEYS = ['instance', 'vault', 'framework']
+
+const federatedBlock = (vaults) => {
+  vaults.sort((a, b) => b.notes - a.notes)
+  return {
+    vaults,
+    total: vaults.reduce((a, v) => a + v.notes, 0),
+    newest: vaults.reduce((m, v) => Math.max(m, v.newest ?? 0), 0) || null,
+  }
+}
+
+const joinPath = (...parts) => parts.filter(Boolean).join('/')
+
+// A directory "exists" over the GitHub tree if anything in it (file or subdir) is
+// tracked — git has no notion of an empty directory, so an empty root reads the
+// same as a missing one. Any fetch failure (bad owner/repo/ref, network) degrades
+// to false rather than throwing, so a broken root is reported, never a 500.
+async function pathExists(repo, dirPath) {
   try {
-    const stages = {}
-    for (const stage of ['raw', 'wiki', 'output']) {
-      const notes = await ctx.instance.mdFiles(`memory/${stage}`)
-      notes.sort((a, b) => a.mtime - b.mtime)
-      stages[stage] = {
-        count: notes.length,
-        oldest: notes[0] ?? null,
-        newest: notes.at(-1) ?? null,
-        capacity: notes.length,
+    const { dirs, files } = await repo.listDir(dirPath)
+    return dirs.length > 0 || files.length > 0
+  } catch {
+    return false
+  }
+}
+
+async function safeMd(repo, dirPath) {
+  try { return await repo.mdFiles(dirPath) } catch { return [] }
+}
+
+async function subdirs(repo, dirPath) {
+  try {
+    const { dirs } = await repo.listDir(dirPath)
+    return dirs.filter((d) => !d.startsWith('.'))
+  } catch {
+    return []
+  }
+}
+
+// A federated/navigation mount's note count over one repo's tree, recursive under
+// its path. Missing/unreadable mounts return null — the caller reports them skipped.
+async function ghMountRow(repo, name, mountPath) {
+  if (!(await pathExists(repo, mountPath))) return null
+  const notes = await safeMd(repo, mountPath)
+  return { name, notes: notes.length, newest: notes.length ? Math.max(...notes.map((n) => n.mtime)) : null }
+}
+
+// Enumerate one canon root per its declared layout, over one repo's tree instead of
+// the local FS. Mirrors readers.mjs enumerateRoot(): per-tier note lists feed the
+// pipeline stages, per-project rows feed the federated.vaults breakdown.
+async function enumerateRoot(repo, basePath, layout) {
+  const tiers = { raw: [], wiki: [], output: [] }
+  const projects = new Map() // name -> { notes, newest }
+  const addProject = (name, notes) => {
+    const p = projects.get(name) ?? { notes: 0, newest: null }
+    p.notes += notes.length
+    const n = notes.length ? Math.max(...notes.map((x) => x.mtime)) : null
+    if (n && (p.newest === null || n > p.newest)) p.newest = n
+    projects.set(name, p)
+  }
+
+  if (layout === 'flat') {
+    for (const tier of TIERS) tiers[tier] = await safeMd(repo, joinPath(basePath, tier))
+  } else if (layout === 'tier/project') {
+    for (const tier of TIERS) {
+      for (const proj of await subdirs(repo, joinPath(basePath, tier))) {
+        const notes = await safeMd(repo, joinPath(basePath, tier, proj))
+        tiers[tier].push(...notes)
+        addProject(proj, notes)
       }
     }
-
-    const vaults = []
-    try {
-      await ctx.vault.ensureTree()
-      for (const name of await ctx.vault.topLevelDirs()) {
-        if (name === 'README.md') continue
-        try {
-          const notes = []
-          for (const stage of ['raw', 'wiki', 'output']) {
-            const stageNotes = await ctx.vault.mdFiles(`${name}/${stage}`)
-            notes.push(...stageNotes)
-          }
-          vaults.push({
-            name,
-            notes: notes.length,
-            newest: notes.length ? Math.max(...notes.map((n) => n.mtime)) : null,
-          })
-        } catch { /* skip broken vault */ }
+  } else { // project/tier
+    for (const proj of await subdirs(repo, basePath)) {
+      const projNotes = []
+      for (const tier of TIERS) {
+        const notes = await safeMd(repo, joinPath(basePath, proj, tier))
+        tiers[tier].push(...notes)
+        projNotes.push(...notes)
       }
-    } catch { /* no vault repo */ }
-
-    vaults.sort((a, b) => b.notes - a.notes)
-    const newest = vaults.reduce((m, v) => Math.max(m, v.newest ?? 0), 0) || null
-    return {
-      available: true,
-      stages,
-      federated: { vaults, total: vaults.reduce((a, v) => a + v.notes, 0), newest },
+      addProject(proj, projNotes)
     }
+  }
+  return { tiers, projects }
+}
+
+// No sampled 24h capacity here (unlike readers.mjs): the deployed server has no
+// durable local cache to sample into, so capacity mirrors the live count — same as
+// legacyMemory() below, which is the behaviour this preserves when unconfigured.
+function stagesFrom(tierNotes) {
+  const stages = {}
+  for (const tier of TIERS) {
+    const notes = tierNotes[tier].slice().sort((a, b) => a.mtime - b.mtime)
+    stages[tier] = { count: notes.length, oldest: notes[0] ?? null, newest: notes.at(-1) ?? null, capacity: notes.length }
+  }
+  return stages
+}
+
+// Default topology (no `memory` config): the instance repo's own memory/{raw,wiki,output}
+// is the sole canon root and the vault repo's top-level dirs are federated mounts. Kept
+// byte-for-byte identical to the prior behaviour so upgrading without a `memory` block
+// is a no-op for every existing deployed adopter.
+async function legacyMemory(ctx) {
+  const stages = {}
+  for (const stage of TIERS) {
+    const notes = await ctx.instance.mdFiles(`memory/${stage}`)
+    notes.sort((a, b) => a.mtime - b.mtime)
+    stages[stage] = { count: notes.length, oldest: notes[0] ?? null, newest: notes.at(-1) ?? null, capacity: notes.length }
+  }
+
+  const vaults = []
+  try {
+    await ctx.vault.ensureTree()
+    for (const name of await ctx.vault.topLevelDirs()) {
+      if (name === 'README.md') continue
+      try {
+        const notes = []
+        for (const stage of TIERS) notes.push(...await ctx.vault.mdFiles(`${name}/${stage}`))
+        vaults.push({ name, notes: notes.length, newest: notes.length ? Math.max(...notes.map((n) => n.mtime)) : null })
+      } catch { /* skip broken vault */ }
+    }
+  } catch { /* no vault repo */ }
+
+  return { available: true, stages, federated: federatedBlock(vaults) }
+}
+
+// Configured topology: canon `roots[]` (each { label, path, layout, repo? }) feed the
+// pipeline stages; `federated[]` mounts are navigation context. `repo` names which
+// already-configured GitHub context repo (instance | vault | framework, default
+// instance) the root/mount lives in — the GitHub-API analogue of a local root's
+// arbitrary absolute FS path, since a deployed server can only reach repos it was
+// given owner/repo/ref for. `path` is repo-relative. Broken paths and unknown repo
+// labels skip-and-report via the additive `topology` diagnostics; existing keys keep
+// their shape, so the Memory / Memory Flux widgets need zero changes.
+async function configuredMemory(ctx, memoryConfig, vars) {
+  const roots = (memoryConfig.roots ?? []).map((r) => ({ ...r, path: expandVars(r.path ?? '', vars) }))
+  const mounts = (memoryConfig.federated ?? []).map((f) => ({ ...f, path: expandVars(f.path ?? '', vars) }))
+  const skipped = []
+  const rootReport = []
+  const tierNotes = { raw: [], wiki: [], output: [] }
+  const projectRows = new Map() // name -> { notes, newest }
+
+  for (const [i, r] of roots.entries()) {
+    const label = r.label ?? `root[${i}]`
+    const layout = r.layout ?? 'flat'
+    const repoKey = r.repo ?? 'instance'
+    if (!REPO_KEYS.includes(repoKey)) {
+      skipped.push({ label, path: r.path, reason: `unknown repo "${repoKey}" (expected ${REPO_KEYS.join(' | ')})` })
+      continue
+    }
+    if (!LAYOUTS.includes(layout)) {
+      skipped.push({ label, path: r.path, reason: `unknown layout "${layout}" (expected ${LAYOUTS.join(' | ')})` })
+      continue
+    }
+    const repo = ctx[repoKey]
+    if (!(await pathExists(repo, r.path))) {
+      skipped.push({ label, path: r.path, reason: 'root path missing or not a directory' })
+      continue
+    }
+    const { tiers, projects } = await enumerateRoot(repo, r.path, layout)
+    for (const tier of TIERS) tierNotes[tier].push(...tiers[tier])
+    for (const [name, p] of projects) {
+      const cur = projectRows.get(name) ?? { notes: 0, newest: null }
+      cur.notes += p.notes
+      if (p.newest && (cur.newest === null || p.newest > cur.newest)) cur.newest = p.newest
+      projectRows.set(name, cur)
+    }
+    rootReport.push({ label, layout, notes: TIERS.reduce((a, t) => a + tiers[t].length, 0) })
+  }
+
+  const stages = stagesFrom(tierNotes)
+
+  // Per-project canon rows + federated mounts share the vault-row namespace, keyed by
+  // name — same merge-by-name contract as readers.mjs configuredMemory().
+  const byName = new Map(projectRows)
+  const mergeRow = (name, notes, newest) => {
+    const cur = byName.get(name) ?? { notes: 0, newest: null }
+    cur.notes += notes
+    if (newest && (cur.newest === null || newest > cur.newest)) cur.newest = newest
+    byName.set(name, cur)
+  }
+  const mountReport = []
+  for (const [i, f] of mounts.entries()) {
+    const label = f.label ?? `federated[${i}]`
+    const repoKey = f.repo ?? 'instance'
+    if (!REPO_KEYS.includes(repoKey)) {
+      skipped.push({ label, path: f.path, reason: `unknown repo "${repoKey}" (expected ${REPO_KEYS.join(' | ')})` })
+      continue
+    }
+    const row = await ghMountRow(ctx[repoKey], label, f.path)
+    if (row) { mergeRow(label, row.notes, row.newest); mountReport.push({ label, notes: row.notes }) }
+    else skipped.push({ label, path: f.path, reason: 'federated mount missing, not a directory, or unreadable' })
+  }
+  const vaults = [...byName].map(([name, p]) => ({ name, notes: p.notes, newest: p.newest }))
+
+  return {
+    available: true,
+    stages,
+    federated: federatedBlock(vaults),
+    topology: { roots: rootReport, federated: mountReport, skipped },
+  }
+}
+
+// `memoryConfig` is the optional instance/github config `memory` block ({ roots[],
+// federated[] }); absent it, the deployed dashboard falls back to the default
+// single-root topology (legacyMemory). `vars` drives ${...} expansion in configured
+// paths, exactly as for backlogs and as in the local reader.
+export async function memory(ctx, memoryConfig = null, vars = {}) {
+  try {
+    if (memoryConfig && Array.isArray(memoryConfig.roots)) {
+      return await configuredMemory(ctx, memoryConfig, vars)
+    }
+    return await legacyMemory(ctx)
   } catch (e) {
     return unavailable(`memory/ unreadable: ${e.message}`)
   }

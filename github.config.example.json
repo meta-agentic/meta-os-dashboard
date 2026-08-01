@@ -13,6 +13,14 @@
       { "space": "example", "owner": "mova77", "repo": "scrum", "path": "scrum/vec/backlog.json", "ref": "main" }
     ]
   },
+  "memory": {
+    "_comment": "Optional. Same topology contract as instance.config.json's 'memory' block, read over the GitHub content API instead of the local FS. Omit this whole block and memory falls back to the default: the instance repo's own memory/{raw,wiki,output} as the sole canon root plus the vault repo's top-level dirs as federated mounts — byte-for-byte the prior behaviour. Each root/federated entry takes an optional 'repo' (instance | vault | framework, default instance) naming which repo above it lives in, since a deployed server can only reach repos it has owner/repo/ref for; 'path' is relative to that repo's root. 'roots' are canon (counted as the raw→wiki→output pipeline); each has a 'layout' of flat | tier/project | project/tier. 'federated' mounts are navigation context, never counted as canon. ${var} expands here exactly as in backlogs. Broken/missing roots or mounts, or an unknown 'repo' label, are skipped and reported (topology.skipped), never fatal.",
+    "roots": [
+      { "label": "instance", "path": "memory", "layout": "flat" },
+      { "label": "estate", "repo": "vault", "path": "", "layout": "project/tier" }
+    ],
+    "federated": []
+  },
   "auth": {
     "enabled": true,
     "enforce": true,
