@@ -116,7 +116,7 @@ if (isGithub) {
   app.get('/api/ontology', api(() => gh.ontology(ghCtx)))
   app.get('/api/registry', api(() => gh.registry(ghCtx, config.vars ?? {})))
   app.get('/api/automations', api(() => gh.automations(ghCtx)))
-  app.get('/api/memory', api(() => gh.memory(ghCtx)))
+  app.get('/api/memory', api(() => gh.memory(ghCtx, config.memory ?? null, config.vars ?? {})))
   app.get('/api/activity', api(() => gh.activity(ghCtx)))
   app.get('/api/lanes', api(() => gh.lanes(ghCtx)))
   app.get('/api/report', api(() => gh.reports(ghCtx)))
