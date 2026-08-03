@@ -4,7 +4,7 @@ import matter from 'gray-matter'
 import YAML from 'yaml'
 import { nextRuns } from './cron.mjs'
 import { expandVars } from './readers.mjs'
-import { reportFromData } from './reports.mjs'
+import { reportFromData, itemId } from './reports.mjs'
 
 const unavailable = (reason) => ({ available: false, reason })
 const plain = (s) =>
@@ -279,9 +279,9 @@ export async function lanes(ctx) {
       const activeIds = new Set(active.map((s) => s.id))
       const activeIssues = new Set(active.flatMap((s) => s.issues ?? []))
       const inSprint = (d.stories ?? []).filter(
-        (s) => activeIds.has(s.sprint) || activeIssues.has(s.jiraId),
+        (s) => activeIds.has(s.sprint) || activeIssues.has(itemId(s)),
       )
-      const statusById = new Map((d.stories ?? []).map((s) => [s.jiraId, s.status]))
+      const statusById = new Map((d.stories ?? []).map((s) => [itemId(s), s.status]))
       const blockedBy = (s) =>
         (s.dependencies ?? []).filter((id) => statusById.has(id) && statusById.get(id) !== 'DONE')
 
@@ -293,7 +293,7 @@ export async function lanes(ctx) {
         const lane = byLane.get(key) ?? { lane: key, queues: { todo: [], 'in-progress': [], done: [] } }
         const blockers = state === 'done' ? [] : blockedBy(s)
         lane.queues[state].push({
-          id: s.jiraId,
+          id: itemId(s),
           title: s.title,
           points: s.storyPoints ?? null,
           epic: s.epic ?? null,

@@ -8,6 +8,7 @@ import path from 'node:path'
 import matter from 'gray-matter'
 import YAML from 'yaml'
 import { nextRuns } from './cron.mjs'
+import { itemId } from './reports.mjs'
 
 const run = promisify(execFile)
 const unavailable = (reason) => ({ available: false, reason })
@@ -525,7 +526,7 @@ export async function lanes(backlogs) {
       // sprint.issues[]), and the current sprint often only has the latter — union them.
       const activeIssues = new Set(active.flatMap((s) => s.issues ?? []))
       const inSprint = (d.stories ?? []).filter(
-        (s) => activeIds.has(s.sprint) || activeIssues.has(s.jiraId),
+        (s) => activeIds.has(s.sprint) || activeIssues.has(itemId(s)),
       )
 
       // Blocked is DERIVED (ontology flow.item_states): a not-done story whose
@@ -533,7 +534,7 @@ export async function lanes(backlogs) {
       // Unknown dependency ids don't count — no guessing. Blocked AGE stays
       // unavailable: the mirror has no transition timestamps (same reason as
       // cycle-time below).
-      const statusById = new Map((d.stories ?? []).map((s) => [s.jiraId, s.status]))
+      const statusById = new Map((d.stories ?? []).map((s) => [itemId(s), s.status]))
       const blockedBy = (s) =>
         (s.dependencies ?? []).filter((id) => statusById.has(id) && statusById.get(id) !== 'DONE')
 
@@ -545,7 +546,7 @@ export async function lanes(backlogs) {
         const lane = byLane.get(key) ?? { lane: key, queues: { todo: [], 'in-progress': [], done: [] } }
         const blockers = state === 'done' ? [] : blockedBy(s)
         lane.queues[state].push({
-          id: s.jiraId, title: s.title, points: s.storyPoints ?? null, epic: s.epic ?? null,
+          id: itemId(s), title: s.title, points: s.storyPoints ?? null, epic: s.epic ?? null,
           blockedBy: blockers.length ? blockers : null,
         })
         byLane.set(key, lane)
