@@ -5,6 +5,12 @@ import fs from 'node:fs/promises'
 
 const WEEK = 6048e5
 const DONE = 'DONE'
+
+// A work item's identifier. `id` is the schema (ADR-MOS-07); `jiraId` is read
+// only because github-readers points at the ARCHIVED <your-backlog-mirror> mirror, which
+// is frozen read-only at the old shape and will never carry `id`. Live derived
+// exports from backlog.py carry `id` alone.
+export const itemId = (s) => s.id ?? s.jiraId
 const bucketOf = (status) =>
   status === DONE ? 'Done'
     : status === 'IN PROGRESS' ? 'In progress'
@@ -14,14 +20,14 @@ const bucketOf = (status) =>
 
 function membersOf(sprint, stories) {
   const ids = new Set(sprint.issues ?? [])
-  return stories.filter((s) => s.sprint === sprint.id || ids.has(s.jiraId))
+  return stories.filter((s) => s.sprint === sprint.id || ids.has(itemId(s)))
 }
 const sum = (xs, f) => xs.reduce((a, x) => a + (f(x) || 0), 0)
 
 export function reportFromData(space, d) {
   const stories = d.stories ?? []
   const sprints = d.sprints ?? []
-  const statusById = new Map(stories.map((s) => [s.jiraId, s.status]))
+  const statusById = new Map(stories.map((s) => [itemId(s), s.status]))
   const isBlocked = (s) =>
     s.status !== DONE && (s.dependencies ?? []).some((id) => statusById.has(id) && statusById.get(id) !== DONE)
 
