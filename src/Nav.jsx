@@ -1,5 +1,5 @@
 import React from 'react'
-import { THEMES as PALETTES } from './themes.js'
+import { THEMES as PALETTES, VARIANTS } from './themes.js'
 
 const MODES = [
   { v: 'system', label: 'System' },
@@ -64,36 +64,38 @@ export default function Nav({ open, onClose, prefs, setPrefs, meta, auth }) {
             ))}
           </div>
           <label className="nav-lbl">Theme</label>
-          <div className="themegrid" role="radiogroup" aria-label="Theme">
-            {PALETTES.map((t) => {
-              const on = (prefs.palette ?? 'graphite') === t.key
-              return (
-                <button
-                  key={t.key}
-                  className={'themecard' + (on ? ' on' : '')}
-                  role="radio"
-                  aria-checked={on}
-                  title={t.note}
-                  onClick={() => set({ palette: t.key })}
-                >
-                  <Swatch t={t} mode={previewMode(prefs.theme)} />
-                  <span className="themename">{t.label}</span>
-                </button>
-              )
-            })}
-          </div>
-          <label className="nav-lbl">Density</label>
-          <div className="seg">
-            {DENSITIES.map((d) => (
-              <button
-                key={d.v}
-                className={'seg-b' + (prefs.density === d.v ? ' on' : '')}
-                onClick={() => set({ density: d.v })}
-              >
-                {d.label}
-              </button>
-            ))}
-          </div>
+          {VARIANTS.map((v) => (
+            <div key={v.key}>
+              <div className="nav-sub" title={v.note}>{v.label}</div>
+              <div className="themegrid" role="radiogroup" aria-label={`${v.label} themes`}>
+                {PALETTES.filter((t) => t.variant === v.key).map((t) => {
+                  const on = (prefs.palette ?? 'graphite') === t.key
+                  // Statement themes keep hues the checks would have moved. Say which
+                  // trade you are taking rather than hiding it behind a nice swatch.
+                  const title = t.tradeoffs.length
+                    ? `${t.note}\n\nColour trade-off: ${t.tradeoffs.join('; ')}. Charts stay readable because every series is also labelled.`
+                    : t.note
+                  return (
+                    <button
+                      key={t.key}
+                      className={'themecard' + (on ? ' on' : '')}
+                      role="radio"
+                      aria-checked={on}
+                      title={title}
+                      onClick={() => set({ palette: t.key })}
+                    >
+                      <Swatch t={t} mode={previewMode(prefs.theme)} />
+                      <span className="themename">
+                        {t.label}
+                        {t.tradeoffs.length > 0 && <span className="tradeoff" aria-label="colour trade-off — see tooltip">*</span>}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
+          <div className="dim small">* keeps its own colours at the cost of some contrast/colour-blind separation; series are always labelled too.</div>
         </details>
 
         <details className="nav-sec" open>
