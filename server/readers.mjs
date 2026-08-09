@@ -7,7 +7,9 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import matter from 'gray-matter'
 import YAML from 'yaml'
-import { nextRuns } from './cron.mjs'
+import { annotateSchedule } from './cron.mjs'
+import { sprintMembers } from './backlog-schema.mjs'
+import { loadBacklog } from './vault-backlog.mjs'
 
 const run = promisify(execFile)
 const unavailable = (reason) => ({ available: false, reason })
@@ -88,21 +90,12 @@ export async function automations(instanceRoot) {
       r.lastRun = last && { ts: last.ts, outcome: last.outcome ?? null }
     }
 
-    // Upcoming runs over the next 48h, derived from the cadence column (cron or
-    // @nickname per the ontology contract). Event-driven rows ("—") have no schedule;
-    // an unparseable cadence degrades to its reason instead of a guessed time.
-    const now = new Date()
-    const horizonHours = 48
-    for (const r of rows) {
-      if (r.status === 'retired' || !r.cadence || r.cadence === '—') continue
-      const times = nextRuns(r.cadence, now, horizonHours * 3600e3)
-      if (times === null) r.nextReason = `cadence "${r.cadence}" is not cron or a @nickname`
-      else r.upcoming = times
-    }
-    return {
-      available: true, rows, runLog: log.length > 0,
-      schedule: { now: now.toISOString(), horizonHours },
-    }
+    // Upcoming runs over the next 48h + the overdue/never verdict, derived from the
+    // cadence column (cron or @nickname per the ontology contract). Event-driven rows
+    // ("—") have no schedule; an unparseable cadence degrades to its reason instead of
+    // a guessed time.
+    const schedule = annotateSchedule(rows, new Date())
+    return { available: true, rows, runLog: log.length > 0, schedule }
   } catch (e) {
     return unavailable(`automations/_index.md unreadable: ${e.message}`)
   }
@@ -415,6 +408,21 @@ export async function outputs(instanceRoot, promotionWindowDays = 30) {
   }
 }
 
+// Turn a git remote URL into a browsable commit-URL prefix, accepting both remote
+// spellings (scp-like `git@host:owner/repo` and `https://host/owner/repo`) and
+// stripping any embedded credentials. `/commit/<sha>` is the route GitHub, GitLab,
+// Gitea and Forgejo share — including self-hosted installs, which is why the host
+// isn't whitelisted; Bitbucket is the one exception. A remote that doesn't parse
+// returns null and its commits render unlinked, never as a guessed URL.
+const COMMIT_PATH = { 'bitbucket.org': 'commits' }
+export function commitUrlBase(remote) {
+  const m = String(remote).trim().replace(/\.git$/, '')
+    .match(/^(?:(?:git|ssh|https?):\/\/)?(?:[^@/\s]+@)?([^:/\s]+\.[^:/\s]+)[:/](\S+)$/)
+  if (!m) return null
+  const [, host, repo] = m
+  return `https://${host}/${repo}/${COMMIT_PATH[host] ?? 'commit'}/`
+}
+
 // Unified event timeline: vault commits + automation runs + backlog sprint
 // transitions, normalized to { ts, source, actor, action, target, note? }. Composes
 // only feeds that already exist — per-story transition events wait for the tracker
@@ -429,9 +437,19 @@ export async function events(instanceRoot, backlogs, limit = 40) {
       '-C', instanceRoot, 'log', `-${limit}`, '--date=iso-strict',
       '--pretty=format:%h%x09%ad%x09%an%x09%s',
     ])
+    // Commit hashes link out to the forge when the instance has a recognisable
+    // remote; a remote-less repo just keeps them as plain text.
+    let base = null
+    try {
+      const { stdout: remote } = await run('git', ['-C', instanceRoot, 'remote', 'get-url', 'origin'])
+      base = commitUrlBase(remote)
+    } catch { /* no origin remote — commits stay unlinked */ }
     for (const l of stdout.split('\n').filter(Boolean)) {
       const [hash, date, author, ...s] = l.split('\t')
-      out.push({ ts: date, source: 'vault', actor: author, action: 'commit', target: s.join('\t'), note: hash })
+      out.push({
+        ts: date, source: 'vault', actor: author, action: 'commit',
+        target: s.join('\t'), note: hash, ...(base ? { url: base + hash } : {}),
+      })
     }
     sources.push({ name: 'vault', available: true })
   } catch {
@@ -480,20 +498,22 @@ export async function events(instanceRoot, backlogs, limit = 40) {
   // count (stories DONE linked to the sprint) — sprint-close accounting, the only
   // timestamps the mirror has. Future/planned sprints emit nothing.
   const now = Date.now()
-  for (const { space, path: p } of backlogs ?? []) {
+  for (const b of backlogs ?? []) {
+    const space = b.space
     try {
-      const d = JSON.parse(await fs.readFile(p, 'utf8'))
+      const d = await loadBacklog(b)
       const doneBySprint = new Map()
-      for (const s of d.stories ?? []) {
-        if (s.status === 'DONE' && s.sprint) doneBySprint.set(s.sprint, (doneBySprint.get(s.sprint) ?? 0) + 1)
+      for (const s of d.stories) {
+        if (s.status !== 'DONE') continue
+        for (const sid of sprintMembers(s)) doneBySprint.set(sid, (doneBySprint.get(sid) ?? 0) + 1)
       }
-      for (const s of d.sprints ?? []) {
-        const started = s.startDate && new Date(s.startDate).getTime() <= now
+      for (const s of d.sprints) {
+        const started = s.start && new Date(s.start).getTime() <= now
         if (started && ['IN PROGRESS', 'CLOSED'].includes(s.status))
-          out.push({ ts: s.startDate, source: 'backlog', actor: space, action: 'sprint started', target: s.name ?? s.id })
-        if (s.status === 'CLOSED' && s.endDate)
+          out.push({ ts: s.start, source: 'backlog', actor: space, action: 'sprint started', target: s.name ?? s.id })
+        if (s.status === 'CLOSED' && s.end)
           out.push({
-            ts: s.endDate, source: 'backlog', actor: space, action: 'sprint closed',
+            ts: s.end, source: 'backlog', actor: space, action: 'sprint closed',
             target: s.name ?? s.id, note: `${doneBySprint.get(s.id) ?? 0} delivered`,
           })
       }
@@ -516,16 +536,17 @@ const STATE = { 'TO DO': 'todo', PLANNED: 'todo', 'IN PROGRESS': 'in-progress', 
 export async function lanes(backlogs) {
   if (!backlogs?.length) return unavailable('no backlogs configured in instance.config.json')
   const spaces = []
-  for (const { space, path: p } of backlogs) {
+  for (const b of backlogs) {
+    const space = b.space
     try {
-      const d = JSON.parse(await fs.readFile(p, 'utf8'))
-      const active = (d.sprints ?? []).filter((s) => s.status === 'IN PROGRESS')
+      const d = await loadBacklog(b)
+      const active = d.sprints.filter((s) => s.status === 'IN PROGRESS')
       const activeIds = new Set(active.map((s) => s.id))
-      // Membership is linked from both sides in the mirror (story.sprint and
-      // sprint.issues[]), and the current sprint often only has the latter — union them.
-      const activeIssues = new Set(active.flatMap((s) => s.issues ?? []))
-      const inSprint = (d.stories ?? []).filter(
-        (s) => activeIds.has(s.sprint) || activeIssues.has(s.jiraId),
+      // Membership is linked from both sides (story.sprint and the sprint file's
+      // committed[]), and a sprint often only has the latter — union them.
+      const activeIssues = new Set(active.flatMap((s) => s.issues))
+      const inSprint = d.stories.filter(
+        (s) => sprintMembers(s).some((id) => activeIds.has(id)) || activeIssues.has(s.id),
       )
 
       // Blocked is DERIVED (ontology flow.item_states): a not-done story whose
@@ -533,9 +554,9 @@ export async function lanes(backlogs) {
       // Unknown dependency ids don't count — no guessing. Blocked AGE stays
       // unavailable: the mirror has no transition timestamps (same reason as
       // cycle-time below).
-      const statusById = new Map((d.stories ?? []).map((s) => [s.jiraId, s.status]))
+      const statusById = new Map(d.stories.map((s) => [s.id, s.status]))
       const blockedBy = (s) =>
-        (s.dependencies ?? []).filter((id) => statusById.has(id) && statusById.get(id) !== 'DONE')
+        s.dependencies.filter((id) => statusById.has(id) && statusById.get(id) !== 'DONE')
 
       const byLane = new Map()
       for (const s of inSprint) {
@@ -545,7 +566,7 @@ export async function lanes(backlogs) {
         const lane = byLane.get(key) ?? { lane: key, queues: { todo: [], 'in-progress': [], done: [] } }
         const blockers = state === 'done' ? [] : blockedBy(s)
         lane.queues[state].push({
-          id: s.jiraId, title: s.title, points: s.storyPoints ?? null, epic: s.epic ?? null,
+          id: s.id, title: s.title, points: s.storyPoints ?? null, epic: s.epic ?? null,
           blockedBy: blockers.length ? blockers : null,
         })
         byLane.set(key, lane)
@@ -561,14 +582,15 @@ export async function lanes(backlogs) {
       })).sort((a, b) => b.wip + b.depth - (a.wip + a.depth))
 
       // Velocity: done stories per week over closed sprints that have dates.
-      const closed = (d.sprints ?? []).filter((s) => s.status === 'CLOSED' && s.startDate && s.endDate)
+      const closed = d.sprints.filter((s) => s.status === 'CLOSED' && s.start && s.end)
       const doneBySprint = new Map()
-      for (const s of d.stories ?? []) {
-        if (s.status === 'DONE' && s.sprint) doneBySprint.set(s.sprint, (doneBySprint.get(s.sprint) ?? 0) + 1)
+      for (const s of d.stories) {
+        if (s.status !== 'DONE') continue
+        for (const sid of sprintMembers(s)) doneBySprint.set(sid, (doneBySprint.get(sid) ?? 0) + 1)
       }
       let throughput = null
       if (closed.length) {
-        const weeks = closed.reduce((acc, s) => acc + Math.max((new Date(s.endDate) - new Date(s.startDate)) / 6048e5, 0.1), 0)
+        const weeks = closed.reduce((acc, s) => acc + Math.max((new Date(s.end) - new Date(s.start)) / 6048e5, 0.1), 0)
         const total = closed.reduce((acc, s) => acc + (doneBySprint.get(s.id) ?? 0), 0)
         throughput = total / weeks
       }
@@ -579,8 +601,8 @@ export async function lanes(backlogs) {
       const perSprint = closed
         .map((s) => ({
           id: s.id,
-          end: s.endDate,
-          velocity: (doneBySprint.get(s.id) ?? 0) / Math.max((new Date(s.endDate) - new Date(s.startDate)) / 6048e5, 0.1),
+          end: s.end,
+          velocity: (doneBySprint.get(s.id) ?? 0) / Math.max((new Date(s.end) - new Date(s.start)) / 6048e5, 0.1),
         }))
         .sort((a, b) => a.end.localeCompare(b.end))
       const last = perSprint.at(-1)
@@ -601,7 +623,7 @@ export async function lanes(backlogs) {
       const remaining = laneRows.reduce((acc, l) => acc + l.depth + l.wip, 0)
       spaces.push({
         space,
-        sprint: active.map((s) => ({ id: s.id, name: s.name, start: s.startDate, end: s.endDate })),
+        sprint: active.map((s) => ({ id: s.id, name: s.name, start: s.start, end: s.end })),
         lanes: laneRows,
         forecast: {
           throughputPerWeek: throughput ? +throughput.toFixed(1) : null,

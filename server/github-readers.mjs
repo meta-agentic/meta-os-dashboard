@@ -2,9 +2,20 @@
 import path from 'node:path'
 import matter from 'gray-matter'
 import YAML from 'yaml'
-import { nextRuns } from './cron.mjs'
+import { annotateSchedule } from './cron.mjs'
+import { normalizeBacklog, sprintMembers } from './backlog-schema.mjs'
+import { vaultBacklog } from './github-vault-backlog.mjs'
 import { expandVars } from './readers.mjs'
 import { reportFromData } from './reports.mjs'
+
+// One backlog entry → the canonical shape, whichever source backs it. Vault-native
+// entries read the vault repo directly (IOS-838); `document` entries keep reading a
+// pre-built backlog JSON from a mirror repo, so an existing deployment that still
+// points at one is not broken by the migration.
+const loadBacklog = async (b) =>
+  b.mode === 'document'
+    ? normalizeBacklog(await b.repo.readJson(b.path))
+    : await vaultBacklog(b.repo, b.path)
 
 const unavailable = (reason) => ({ available: false, reason })
 const plain = (s) =>
@@ -81,15 +92,8 @@ export async function automations(ctx) {
       r.lastRun = last && { ts: last.ts, outcome: last.outcome ?? null }
     }
 
-    const now = new Date()
-    const horizonHours = 48
-    for (const r of rows) {
-      if (r.status === 'retired' || !r.cadence || r.cadence === '—') continue
-      const times = nextRuns(r.cadence, now, horizonHours * 3600e3)
-      if (times === null) r.nextReason = `cadence "${r.cadence}" is not cron or a @nickname`
-      else r.upcoming = times
-    }
-    return { available: true, rows, runLog: log.length > 0, schedule: { now: now.toISOString(), horizonHours } }
+    const schedule = annotateSchedule(rows, new Date())
+    return { available: true, rows, runLog: log.length > 0, schedule }
   } catch (e) {
     return unavailable(`automations/_index.md unreadable: ${e.message}`)
   }
@@ -380,6 +384,7 @@ export async function events(ctx, limit = 40) {
         action: 'commit',
         target: c.subject,
         note: c.hash,
+        url: ctx.instance.commitUrl(c.hash),
       })
     }
     sources.push({ name: 'vault', available: true })
@@ -406,22 +411,24 @@ export async function events(ctx, limit = 40) {
     sources.push({ name: 'automations', available: false, reason: 'no automations/runs.jsonl yet' })
   }
 
-  for (const { space, repo, path: p } of ctx.backlogs) {
+  for (const b of ctx.backlogs) {
+    const space = b.space
     try {
-      const d = await repo.readJson(p)
+      const d = await loadBacklog(b)
       const doneBySprint = new Map()
-      for (const s of d.stories ?? []) {
-        if (s.status === 'DONE' && s.sprint) doneBySprint.set(s.sprint, (doneBySprint.get(s.sprint) ?? 0) + 1)
+      for (const s of d.stories) {
+        if (s.status !== 'DONE') continue
+        for (const sid of sprintMembers(s)) doneBySprint.set(sid, (doneBySprint.get(sid) ?? 0) + 1)
       }
       const now = Date.now()
-      for (const s of d.sprints ?? []) {
-        const started = s.startDate && new Date(s.startDate).getTime() <= now
+      for (const s of d.sprints) {
+        const started = s.start && new Date(s.start).getTime() <= now
         if (started && ['IN PROGRESS', 'CLOSED'].includes(s.status)) {
-          out.push({ ts: s.startDate, source: 'backlog', actor: space, action: 'sprint started', target: s.name ?? s.id })
+          out.push({ ts: s.start, source: 'backlog', actor: space, action: 'sprint started', target: s.name ?? s.id })
         }
-        if (s.status === 'CLOSED' && s.endDate) {
+        if (s.status === 'CLOSED' && s.end) {
           out.push({
-            ts: s.endDate,
+            ts: s.end,
             source: 'backlog',
             actor: space,
             action: 'sprint closed',
@@ -445,18 +452,19 @@ const STATE = { 'TO DO': 'todo', PLANNED: 'todo', 'IN PROGRESS': 'in-progress', 
 export async function lanes(ctx) {
   if (!ctx.backlogs?.length) return unavailable('no backlogs configured in github.backlogs')
   const spaces = []
-  for (const { space, repo, path: p } of ctx.backlogs) {
+  for (const b of ctx.backlogs) {
+    const space = b.space
     try {
-      const d = await repo.readJson(p)
-      const active = (d.sprints ?? []).filter((s) => s.status === 'IN PROGRESS')
+      const d = await loadBacklog(b)
+      const active = d.sprints.filter((s) => s.status === 'IN PROGRESS')
       const activeIds = new Set(active.map((s) => s.id))
-      const activeIssues = new Set(active.flatMap((s) => s.issues ?? []))
-      const inSprint = (d.stories ?? []).filter(
-        (s) => activeIds.has(s.sprint) || activeIssues.has(s.jiraId),
+      const activeIssues = new Set(active.flatMap((s) => s.issues))
+      const inSprint = d.stories.filter(
+        (s) => sprintMembers(s).some((id) => activeIds.has(id)) || activeIssues.has(s.id),
       )
-      const statusById = new Map((d.stories ?? []).map((s) => [s.jiraId, s.status]))
+      const statusById = new Map(d.stories.map((s) => [s.id, s.status]))
       const blockedBy = (s) =>
-        (s.dependencies ?? []).filter((id) => statusById.has(id) && statusById.get(id) !== 'DONE')
+        s.dependencies.filter((id) => statusById.has(id) && statusById.get(id) !== 'DONE')
 
       const byLane = new Map()
       for (const s of inSprint) {
@@ -466,7 +474,7 @@ export async function lanes(ctx) {
         const lane = byLane.get(key) ?? { lane: key, queues: { todo: [], 'in-progress': [], done: [] } }
         const blockers = state === 'done' ? [] : blockedBy(s)
         lane.queues[state].push({
-          id: s.jiraId,
+          id: s.id,
           title: s.title,
           points: s.storyPoints ?? null,
           epic: s.epic ?? null,
@@ -484,14 +492,14 @@ export async function lanes(ctx) {
         points: { todo: pts(l.queues.todo), wip: pts(l.queues['in-progress']), done: pts(l.queues.done) },
       })).sort((a, b) => b.wip + b.depth - (a.wip + a.depth))
 
-      const closed = (d.sprints ?? []).filter((s) => s.status === 'CLOSED' && s.startDate && s.endDate)
+      const closed = d.sprints.filter((s) => s.status === 'CLOSED' && s.start && s.end)
       const doneBySprint = new Map()
       for (const s of d.stories ?? []) {
         if (s.status === 'DONE' && s.sprint) doneBySprint.set(s.sprint, (doneBySprint.get(s.sprint) ?? 0) + 1)
       }
       let throughput = null
       if (closed.length) {
-        const weeks = closed.reduce((acc, s) => acc + Math.max((new Date(s.endDate) - new Date(s.startDate)) / 6048e5, 0.1), 0)
+        const weeks = closed.reduce((acc, s) => acc + Math.max((new Date(s.end) - new Date(s.start)) / 6048e5, 0.1), 0)
         const total = closed.reduce((acc, s) => acc + (doneBySprint.get(s.id) ?? 0), 0)
         throughput = total / weeks
       }
@@ -499,8 +507,8 @@ export async function lanes(ctx) {
       const perSprint = closed
         .map((s) => ({
           id: s.id,
-          end: s.endDate,
-          velocity: (doneBySprint.get(s.id) ?? 0) / Math.max((new Date(s.endDate) - new Date(s.startDate)) / 6048e5, 0.1),
+          end: s.end,
+          velocity: (doneBySprint.get(s.id) ?? 0) / Math.max((new Date(s.end) - new Date(s.start)) / 6048e5, 0.1),
         }))
         .sort((a, b) => a.end.localeCompare(b.end))
       const last = perSprint.at(-1)
@@ -521,7 +529,7 @@ export async function lanes(ctx) {
       const remaining = laneRows.reduce((acc, l) => acc + l.depth + l.wip, 0)
       spaces.push({
         space,
-        sprint: active.map((s) => ({ id: s.id, name: s.name, start: s.startDate, end: s.endDate })),
+        sprint: active.map((s) => ({ id: s.id, name: s.name, start: s.start, end: s.end })),
         lanes: laneRows,
         forecast: {
           throughputPerWeek: throughput ? +throughput.toFixed(1) : null,
@@ -546,9 +554,10 @@ export async function usage() {
 export async function reports(ctx) {
   if (!ctx.backlogs?.length) return { available: false, reason: 'no backlogs configured', spaces: [], roadmap: [] }
   const spaces = []
-  for (const { space, repo, path: p } of ctx.backlogs) {
+  for (const b of ctx.backlogs) {
+    const space = b.space
     try {
-      spaces.push(reportFromData(space, await repo.readJson(p)))
+      spaces.push(reportFromData(space, await loadBacklog(b)))
     } catch (e) {
       spaces.push({ space, available: false, reason: `backlog unreadable: ${e.message}` })
     }

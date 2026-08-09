@@ -6,38 +6,39 @@
   "instanceRoot": "${code}/your-instance-vault",
   "frameworkRoot": "(optional) ${code}/meta-os \u2014 defaults to resolving the instance's systems/ symlink",
   "claudeHome": "(optional) /Users/you/.claude \u2014 engine home whose session logs feed the usage widget; defaults to ~/.claude",
+  "_backlogsComment": "Vault-native: `path` is the space directory in your vault; the server reads <space>/{raw,wiki,output}/*.md and <space>/sprints/*.md directly, so there is no derived backlog.json to regenerate. A `path` ending in .json still reads a pre-built backlog document.",
   "backlogs": [
     {
       "space": "ios",
-      "path": "${derived}/ios.backlog.json"
+      "path": "${code}/your-vault/ios"
     },
     {
       "space": "iam",
-      "path": "${derived}/iam.backlog.json"
+      "path": "${code}/your-vault/iam"
     },
     {
       "space": "vec",
-      "path": "${derived}/vec.backlog.json"
+      "path": "${code}/your-vault/vec"
     },
     {
       "space": "mos",
-      "path": "${derived}/mos.backlog.json"
+      "path": "${code}/your-vault/mos"
     },
     {
       "space": "mrpg",
-      "path": "${derived}/mrpg.backlog.json"
+      "path": "${code}/your-vault/mrpg"
     },
     {
       "space": "ray",
-      "path": "${derived}/ray.backlog.json"
+      "path": "${code}/your-vault/ray"
     },
     {
       "space": "snmp",
-      "path": "${derived}/snmp.backlog.json"
+      "path": "${code}/your-vault/snmp"
     },
     {
       "space": "mae",
-      "path": "${derived}/mae.backlog.json"
+      "path": "${code}/your-vault/mae"
     }
   ],
   "memory": {
