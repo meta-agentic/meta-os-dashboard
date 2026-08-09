@@ -128,7 +128,7 @@ const DEFAULT_BOARDS = [
 const BOARDS_KEY = 'meta-os.boards.v1'
 const LEGACY_LAYOUT_KEY = 'meta-os.layout.v1'
 const PREFS_KEY = 'meta-os.prefs.v1'
-const DEFAULT_PREFS = { theme: 'system', density: 'comfortable', refreshSec: 30 }
+const DEFAULT_PREFS = { theme: 'system', palette: 'graphite', density: 'comfortable', refreshSec: 30 }
 const DENSITY = {
   comfortable: { margin: [14, 14], rowHeight: 30 },
   compact: { margin: [8, 8], rowHeight: 24 },
@@ -216,9 +216,12 @@ export default function App() {
 
   useEffect(() => {
     const el = document.documentElement
+    // `theme` is the light/dark axis, `palette` the colour scheme — orthogonal, so
+    // every theme keeps working under System/Dark/Light.
     if (prefs.theme === 'system') delete el.dataset.theme
     else el.dataset.theme = prefs.theme
-  }, [prefs.theme])
+    el.dataset.palette = prefs.palette ?? 'graphite'
+  }, [prefs.theme, prefs.palette])
 
   useEffect(() => {
     try {

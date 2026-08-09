@@ -1,3 +1,13 @@
+/* ── themes ───────────────────────────────────────────────────────────────────
+   Each theme ships a dark AND a light variant, so the System/Dark/Light control
+   keeps working whichever theme is picked. Every --cat-* set was generated and
+   gated by the dataviz validator (OKLCH lightness band, chroma floor, CVD ΔE,
+   normal-vision floor, 3:1 contrast on that theme's own card surface); hues are
+   the theme's authentic ones, only lightness was moved to make them separable.
+   Some themes expose 7 rather than 8 categorical slots — that is their real hue
+   capacity, and --cat-count reports it so charts never invent an 8th.
+   Regenerate with scratchpad/gen-themes.mjs; do not hand-edit the --cat-* values.
+   ───────────────────────────────────────────────────────────────────────────── */
 :root {
   --bg: #0d1117;
   --card: #161b22;
@@ -5,22 +15,42 @@
   --fg: #e6edf3;
   --dim: #8b949e;
   --accent: #58a6ff;
+  --on-accent: #0b0b0f;
   --ok: #3fb950;
   --wip: #d29922;
   --warn: #f85149;
+  --track: #30363d;
+  --cat-count: 8;
+  --cat-1: #d77122;
+  --cat-2: #4593ea;
+  --cat-3: #2eac43;
+  --cat-4: #a16ff5;
+  --cat-5: #bc8500;
+  --cat-6: #00a4ae;
+  --cat-7: #e3625a;
+  --cat-8: #915e00;
 }
-/* light palette — applied for explicit light mode and for system mode on a light OS */
-:root[data-theme="light"],
-.light-tokens {
+:root[data-theme="light"], .light-tokens {
   --bg: #ffffff;
   --card: #f6f8fa;
   --border: #d0d7de;
   --fg: #1f2328;
   --dim: #636c76;
   --accent: #0969da;
+  --on-accent: #ffffff;
   --ok: #1a7f37;
   --wip: #9a6700;
   --warn: #cf222e;
+  --track: #d0d7de;
+  --cat-count: 8;
+  --cat-1: #d0242f;
+  --cat-2: #0c6bdc;
+  --cat-3: #bb4b00;
+  --cat-4: #8351e0;
+  --cat-5: #006324;
+  --cat-6: #009aa3;
+  --cat-7: #7c3e00;
+  --cat-8: #b8822a;
 }
 @media (prefers-color-scheme: light) {
   :root:not([data-theme]) {
@@ -30,11 +60,509 @@
     --fg: #1f2328;
     --dim: #636c76;
     --accent: #0969da;
+    --on-accent: #ffffff;
     --ok: #1a7f37;
     --wip: #9a6700;
     --warn: #cf222e;
+    --track: #d0d7de;
+    --cat-count: 8;
+    --cat-1: #d0242f;
+    --cat-2: #0c6bdc;
+    --cat-3: #bb4b00;
+    --cat-4: #8351e0;
+    --cat-5: #006324;
+    --cat-6: #009aa3;
+    --cat-7: #7c3e00;
+    --cat-8: #b8822a;
   }
 }
+
+/* Graphite — the original — GitHub-flavoured neutral */
+:root[data-palette="graphite"] {
+  --bg: #0d1117;
+  --card: #161b22;
+  --border: #21262d;
+  --fg: #e6edf3;
+  --dim: #8b949e;
+  --accent: #58a6ff;
+  --on-accent: #0b0b0f;
+  --ok: #3fb950;
+  --wip: #d29922;
+  --warn: #f85149;
+  --track: #30363d;
+  --cat-count: 8;
+  --cat-1: #d77122;
+  --cat-2: #4593ea;
+  --cat-3: #2eac43;
+  --cat-4: #a16ff5;
+  --cat-5: #bc8500;
+  --cat-6: #00a4ae;
+  --cat-7: #e3625a;
+  --cat-8: #915e00;
+}
+:root[data-palette="graphite"][data-theme="light"] {
+  --bg: #ffffff;
+  --card: #f6f8fa;
+  --border: #d0d7de;
+  --fg: #1f2328;
+  --dim: #636c76;
+  --accent: #0969da;
+  --on-accent: #ffffff;
+  --ok: #1a7f37;
+  --wip: #9a6700;
+  --warn: #cf222e;
+  --track: #d0d7de;
+  --cat-count: 8;
+  --cat-1: #d0242f;
+  --cat-2: #0c6bdc;
+  --cat-3: #bb4b00;
+  --cat-4: #8351e0;
+  --cat-5: #006324;
+  --cat-6: #009aa3;
+  --cat-7: #7c3e00;
+  --cat-8: #b8822a;
+}
+@media (prefers-color-scheme: light) {
+  :root[data-palette="graphite"]:not([data-theme]) {
+    --bg: #ffffff;
+    --card: #f6f8fa;
+    --border: #d0d7de;
+    --fg: #1f2328;
+    --dim: #636c76;
+    --accent: #0969da;
+    --on-accent: #ffffff;
+    --ok: #1a7f37;
+    --wip: #9a6700;
+    --warn: #cf222e;
+    --track: #d0d7de;
+    --cat-count: 8;
+    --cat-1: #d0242f;
+    --cat-2: #0c6bdc;
+    --cat-3: #bb4b00;
+    --cat-4: #8351e0;
+    --cat-5: #006324;
+    --cat-6: #009aa3;
+    --cat-7: #7c3e00;
+    --cat-8: #b8822a;
+  }
+}
+
+/* Nord — arctic, north-bluish — Polar Night & Frost */
+:root[data-palette="nord"] {
+  --bg: #272b35;
+  --card: #2e3440;
+  --border: #434c5e;
+  --fg: #eceff4;
+  --dim: #8d97a8;
+  --accent: #88c0d0;
+  --on-accent: #0b0b0f;
+  --ok: #a3be8c;
+  --wip: #ebcb8b;
+  --warn: #bf616a;
+  --track: #4c566a;
+  --cat-count: 8;
+  --cat-1: #bc74b0;
+  --cat-2: #769f4e;
+  --cat-3: #4881c4;
+  --cat-4: #b38a29;
+  --cat-5: #5096d6;
+  --cat-6: #ce7559;
+  --cat-7: #00a1c0;
+  --cat-8: #bf616a;
+}
+:root[data-palette="nord"][data-theme="light"] {
+  --bg: #eceff4;
+  --card: #e5e9f0;
+  --border: #d8dee9;
+  --fg: #2e3440;
+  --dim: #4c566a;
+  --accent: #5e81ac;
+  --on-accent: #0b0b0f;
+  --ok: #6b8f5a;
+  --wip: #a17d29;
+  --warn: #a54c55;
+  --track: #d8dee9;
+  --cat-count: 8;
+  --cat-1: #9a538c;
+  --cat-2: #a37b10;
+  --cat-3: #195f9c;
+  --cat-4: #c1684f;
+  --cat-5: #0090ae;
+  --cat-6: #a04650;
+  --cat-7: #4881c4;
+  --cat-8: #5c8f43;
+}
+@media (prefers-color-scheme: light) {
+  :root[data-palette="nord"]:not([data-theme]) {
+    --bg: #eceff4;
+    --card: #e5e9f0;
+    --border: #d8dee9;
+    --fg: #2e3440;
+    --dim: #4c566a;
+    --accent: #5e81ac;
+    --on-accent: #0b0b0f;
+    --ok: #6b8f5a;
+    --wip: #a17d29;
+    --warn: #a54c55;
+    --track: #d8dee9;
+    --cat-count: 8;
+    --cat-1: #9a538c;
+    --cat-2: #a37b10;
+    --cat-3: #195f9c;
+    --cat-4: #c1684f;
+    --cat-5: #0090ae;
+    --cat-6: #a04650;
+    --cat-7: #4881c4;
+    --cat-8: #5c8f43;
+  }
+}
+
+/* Solarized — Ethan Schoonover’s canonical light + dark pair */
+:root[data-palette="solarized"] {
+  --bg: #002b36;
+  --card: #073642;
+  --border: #0e4a59;
+  --fg: #eee8d5;
+  --dim: #839496;
+  --accent: #268bd2;
+  --on-accent: #0b0b0f;
+  --ok: #859900;
+  --wip: #b58900;
+  --warn: #dc322f;
+  --track: #0e4a59;
+  --cat-count: 8;
+  --cat-1: #268bd2;
+  --cat-2: #d35321;
+  --cat-3: #7075c8;
+  --cat-4: #889c0b;
+  --cat-5: #db3e89;
+  --cat-6: #b58901;
+  --cat-7: #008f86;
+  --cat-8: #e63e38;
+}
+:root[data-palette="solarized"][data-theme="light"] {
+  --bg: #fdf6e3;
+  --card: #eee8d5;
+  --border: #d9d2c0;
+  --fg: #073642;
+  --dim: #657b83;
+  --accent: #268bd2;
+  --on-accent: #0b0b0f;
+  --ok: #859900;
+  --wip: #b58900;
+  --warn: #dc322f;
+  --track: #d9d2c0;
+  --cat-count: 8;
+  --cat-1: #7a8c00;
+  --cat-2: #6d72c5;
+  --cat-3: #cc4c18;
+  --cat-4: #2288cf;
+  --cat-5: #d43783;
+  --cat-6: #7f5f00;
+  --cat-7: #009289;
+  --cat-8: #c6121a;
+}
+@media (prefers-color-scheme: light) {
+  :root[data-palette="solarized"]:not([data-theme]) {
+    --bg: #fdf6e3;
+    --card: #eee8d5;
+    --border: #d9d2c0;
+    --fg: #073642;
+    --dim: #657b83;
+    --accent: #268bd2;
+    --on-accent: #0b0b0f;
+    --ok: #859900;
+    --wip: #b58900;
+    --warn: #dc322f;
+    --track: #d9d2c0;
+    --cat-count: 8;
+    --cat-1: #7a8c00;
+    --cat-2: #6d72c5;
+    --cat-3: #cc4c18;
+    --cat-4: #2288cf;
+    --cat-5: #d43783;
+    --cat-6: #7f5f00;
+    --cat-7: #009289;
+    --cat-8: #c6121a;
+  }
+}
+
+/* Gruvbox — warm retro groove, heavy on the earth tones */
+:root[data-palette="gruvbox"] {
+  --bg: #282828;
+  --card: #32302f;
+  --border: #504945;
+  --fg: #ebdbb2;
+  --dim: #a89984;
+  --accent: #83a598;
+  --on-accent: #0b0b0f;
+  --ok: #b8bb26;
+  --wip: #fabd2f;
+  --warn: #fb4934;
+  --track: #504945;
+  --cat-count: 8;
+  --cat-1: #c96c88;
+  --cat-2: #959800;
+  --cat-3: #b45e86;
+  --cat-4: #b88700;
+  --cat-5: #009499;
+  --cat-6: #de6c00;
+  --cat-7: #1ca27f;
+  --cat-8: #f94732;
+}
+:root[data-palette="gruvbox"][data-theme="light"] {
+  --bg: #fbf1c7;
+  --card: #f2e5bc;
+  --border: #d5c4a1;
+  --fg: #3c3836;
+  --dim: #7c6f64;
+  --accent: #076678;
+  --on-accent: #ffffff;
+  --ok: #79740e;
+  --wip: #b57614;
+  --warn: #9d0006;
+  --track: #d5c4a1;
+  --cat-count: 8;
+  --cat-1: #797400;
+  --cat-2: #8e3e70;
+  --cat-3: #b1720b;
+  --cat-4: #00879f;
+  --cat-5: #8d2b00;
+  --cat-6: #d45b08;
+  --cat-7: #9c0005;
+  --cat-8: #31905c;
+}
+@media (prefers-color-scheme: light) {
+  :root[data-palette="gruvbox"]:not([data-theme]) {
+    --bg: #fbf1c7;
+    --card: #f2e5bc;
+    --border: #d5c4a1;
+    --fg: #3c3836;
+    --dim: #7c6f64;
+    --accent: #076678;
+    --on-accent: #ffffff;
+    --ok: #79740e;
+    --wip: #b57614;
+    --warn: #9d0006;
+    --track: #d5c4a1;
+    --cat-count: 8;
+    --cat-1: #797400;
+    --cat-2: #8e3e70;
+    --cat-3: #b1720b;
+    --cat-4: #00879f;
+    --cat-5: #8d2b00;
+    --cat-6: #d45b08;
+    --cat-7: #9c0005;
+    --cat-8: #31905c;
+  }
+}
+
+/* Tokyo Night — neon-on-navy; Day is the official light sibling */
+:root[data-palette="tokyonight"] {
+  --bg: #1a1b26;
+  --card: #24283b;
+  --border: #414868;
+  --fg: #c0caf5;
+  --dim: #787c99;
+  --accent: #7aa2f7;
+  --on-accent: #0b0b0f;
+  --ok: #9ece6a;
+  --wip: #e0af68;
+  --warn: #f7768e;
+  --track: #414868;
+  --cat-count: 8;
+  --cat-1: #00a2ba;
+  --cat-2: #d2753a;
+  --cat-3: #678ee1;
+  --cat-4: #bb852e;
+  --cat-5: #369bd0;
+  --cat-6: #c34763;
+  --cat-7: #9d7cd6;
+  --cat-8: #74a13d;
+}
+:root[data-palette="tokyonight"][data-theme="light"] {
+  --bg: #e1e2e7;
+  --card: #d9dae3;
+  --border: #c4c8da;
+  --fg: #3760bf;
+  --dim: #6172b0;
+  --accent: #2e7de9;
+  --on-accent: #0b0b0f;
+  --ok: #587539;
+  --wip: #8c6c3e;
+  --warn: #f52a65;
+  --track: #c4c8da;
+  --cat-count: 8;
+  --cat-1: #0084b0;
+  --cat-2: #804000;
+  --cat-3: #2978e4;
+  --cat-4: #527823;
+  --cat-5: #9854f1;
+  --cat-6: #9a6700;
+  --cat-7: #3861c0;
+  --cat-8: #ea195d;
+}
+@media (prefers-color-scheme: light) {
+  :root[data-palette="tokyonight"]:not([data-theme]) {
+    --bg: #e1e2e7;
+    --card: #d9dae3;
+    --border: #c4c8da;
+    --fg: #3760bf;
+    --dim: #6172b0;
+    --accent: #2e7de9;
+    --on-accent: #0b0b0f;
+    --ok: #587539;
+    --wip: #8c6c3e;
+    --warn: #f52a65;
+    --track: #c4c8da;
+    --cat-count: 8;
+    --cat-1: #0084b0;
+    --cat-2: #804000;
+    --cat-3: #2978e4;
+    --cat-4: #527823;
+    --cat-5: #9854f1;
+    --cat-6: #9a6700;
+    --cat-7: #3861c0;
+    --cat-8: #ea195d;
+  }
+}
+
+/* Catppuccin — pastel Mocha & Latte — soothing, high-comfort */
+:root[data-palette="catppuccin"] {
+  --bg: #1e1e2e;
+  --card: #313244;
+  --border: #45475a;
+  --fg: #cdd6f4;
+  --dim: #9399b2;
+  --accent: #89b4fa;
+  --on-accent: #0b0b0f;
+  --ok: #a6e3a1;
+  --wip: #f9e2af;
+  --warn: #f38ba8;
+  --track: #45475a;
+  --cat-count: 8;
+  --cat-1: #be73ac;
+  --cat-2: #b18b28;
+  --cat-3: #6491da;
+  --cat-4: #c97a46;
+  --cat-5: #0088b2;
+  --cat-6: #62a35e;
+  --cat-7: #7f89d9;
+  --cat-8: #c46679;
+}
+:root[data-palette="catppuccin"][data-theme="light"] {
+  --bg: #eff1f5;
+  --card: #e6e9ef;
+  --border: #ccd0da;
+  --fg: #4c4f69;
+  --dim: #6c6f85;
+  --accent: #1e66f5;
+  --on-accent: #ffffff;
+  --ok: #40a02b;
+  --wip: #df8e1d;
+  --warn: #d20f39;
+  --track: #ccd0da;
+  --cat-count: 7;
+  --cat-1: #d4133a;
+  --cat-2: #1d65f4;
+  --cat-3: #df5500;
+  --cat-4: #8839ef;
+  --cat-5: #36971f;
+  --cat-6: #95257d;
+  --cat-7: #b97200;
+}
+@media (prefers-color-scheme: light) {
+  :root[data-palette="catppuccin"]:not([data-theme]) {
+    --bg: #eff1f5;
+    --card: #e6e9ef;
+    --border: #ccd0da;
+    --fg: #4c4f69;
+    --dim: #6c6f85;
+    --accent: #1e66f5;
+    --on-accent: #ffffff;
+    --ok: #40a02b;
+    --wip: #df8e1d;
+    --warn: #d20f39;
+    --track: #ccd0da;
+    --cat-count: 7;
+    --cat-1: #d4133a;
+    --cat-2: #1d65f4;
+    --cat-3: #df5500;
+    --cat-4: #8839ef;
+    --cat-5: #36971f;
+    --cat-6: #95257d;
+    --cat-7: #b97200;
+  }
+}
+
+/* Rosé Pine — soho vibes for the terminal — Main & Dawn */
+:root[data-palette="rosepine"] {
+  --bg: #191724;
+  --card: #1f1d2e;
+  --border: #403d52;
+  --fg: #e0def4;
+  --dim: #908caa;
+  --accent: #c4a7e7;
+  --on-accent: #0b0b0f;
+  --ok: #9ccfd8;
+  --wip: #f6c177;
+  --warn: #eb6f92;
+  --track: #403d52;
+  --cat-count: 8;
+  --cat-1: #a27dcb;
+  --cat-2: #bb852e;
+  --cat-3: #008eb9;
+  --cat-4: #d07170;
+  --cat-5: #7464b3;
+  --cat-6: #dc6285;
+  --cat-7: #219eca;
+  --cat-8: #815ca8;
+}
+:root[data-palette="rosepine"][data-theme="light"] {
+  --bg: #faf4ed;
+  --card: #fffaf3;
+  --border: #dfdad9;
+  --fg: #575279;
+  --dim: #797593;
+  --accent: #907aa9;
+  --on-accent: #0b0b0f;
+  --ok: #286983;
+  --wip: #ea9d34;
+  --warn: #b4637a;
+  --track: #dfdad9;
+  --cat-count: 7;
+  --cat-1: #007599;
+  --cat-2: #c77e00;
+  --cat-3: #0088b1;
+  --cat-4: #8d3636;
+  --cat-5: #a680ce;
+  --cat-6: #842e4b;
+  --cat-7: #0099ac;
+}
+@media (prefers-color-scheme: light) {
+  :root[data-palette="rosepine"]:not([data-theme]) {
+    --bg: #faf4ed;
+    --card: #fffaf3;
+    --border: #dfdad9;
+    --fg: #575279;
+    --dim: #797593;
+    --accent: #907aa9;
+    --on-accent: #0b0b0f;
+    --ok: #286983;
+    --wip: #ea9d34;
+    --warn: #b4637a;
+    --track: #dfdad9;
+    --cat-count: 7;
+    --cat-1: #007599;
+    --cat-2: #c77e00;
+    --cat-3: #0088b1;
+    --cat-4: #8d3636;
+    --cat-5: #a680ce;
+    --cat-6: #842e4b;
+    --cat-7: #0099ac;
+  }
+}
+
 * { box-sizing: border-box; }
 body {
   margin: 0;
@@ -207,9 +735,14 @@ td { padding: 0.35rem 0.5rem; border-top: 1px solid var(--border); vertical-alig
 }
 .dot.ok { background: var(--ok); }
 .dot.fail { background: var(--warn); }
+/* ran, but not recently enough for its cadence — amber sits between ok and fail */
+.dot.late { background: var(--wip); }
+/* commit hash → forge. Underlined on hover only, so the feed stays a feed. */
+.commitlink { color: var(--dim); text-decoration: none; border-bottom: 1px dotted var(--border); }
+.commitlink:hover { color: var(--accent); border-bottom-color: var(--accent); }
 .queueslots { display: flex; gap: 2px; height: 14px; min-width: 120px; }
 .queueslots .slot { flex: 1; border-radius: 2px; }
-.slot.todo { background: #30363d; }
+.slot.todo { background: var(--track); }
 .slot.wip { background: var(--wip); }
 .slot.done { background: var(--ok); }
 .memslots { display: flex; gap: 2px; height: 10px; margin-top: 0.5rem; }
@@ -217,7 +750,7 @@ td { padding: 0.35rem 0.5rem; border-top: 1px solid var(--border); vertical-alig
 .memslots .slot.filled { background: var(--accent); border-color: var(--accent); }
 .space { margin-bottom: 1rem; }
 .spacehead { display: flex; align-items: baseline; gap: 0.75rem; margin-bottom: 0.25rem; }
-.sprintbar { height: 2px; background: #30363d; border-radius: 1px; margin: 0 0 0.6rem; }
+.sprintbar { height: 2px; background: var(--track); border-radius: 1px; margin: 0 0 0.6rem; }
 .sprintbar i { display: block; height: 100%; background: var(--wip); border-radius: 1px; }
 .spacer { flex: 1; }
 .federated { margin-top: 0.75rem; padding-top: 0.5rem; border-top: 1px solid var(--border); }
@@ -328,7 +861,7 @@ line.zap { stroke: var(--accent); stroke-opacity: 0.9; }
 .seg-b { font: inherit; font-size: 0.75rem; color: var(--dim); background: transparent; border: none; border-right: 1px solid var(--border); padding: 0.32rem 0.7rem; cursor: pointer; }
 .seg-b:last-child { border-right: none; }
 .seg-b:hover { color: var(--fg); }
-.seg-b.on { background: var(--accent); color: #fff; }
+.seg-b.on { background: var(--accent); color: var(--on-accent); }
 .nav-num { font: inherit; width: 6rem; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 6px; padding: 0.3rem 0.5rem; }
 .nav-num:focus { outline: none; border-color: var(--accent); }
 .nav-kv { display: flex; justify-content: space-between; gap: 0.75rem; font-size: 0.75rem; padding: 0.28rem 0; border-bottom: 1px dashed var(--border); }
@@ -392,7 +925,7 @@ line.zap { stroke: var(--accent); stroke-opacity: 0.9; }
 .fp-path { font-size: 0.72rem; color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fp-btn { font: inherit; font-size: 0.72rem; color: var(--dim); background: transparent; border: 1px solid var(--border); border-radius: 5px; padding: 0.15rem 0.5rem; cursor: pointer; }
 .fp-btn:hover { color: var(--fg); border-color: var(--accent); }
-.fp-btn.on { color: #fff; background: var(--accent); border-color: var(--accent); }
+.fp-btn.on { color: var(--on-accent); background: var(--accent); border-color: var(--accent); }
 .fp-list { list-style: none; margin: 0; padding: 0; overflow: auto; flex: 1; min-height: 0; }
 .fp-entry { display: flex; align-items: center; gap: 0.5rem; width: 100%; font: inherit; font-size: 0.78rem; text-align: left; background: transparent; border: none; color: var(--fg); padding: 0.2rem 0.3rem; cursor: pointer; border-radius: 4px; }
 .fp-entry:hover { background: var(--bg); }
@@ -458,7 +991,7 @@ line.zap { stroke: var(--accent); stroke-opacity: 0.9; }
 .authcard { max-width: 24rem; width: 100%; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 2rem 1.8rem; display: flex; flex-direction: column; gap: 0.7rem; text-align: center; }
 .authmark { font-weight: 700; letter-spacing: 0.04em; color: var(--accent); }
 .authtitle { font-size: 1.15rem; margin: 0.2rem 0 0; }
-.authbtn { font: inherit; font-weight: 600; color: #fff; background: var(--accent); border: none; border-radius: 8px; padding: 0.6rem 1rem; cursor: pointer; margin-top: 0.4rem; }
+.authbtn { font: inherit; font-weight: 600; color: var(--on-accent); background: var(--accent); border: none; border-radius: 8px; padding: 0.6rem 1rem; cursor: pointer; margin-top: 0.4rem; }
 .authbtn:hover { filter: brightness(1.08); }
 
 /* ── Memory: federated vaults (first-class) + compact pipeline ──────────── */
@@ -486,8 +1019,10 @@ line.zap { stroke: var(--accent); stroke-opacity: 0.9; }
 .scatter-svg .grid { stroke: var(--border); stroke-width: 1; opacity: 0.4; }
 .strip-svg .ax-tick, .scatter-svg .ax-tick, .flow-svg .ax-tick { fill: var(--dim); font-size: 8px; font-variant-numeric: tabular-nums; }
 .strip-svg .ax-unit, .scatter-svg .ax-unit, .flow-svg .ax-unit { fill: var(--dim); font-size: 8px; text-transform: uppercase; letter-spacing: 0.04em; }
-/* distribution: one hue by default; text/position carry identity, not colour. */
-.strip-dot { fill: var(--accent); opacity: 0.72; }
+/* distribution: one hue by default; text/position carry identity, not colour.
+   Opaque with a card-coloured rim — dots are stacked, not blended, so alpha would
+   only re-introduce the saturation the stacking exists to avoid. */
+.strip-dot { fill: var(--accent); stroke: var(--card); stroke-width: 0.8; }
 .strip-dot.done { fill: var(--ok); }
 .strip-dot.err { fill: var(--warn); }
 .strip-median { stroke: var(--dim); stroke-width: 1; stroke-dasharray: 2 2; }
@@ -523,3 +1058,19 @@ line.zap { stroke: var(--accent); stroke-opacity: 0.9; }
 .ob-prompt:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
 .ob-guide-actions { display: flex; gap: 0.5rem; }
 .ob-reveal { display: block; margin: 0.75rem auto 0; }
+
+/* theme picker — each card previews the real thing: ground, card, accent, data hues */
+.themegrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem; margin-bottom: 0.4rem; }
+.themecard {
+  display: flex; flex-direction: column; gap: 0.35rem; align-items: stretch;
+  padding: 0.4rem; border: 1px solid var(--border); border-radius: 8px;
+  background: none; font: inherit; color: var(--dim); cursor: pointer; text-align: left;
+}
+.themecard:hover { border-color: var(--accent); color: var(--fg); }
+.themecard.on { border-color: var(--accent); color: var(--fg); box-shadow: inset 0 0 0 1px var(--accent); }
+.themename { font-size: 0.78rem; }
+.sw { display: block; border: 1px solid; border-radius: 5px; padding: 5px; }
+.sw-card { display: flex; align-items: center; gap: 5px; border-radius: 3px; padding: 5px; }
+.sw-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.sw-cats { display: flex; gap: 2px; flex: 1; }
+.sw-cats i { flex: 1; height: 9px; border-radius: 1px; }

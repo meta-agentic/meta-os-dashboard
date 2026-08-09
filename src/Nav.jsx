@@ -1,10 +1,36 @@
 import React from 'react'
+import { THEMES as PALETTES } from './themes.js'
 
-const THEMES = [
+const MODES = [
   { v: 'system', label: 'System' },
   { v: 'dark', label: 'Dark' },
   { v: 'light', label: 'Light' },
 ]
+
+// Which variant the swatch should preview: an explicit mode wins, otherwise follow
+// the OS, so the preview always matches what clicking would actually give you.
+function previewMode(mode) {
+  if (mode === 'light' || mode === 'dark') return mode
+  if (typeof window === 'undefined' || !window.matchMedia) return 'dark'
+  return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'
+}
+
+// A theme reads as a miniature of the real thing — page ground, a card on top, the
+// accent, and the categorical hues charts will actually use. Showing the data hues
+// matters: they are the part a name like "Nord" doesn't tell you.
+function Swatch({ t, mode }) {
+  const v = t[mode]
+  return (
+    <span className="sw" style={{ background: v.bg, borderColor: v.card }} aria-hidden="true">
+      <span className="sw-card" style={{ background: v.card }}>
+        <span className="sw-dot" style={{ background: v.accent }} />
+        <span className="sw-cats">
+          {v.cat.slice(0, 6).map((c, i) => <i key={i} style={{ background: c }} />)}
+        </span>
+      </span>
+    </span>
+  )
+}
 const DENSITIES = [
   { v: 'comfortable', label: 'Comfortable' },
   { v: 'compact', label: 'Compact' },
@@ -25,9 +51,9 @@ export default function Nav({ open, onClose, prefs, setPrefs, meta, auth }) {
 
         <details className="nav-sec" open>
           <summary>Appearance</summary>
-          <label className="nav-lbl">Theme</label>
+          <label className="nav-lbl">Mode</label>
           <div className="seg">
-            {THEMES.map((t) => (
+            {MODES.map((t) => (
               <button
                 key={t.v}
                 className={'seg-b' + (prefs.theme === t.v ? ' on' : '')}
@@ -36,6 +62,25 @@ export default function Nav({ open, onClose, prefs, setPrefs, meta, auth }) {
                 {t.label}
               </button>
             ))}
+          </div>
+          <label className="nav-lbl">Theme</label>
+          <div className="themegrid" role="radiogroup" aria-label="Theme">
+            {PALETTES.map((t) => {
+              const on = (prefs.palette ?? 'graphite') === t.key
+              return (
+                <button
+                  key={t.key}
+                  className={'themecard' + (on ? ' on' : '')}
+                  role="radio"
+                  aria-checked={on}
+                  title={t.note}
+                  onClick={() => set({ palette: t.key })}
+                >
+                  <Swatch t={t} mode={previewMode(prefs.theme)} />
+                  <span className="themename">{t.label}</span>
+                </button>
+              )
+            })}
           </div>
           <label className="nav-lbl">Density</label>
           <div className="seg">

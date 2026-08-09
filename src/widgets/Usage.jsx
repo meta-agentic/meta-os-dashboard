@@ -69,8 +69,11 @@ export default function Usage({ data }) {
       <DayBars days={data?.days ?? []} />
       {sessionList.length > 1 && (
         <>
+          {/* Session spend spans three orders of magnitude (a few thousand output
+              tokens to a few million), so the axis is logarithmic — on a linear one
+              the bulk of sessions collapses into the leftmost few pixels. */}
           <div className="dim small chart-cap">Per-session spend · {sessionList.length} sessions</div>
-          <StripPlot points={stripPts} unit="out tokens" max={outMax} median={median(outs)} fmt={fmt} />
+          <StripPlot points={stripPts} unit="out tokens" max={outMax} median={median(outs)} fmt={fmt} scale="log" />
           <div className="dim small chart-cap">Cost × throughput · size = turns</div>
           <ScatterChart points={scatterPts} xLabel="out tokens" yLabel="out/turn" xMax={outMax} yMax={ptMax}
             xFmt={fmt} yFmt={fmt} />
