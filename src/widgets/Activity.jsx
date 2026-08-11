@@ -36,7 +36,15 @@ export default function Activity({ data }) {
             <span className="dot" style={{ background: SRC[e.source] }} title={e.source} />
             {e.source === 'vault' ? (
               <>
-                <span className="mono dim">{e.note}</span> {e.target}
+                {/* The hash links to the forge only when the server could derive one
+                    from the remote — an unlinkable repo keeps it as plain text. */}
+                {e.url ? (
+                  <a className="mono commitlink" href={e.url} target="_blank" rel="noreferrer"
+                    title={`open ${e.note} on the forge`}>{e.note}</a>
+                ) : (
+                  <span className="mono dim">{e.note}</span>
+                )}{' '}
+                {e.target}
               </>
             ) : (
               <>

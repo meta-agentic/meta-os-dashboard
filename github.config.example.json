@@ -1,23 +1,51 @@
 {
-  "_comment": "Deployed API mode — server reads private repos via GITHUB_TOKEN (env var, never in the browser). Pair with GitHub Pages frontend using VITE_API_URL.",
+  "_comment": "Deployed API mode \u2014 server reads private repos via GITHUB_TOKEN (env var, never in the browser). Pair with GitHub Pages frontend using VITE_API_URL.",
   "source": "github",
   "corsOrigins": "https://mova77.github.io,http://localhost:5173",
   "vars": {},
   "github": {
-    "instance": { "owner": "mova77", "repo": "mova-os", "ref": "main" },
-    "vault": { "owner": "mova77", "repo": "vault", "ref": "main" },
-    "framework": { "owner": "mova77", "repo": "meta-os", "ref": "main" },
+    "instance": {
+      "owner": "your-org",
+      "repo": "your-instance",
+      "ref": "main"
+    },
+    "vault": {
+      "owner": "your-org",
+      "repo": "your-vault",
+      "ref": "main"
+    },
+    "framework": {
+      "owner": "meta-agentic",
+      "repo": "meta-os",
+      "ref": "main"
+    },
+    "_backlogsComment": "Vault-native: each entry names a space and the server reads <space>/{raw,wiki,output}/*.md plus <space>/sprints/*.md from the `vault` repo above (ADR-MOS-01/04/06). Omit owner/repo/path to default to that repo and the space's own directory; set them to read a space from a different repo. An entry whose `path` ends in .json instead reads a pre-built backlog document, for a deployment still on a mirror.",
     "backlogs": [
-      { "space": "example", "owner": "mova77", "repo": "scrum", "path": "scrum/ios/backlog.json", "ref": "main" },
-      { "space": "example", "owner": "mova77", "repo": "scrum", "path": "scrum/iam/backlog.json", "ref": "main" },
-      { "space": "example", "owner": "mova77", "repo": "scrum", "path": "scrum/vec/backlog.json", "ref": "main" }
+      {
+        "space": "example"
+      },
+      {
+        "space": "example"
+      },
+      {
+        "space": "example"
+      }
     ]
   },
   "memory": {
-    "_comment": "Optional. Same topology contract as instance.config.json's 'memory' block, read over the GitHub content API instead of the local FS. Omit this whole block and memory falls back to the default: the instance repo's own memory/{raw,wiki,output} as the sole canon root plus the vault repo's top-level dirs as federated mounts — byte-for-byte the prior behaviour. Each root/federated entry takes an optional 'repo' (instance | vault | framework, default instance) naming which repo above it lives in, since a deployed server can only reach repos it has owner/repo/ref for; 'path' is relative to that repo's root. 'roots' are canon (counted as the raw→wiki→output pipeline); each has a 'layout' of flat | tier/project | project/tier. 'federated' mounts are navigation context, never counted as canon. ${var} expands here exactly as in backlogs. Broken/missing roots or mounts, or an unknown 'repo' label, are skipped and reported (topology.skipped), never fatal.",
+    "_comment": "Optional. Same topology contract as instance.config.json's 'memory' block, read over the GitHub content API instead of the local FS. Omit this whole block and memory falls back to the default: the instance repo's own memory/{raw,wiki,output} as the sole canon root plus the vault repo's top-level dirs as federated mounts \u2014 byte-for-byte the prior behaviour. Each root/federated entry takes an optional 'repo' (instance | vault | framework, default instance) naming which repo above it lives in, since a deployed server can only reach repos it has owner/repo/ref for; 'path' is relative to that repo's root. 'roots' are canon (counted as the raw\u2192wiki\u2192output pipeline); each has a 'layout' of flat | tier/project | project/tier. 'federated' mounts are navigation context, never counted as canon. ${var} expands here exactly as in backlogs. Broken/missing roots or mounts, or an unknown 'repo' label, are skipped and reported (topology.skipped), never fatal.",
     "roots": [
-      { "label": "instance", "path": "memory", "layout": "flat" },
-      { "label": "estate", "repo": "vault", "path": "", "layout": "project/tier" }
+      {
+        "label": "instance",
+        "path": "memory",
+        "layout": "flat"
+      },
+      {
+        "label": "estate",
+        "repo": "vault",
+        "path": "",
+        "layout": "project/tier"
+      }
     ],
     "federated": []
   },
@@ -32,6 +60,8 @@
     "scope": "openid email profile",
     "loginLabel": "Sign in with Google",
     "loginHint": "Use your Google account. Only allow-listed emails can access this instance.",
-    "allowedEmails": ["you@example.com"]
+    "allowedEmails": [
+      "you@example.com"
+    ]
   }
 }

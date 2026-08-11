@@ -4,6 +4,8 @@ import 'react-grid-layout/css/styles.css'
 import 'react-resizable/css/styles.css'
 import Lanes from './widgets/Lanes.jsx'
 import SprintSummary from './widgets/SprintSummary.jsx'
+import Burndown from './widgets/Burndown.jsx'
+import Velocity from './widgets/Velocity.jsx'
 import Memory from './widgets/Memory.jsx'
 import MemoryFlux from './widgets/MemoryFlux.jsx'
 import Automations from './widgets/Automations.jsx'
@@ -42,26 +44,30 @@ const WIDGETS = [
   { i: 'distribution', title: 'Distribution', render: (d) => <Distribution data={d.lanes} /> },
   { i: 'files', title: 'File Preview', render: (d) => <FilePreview roots={d.meta?.roots} /> },
   { i: 'gantt', title: 'Roadmap', render: (d) => <Gantt data={d.report} /> },
+  { i: 'burndown', title: 'Burndown', render: (d) => <Burndown data={d.report} /> },
+  { i: 'velocity', title: 'Velocity', render: (d) => <Velocity data={d.report} /> },
   { i: 'report', title: 'Scrum Report', render: (d) => <Report data={d.report} /> },
 ]
 
 const DEFAULT_LAYOUT = [
-  { i: 'sprint-summary', x: 0, y: 0, w: 12, h: 5, minW: 4, minH: 4 },
-  { i: 'lanes', x: 0, y: 5, w: 7, h: 11, minW: 4, minH: 6 },
-  { i: 'graph', x: 7, y: 5, w: 5, h: 11, minW: 3, minH: 6 },
-  { i: 'memory', x: 0, y: 16, w: 4, h: 8, minW: 3, minH: 5 },
-  { i: 'memory-flux', x: 4, y: 16, w: 4, h: 9, minW: 3, minH: 7 },
-  { i: 'outputs', x: 8, y: 16, w: 4, h: 8, minW: 3, minH: 5 },
-  { i: 'automations', x: 0, y: 25, w: 4, h: 8, minW: 3, minH: 5 },
-  { i: 'usage', x: 0, y: 24, w: 6, h: 8, minW: 3, minH: 5 },
-  { i: 'registry', x: 6, y: 24, w: 3, h: 8, minW: 3, minH: 5 },
-  { i: 'lint', x: 9, y: 24, w: 3, h: 8, minW: 3, minH: 5 },
-  { i: 'activity', x: 0, y: 32, w: 8, h: 7, minW: 4, minH: 5 },
-  { i: 'distribution', x: 8, y: 32, w: 4, h: 9, minW: 3, minH: 7 },
-  { i: 'files', x: 0, y: 41, w: 6, h: 11, minW: 3, minH: 7 },
-  { i: 'gantt', x: 6, y: 41, w: 6, h: 11, minW: 4, minH: 7 },
-  { i: 'report', x: 0, y: 52, w: 12, h: 12, minW: 5, minH: 9 },
-  { i: 'graph-table', x: 0, y: 64, w: 6, h: 8, minW: 3, minH: 5 },
+  { i: 'sprint-summary', x: 0, y: 0, w: 12, h: 9, minW: 4, minH: 5 },
+  { i: 'lanes', x: 0, y: 9, w: 7, h: 11, minW: 4, minH: 6 },
+  { i: 'graph', x: 7, y: 9, w: 5, h: 11, minW: 3, minH: 6 },
+  { i: 'memory', x: 0, y: 20, w: 4, h: 8, minW: 3, minH: 5 },
+  { i: 'memory-flux', x: 4, y: 20, w: 4, h: 9, minW: 3, minH: 7 },
+  { i: 'outputs', x: 8, y: 20, w: 4, h: 8, minW: 3, minH: 5 },
+  { i: 'automations', x: 0, y: 29, w: 4, h: 8, minW: 3, minH: 5 },
+  { i: 'usage', x: 0, y: 28, w: 6, h: 8, minW: 3, minH: 5 },
+  { i: 'registry', x: 6, y: 28, w: 3, h: 8, minW: 3, minH: 5 },
+  { i: 'lint', x: 9, y: 28, w: 3, h: 8, minW: 3, minH: 5 },
+  { i: 'activity', x: 0, y: 36, w: 8, h: 7, minW: 4, minH: 5 },
+  { i: 'distribution', x: 8, y: 36, w: 4, h: 9, minW: 3, minH: 7 },
+  { i: 'files', x: 0, y: 45, w: 6, h: 11, minW: 3, minH: 7 },
+  { i: 'gantt', x: 6, y: 45, w: 6, h: 11, minW: 4, minH: 7 },
+  { i: 'burndown', x: 0, y: 56, w: 6, h: 9, minW: 4, minH: 6 },
+  { i: 'velocity', x: 6, y: 56, w: 6, h: 9, minW: 4, minH: 6 },
+  { i: 'report', x: 0, y: 65, w: 12, h: 12, minW: 5, minH: 9 },
+  { i: 'graph-table', x: 0, y: 77, w: 6, h: 8, minW: 3, minH: 5 },
 ]
 // DEFAULT_LAYOUT above is the widget catalogue: the source of per-widget size floors
 // and the template for a freshly-added board. FLOORS is derived from it, so every id
@@ -77,12 +83,12 @@ const DEFAULT_BOARDS = [
   {
     id: 'overview', name: 'Overview',
     layout: [
-      { i: 'sprint-summary', x: 0, y: 0, w: 12, h: 5 },
-      { i: 'lanes', x: 0, y: 5, w: 7, h: 11 },
-      { i: 'usage', x: 7, y: 5, w: 5, h: 11 },
-      { i: 'memory', x: 0, y: 16, w: 4, h: 8 },
-      { i: 'outputs', x: 4, y: 16, w: 4, h: 8 },
-      { i: 'activity', x: 8, y: 16, w: 4, h: 8 },
+      { i: 'sprint-summary', x: 0, y: 0, w: 12, h: 9 },
+      { i: 'lanes', x: 0, y: 9, w: 7, h: 11 },
+      { i: 'usage', x: 7, y: 9, w: 5, h: 11 },
+      { i: 'memory', x: 0, y: 20, w: 4, h: 8 },
+      { i: 'outputs', x: 4, y: 20, w: 4, h: 8 },
+      { i: 'activity', x: 8, y: 20, w: 4, h: 8 },
     ],
   },
   {
@@ -90,19 +96,21 @@ const DEFAULT_BOARDS = [
     layout: [
       { i: 'graph', x: 0, y: 0, w: 8, h: 11 },
       { i: 'graph-table', x: 8, y: 0, w: 4, h: 11 },
-      { i: 'memory', x: 0, y: 11, w: 4, h: 8 },
-      { i: 'memory-flux', x: 4, y: 11, w: 4, h: 9 },
-      { i: 'files', x: 8, y: 11, w: 4, h: 11 },
+      { i: 'memory', x: 0, y: 15, w: 4, h: 8 },
+      { i: 'memory-flux', x: 4, y: 15, w: 4, h: 9 },
+      { i: 'files', x: 8, y: 15, w: 4, h: 11 },
     ],
   },
   {
     id: 'delivery', name: 'Delivery',
     layout: [
-      { i: 'sprint-summary', x: 0, y: 0, w: 12, h: 5 },
-      { i: 'lanes', x: 0, y: 5, w: 7, h: 11 },
-      { i: 'distribution', x: 7, y: 5, w: 5, h: 11 },
-      { i: 'gantt', x: 0, y: 16, w: 12, h: 11 },
-      { i: 'report', x: 0, y: 27, w: 12, h: 12 },
+      { i: 'sprint-summary', x: 0, y: 0, w: 12, h: 9 },
+      { i: 'lanes', x: 0, y: 9, w: 7, h: 11 },
+      { i: 'distribution', x: 7, y: 9, w: 5, h: 11 },
+      { i: 'gantt', x: 0, y: 20, w: 12, h: 11 },
+      { i: 'burndown', x: 0, y: 31, w: 6, h: 9 },
+      { i: 'velocity', x: 6, y: 31, w: 6, h: 9 },
+      { i: 'report', x: 0, y: 40, w: 12, h: 12 },
     ],
   },
   {
@@ -110,9 +118,9 @@ const DEFAULT_BOARDS = [
     layout: [
       { i: 'usage', x: 0, y: 0, w: 6, h: 9 },
       { i: 'automations', x: 6, y: 0, w: 6, h: 9 },
-      { i: 'activity', x: 0, y: 9, w: 8, h: 7 },
-      { i: 'lint', x: 8, y: 9, w: 4, h: 7 },
-      { i: 'registry', x: 0, y: 16, w: 12, h: 8 },
+      { i: 'activity', x: 0, y: 13, w: 8, h: 7 },
+      { i: 'lint', x: 8, y: 13, w: 4, h: 7 },
+      { i: 'registry', x: 0, y: 20, w: 12, h: 8 },
     ],
   },
 ]
@@ -120,7 +128,7 @@ const DEFAULT_BOARDS = [
 const BOARDS_KEY = 'meta-os.boards.v1'
 const LEGACY_LAYOUT_KEY = 'meta-os.layout.v1'
 const PREFS_KEY = 'meta-os.prefs.v1'
-const DEFAULT_PREFS = { theme: 'system', density: 'comfortable', refreshSec: 30 }
+const DEFAULT_PREFS = { theme: 'system', palette: 'graphite', density: 'comfortable', refreshSec: 30 }
 const DENSITY = {
   comfortable: { margin: [14, 14], rowHeight: 30 },
   compact: { margin: [8, 8], rowHeight: 24 },
@@ -132,6 +140,21 @@ function loadPrefs() {
     return { ...DEFAULT_PREFS }
   }
 }
+// Group filter is GLOBAL and persisted: groups are an alternative axis to boards,
+// so hiding "diagrams" should mean hiding it everywhere, not per board. It keys on
+// group NAME rather than id, because each board mints its own ids — the "diagrams"
+// on Delivery and a "diagrams" elsewhere are different ids for the same idea.
+// Stored apart from the boards doc: this is a view preference, not layout.
+const GROUPFILTER_KEY = 'meta-os.groupfilter.v1'
+const UNGROUPED = '\u0000ungrouped'   // sentinel; cannot collide with a real name
+function loadGroupFilter() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(GROUPFILTER_KEY) || 'null')
+    if (Array.isArray(raw?.hidden)) return new Set(raw.hidden)
+  } catch { /* private mode */ }
+  return new Set()
+}
+
 const ONBOARDING_KEY = 'meta-os.onboarding.v1'
 function loadOnboarding() {
   try {
@@ -170,6 +193,7 @@ export default function App() {
   const [data, setData] = useState({})
   const [error, setError] = useState(null)
   const [{ boards, activeId }, setState] = useState(loadBoards)
+  const [hiddenGroups, setHiddenGroups] = useState(loadGroupFilter)
   const [editingId, setEditingId] = useState(null)
   const [prefs, setPrefs] = useState(loadPrefs)
   const [onboarding, setOnboarding] = useState(loadOnboarding)
@@ -192,9 +216,12 @@ export default function App() {
 
   useEffect(() => {
     const el = document.documentElement
+    // `theme` is the light/dark axis, `palette` the colour scheme — orthogonal, so
+    // every theme keeps working under System/Dark/Light.
     if (prefs.theme === 'system') delete el.dataset.theme
     else el.dataset.theme = prefs.theme
-  }, [prefs.theme])
+    el.dataset.palette = prefs.palette ?? 'graphite'
+  }, [prefs.theme, prefs.palette])
 
   useEffect(() => {
     try {
@@ -340,8 +367,6 @@ export default function App() {
       return { ...b, membership }
     })
   }
-  const toggleGroup = (gid) =>
-    patchActive((b) => ({ ...b, groups: b.groups.map((g) => (g.id === gid ? { ...g, collapsed: !g.collapsed } : g)) }))
   const ungroup = (gid) =>
     patchActive((b) => {
       const membership = Object.fromEntries(Object.entries(b.membership).filter(([, v]) => v !== gid))
@@ -357,14 +382,28 @@ export default function App() {
   const showOnboarding = onb.steps.length > 0 && !onboarding.dismissed
   const suppressGrid = onb.fresh && !onboarding.dismissed && !showGridAnyway
 
-  const collapsed = new Set(active.groups.filter((g) => g.collapsed).map((g) => g.id))
   const inLayout = new Set(active.layout.map((l) => l.i))
-  const visible = WIDGETS.filter(
-    (w) => inLayout.has(w.i) && !collapsed.has(active.membership[w.i]),
-  )
+  // Every group name across every board — the filter is global, so a name stays
+  // togglable even while looking at a board with no widget in it.
+  const groupNameById = new Map(boards.flatMap((b) => b.groups.map((g) => [g.id, g.name])))
+  const allGroupNames = [...new Set(boards.flatMap((b) => b.groups.map((g) => g.name)))].sort()
+  const nameOf = (wid) => groupNameById.get(active.membership[wid]) ?? UNGROUPED
+  // Visibility is now the global group filter alone. Per-board `collapsed` is gone:
+  // with the panel moved out of the board there was no control left to un-collapse a
+  // group, so it could only ever hide widgets irrecoverably. The field is still
+  // tolerated in stored docs, just no longer consulted.
+  const visible = WIDGETS.filter((w) => inLayout.has(w.i) && !hiddenGroups.has(nameOf(w.i)))
   const visibleIds = new Set(visible.map((w) => w.i))
   const gridLayout = active.layout.filter((l) => visibleIds.has(l.i))
-  const countIn = (gid) => Object.values(active.membership).filter((v) => v === gid).length
+  // What toggling a name does on THIS board — the number that makes the chip honest.
+  const countByName = (name) => active.layout.filter((l) => nameOf(l.i) === name).length
+  const toggleGroupFilter = (name) => setHiddenGroups((prev) => {
+    const next = new Set(prev)
+    if (next.has(name)) next.delete(name)
+    else next.add(name)
+    try { localStorage.setItem(GROUPFILTER_KEY, JSON.stringify({ hidden: [...next] })) } catch { /* private mode */ }
+    return next
+  })
   const missing = WIDGETS.filter((w) => !inLayout.has(w.i))
 
   const dens = DENSITY[prefs.density] || DENSITY.comfortable
@@ -402,6 +441,41 @@ export default function App() {
         </button>
       </header>
 
+      {(allGroupNames.length > 0 || hiddenGroups.size > 0) && (
+        <div className="groupbar" role="group" aria-label="Group filter">
+          <span className="dim small">groups</span>
+          {[...allGroupNames, UNGROUPED].map((name) => {
+            const on = !hiddenGroups.has(name)
+            const n = countByName(name)
+            const label = name === UNGROUPED ? "ungrouped" : name
+            const gid = active.groups.find((g) => g.name === name)?.id
+            return (
+              <span key={name} className={"gchip" + (on ? "" : " collapsed")}>
+                <button
+                  className="gchip-toggle"
+                  onClick={() => toggleGroupFilter(name)}
+                  title={(on ? "Hide" : "Show") + " " + label + " everywhere — "
+                    + n + " widget" + (n === 1 ? "" : "s") + " on this board"}
+                >
+                  <span className="chev">{on ? "\u25be" : "\u25b8"}</span> {label}
+                  <span className="gcount">{n}</span>
+                </button>
+                {gid && (
+                  <button className="gchip-x" onClick={() => ungroup(gid)}
+                          title={"Dissolve " + label + " on this board"}
+                          aria-label={"Dissolve group " + label}>×</button>
+                )}
+              </span>
+            )
+          })}
+          {hiddenGroups.size > 0 && (
+            <button className="ghostbtn" onClick={() => {
+              setHiddenGroups(new Set())
+              try { localStorage.removeItem(GROUPFILTER_KEY) } catch { /* private mode */ }
+            }} title="Show every group again">show all</button>
+          )}
+        </div>
+      )}
       <nav className="tabbar" role="tablist">
         {boards.map((b) => (
           <div key={b.id} className={'tab' + (b.id === active.id ? ' active' : '')}>
@@ -443,18 +517,6 @@ export default function App() {
         </button>
       </nav>
 
-      {active.groups.length > 0 && (
-        <div className="groupbar">
-          {active.groups.map((g) => (
-            <span key={g.id} className={'gchip' + (g.collapsed ? ' collapsed' : '')}>
-              <button className="gchip-toggle" onClick={() => toggleGroup(g.id)} title={g.collapsed ? 'Expand group' : 'Collapse group'}>
-                <span className="chev">{g.collapsed ? '▸' : '▾'}</span> {g.name} <span className="gcount">{countIn(g.id)}</span>
-              </button>
-              <button className="gchip-x" onClick={() => ungroup(g.id)} title="Ungroup" aria-label={`Ungroup ${g.name}`}>×</button>
-            </span>
-          ))}
-        </div>
-      )}
 
       {showOnboarding && (
         <div className="ob-wrap">

@@ -14,12 +14,39 @@ function inRel(ts) {
   return `in ${Math.floor(mins / 60)}h${mins % 60 ? ` ${mins % 60}m` : ''}`
 }
 
-function LastRun({ lastRun }) {
-  if (!lastRun) return <span className="dim small">never</span>
+// "never" has three very different meanings, and collapsing them is what made a
+// shipped row look broken. The server's `health` verdict separates them:
+//   inactive — candidate/retired: nothing is owed yet, so this is not an alarm
+//   unlogged — shipped but event/on-demand: runs.jsonl is the only evidence there is,
+//              so silence means "never logged", which is weaker than "never ran"
+//   never    — shipped AND scheduled: a run was owed and none exists. Real failure.
+const NEVER = {
+  never: { cls: 'warn', dot: 'fail', text: 'never',
+    hint: 'shipped and scheduled, but no run was ever logged' },
+  unlogged: { cls: 'dim small', dot: null, text: 'never logged',
+    hint: 'on-demand automation — it appears here once it appends to automations/runs.jsonl' },
+  inactive: { cls: 'dim small', dot: null, text: 'never',
+    hint: 'not shipped yet — no run is owed' },
+}
+
+function LastRun({ r }) {
+  if (!r.lastRun) {
+    const s = NEVER[r.health] ?? NEVER.inactive
+    return (
+      <span className={s.cls} title={s.hint}>
+        {s.dot && <span className={`dot ${s.dot}`} />}{s.text}
+        {r.missed > 0 && <span className="dim small"> · {r.missed}{r.missedCapped ? '+' : ''} owed</span>}
+      </span>
+    )
+  }
+  const failed = r.lastRun.outcome === 'fail'
+  const late = r.health === 'overdue'
   return (
-    <span className={lastRun.outcome === 'fail' ? 'warn' : ''}>
-      <span className={`dot ${lastRun.outcome === 'fail' ? 'fail' : 'ok'}`} />
-      {ago(lastRun.ts)}
+    <span className={failed || late ? 'warn' : ''}
+      title={late ? `${r.missed}${r.missedCapped ? '+' : ''} scheduled run(s) missed since ${new Date(r.lastRun.ts).toLocaleString()}` : undefined}>
+      <span className={`dot ${failed ? 'fail' : late ? 'late' : 'ok'}`} />
+      {ago(r.lastRun.ts)}
+      {late && <span className="chip down">overdue · {r.missed}{r.missedCapped ? '+' : ''} missed</span>}
     </span>
   )
 }
@@ -76,9 +103,16 @@ export default function Automations({ data }) {
               <td>{r.automation}</td>
               <td className="dim">{r.trigger}</td>
               <td>{r.cadence && r.cadence !== '—' ? <span className="chip mono">{r.cadence}</span> : <span className="dim">event</span>}</td>
-              <td><LastRun lastRun={r.lastRun} /></td>
+              <td><LastRun r={r} /></td>
               <td><Next r={r} /></td>
-              <td><span className={`chip ${r.status === 'shipped' ? 'ok' : ''}`}>{r.status}</span></td>
+              <td>
+                {/* A shipped row whose schedule is not being honoured is not "ok" —
+                    the chip drops its green so status and evidence agree. */}
+                <span className={`chip ${r.status === 'shipped' ? (['overdue', 'never'].includes(r.health) ? 'down' : 'ok') : ''}`}
+                  title={['overdue', 'never'].includes(r.health) ? 'shipped, but the run log does not back the schedule' : undefined}>
+                  {r.status}
+                </span>
+              </td>
             </tr>
           ))}
         </tbody>
