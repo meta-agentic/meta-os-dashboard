@@ -7,6 +7,20 @@ import Card from './Card.jsx'
 
 const sum = (xs, f) => xs.reduce((a, x) => a + (f(x) ?? 0), 0)
 
+// The blocked COUNT was a dead number: /api/lanes carries blockedBy per item, so
+// the keys and their blockers are known and can be named instead of tallied.
+function blockedItems(space) {
+  const out = []
+  for (const lane of space.lanes ?? []) {
+    for (const q of Object.values(lane.queues ?? {})) {
+      for (const it of q ?? []) {
+        if (it.blockedBy?.length) out.push({ id: it.id, lane: lane.lane, by: it.blockedBy, title: it.title })
+      }
+    }
+  }
+  return out
+}
+
 function totals(space) {
   const l = space.lanes ?? []
   return {
@@ -59,11 +73,12 @@ export default function SprintSummary({ data }) {
   const active = spaces.filter((s) => s.available !== false && (s.lanes?.length ?? 0) > 0)
   const idle = spaces.filter((s) => s.available !== false && (s.lanes?.length ?? 0) === 0)
 
-  const rows = active.map((s) => ({ space: s.space, sprint: s.sprint?.[0] ?? null, t: totals(s) }))
+  const rows = active.map((s) => ({ space: s.space, sprint: s.sprint?.[0] ?? null, t: totals(s), blocked: blockedItems(s) }))
   const grand = rows.length
     ? rows.map((r) => r.t).reduce(add)
     : null
   const gc = grand && completion(grand)
+  const allBlocked = rows.flatMap((r) => r.blocked)
 
   return (
     <Card title="Sprint Summary — active flow totals" data={data}>
@@ -77,7 +92,8 @@ export default function SprintSummary({ data }) {
                   sub={grand.ptWip > 0 ? `${grand.ptWip}pt` : null} />
             <Tile label="done" value={grand.done} cls="ok"
                   sub={grand.ptDone > 0 ? `${grand.ptDone}pt` : null} />
-            <Tile label="blocked" value={grand.blocked} cls={grand.blocked > 0 ? 'down' : undefined} />
+            <Tile label="blocked" value={grand.blocked} cls={grand.blocked > 0 ? 'down' : undefined}
+                  sub={allBlocked.length ? allBlocked.map((b) => b.id).join(' · ') : null} />
             {gc && (
               <Tile label={`complete (${gc.basis})`} value={`${gc.pct}%`}
                     sub={`${gc.done} of ${gc.total}`} />
@@ -95,7 +111,7 @@ export default function SprintSummary({ data }) {
               </tr>
             </thead>
             <tbody>
-              {rows.map(({ space, sprint, t }) => {
+              {rows.map(({ space, sprint, t, blocked }) => {
                 const c = completion(t)
                 const el = elapsed(sprint)
                 // Behind = more of the window spent than of the work finished.
@@ -108,7 +124,15 @@ export default function SprintSummary({ data }) {
                     <td className="num">{t.todo}{t.ptTodo > 0 && <div className="dim small">{t.ptTodo}pt</div>}</td>
                     <td className="num">{t.wip}{t.ptWip > 0 && <div className="dim small">{t.ptWip}pt</div>}</td>
                     <td className="num">{t.done}{t.ptDone > 0 && <div className="dim small">{t.ptDone}pt</div>}</td>
-                    <td className="num">{t.blocked > 0 ? <span className="warn">{t.blocked}</span> : 0}</td>
+                    <td className="num">
+                      {t.blocked > 0 ? <span className="warn">{t.blocked}</span> : 0}
+                      {blocked.map((x) => (
+                        <div key={x.id} className="dim small mono"
+                             title={`${x.title ?? x.id}\nblocked by ${x.by.join(', ')}`}>
+                          {x.id} ← {x.by.join(', ')}
+                        </div>
+                      ))}
+                    </td>
                     <td className="num">
                       {c ? (
                         <span

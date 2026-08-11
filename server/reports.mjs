@@ -1,16 +1,17 @@
 // Scrum reporting + roadmap, derived from the backlog mirror (scrum/<space>/backlog.json).
-// Honest by construction: the mirror carries no per-story transition timestamps, so we
-// never fabricate a historical burndown curve — only committed vs current-remaining.
+// Honest by construction: nothing here is fabricated. The mirror carries no per-story
+// transition timestamps, so the daily burndown curve cannot come from it — it is read
+// from an optional `burndown.json` written beside the mirror by the scrum tooling
+// (export_burndown.py, which replays Jira's changelog). When that file is absent we
+// still report committed vs current-remaining and say why there is no curve, rather
+// than interpolating one.
 import fs from 'node:fs/promises'
+import path from 'node:path'
+import { normalizeBacklog, sprintMembers } from './backlog-schema.mjs'
+import { loadBacklog } from './vault-backlog.mjs'
 
 const WEEK = 6048e5
 const DONE = 'DONE'
-
-// A work item's identifier. `id` is the schema (ADR-MOS-07); `jiraId` is read
-// only because github-readers points at the ARCHIVED mova77/scrum mirror, which
-// is frozen read-only at the old shape and will never carry `id`. Live derived
-// exports from backlog.py carry `id` alone.
-export const itemId = (s) => s.id ?? s.jiraId
 const bucketOf = (status) =>
   status === DONE ? 'Done'
     : status === 'IN PROGRESS' ? 'In progress'
@@ -19,17 +20,36 @@ const bucketOf = (status) =>
           : 'Other'
 
 function membersOf(sprint, stories) {
-  const ids = new Set(sprint.issues ?? [])
-  return stories.filter((s) => s.sprint === sprint.id || ids.has(itemId(s)))
+  const ids = new Set(sprint.issues)
+  return stories.filter((s) => sprintMembers(s).includes(sprint.id) || ids.has(s.id))
 }
 const sum = (xs, f) => xs.reduce((a, x) => a + (f(x) || 0), 0)
 
-export function reportFromData(space, d) {
-  const stories = d.stories ?? []
-  const sprints = d.sprints ?? []
-  const statusById = new Map(stories.map((s) => [itemId(s), s.status]))
+// Optional daily series, keyed by sprint id. Missing file is normal, not an error:
+// the exporter needs Jira credentials the dashboard deliberately does not hold.
+async function dailySeries(backlogPath) {
+  try {
+    // Beside a backlog document, or inside the space directory when vault-native.
+    const dir = backlogPath.endsWith('.json') ? path.dirname(backlogPath) : backlogPath
+    const f = path.join(dir, 'burndown.json')
+    const doc = JSON.parse(await fs.readFile(f, 'utf8'))
+    return {
+      generated: doc.generated ?? null,
+      source: doc.source ?? null,
+      bySprint: new Map((doc.sprints ?? []).map((s) => [s.sprint, s])),
+    }
+  } catch {
+    return null
+  }
+}
+
+export function reportFromData(space, doc, daily = null) {
+  const d = normalizeBacklog(doc)
+  const stories = d.stories
+  const sprints = d.sprints
+  const statusById = new Map(stories.map((s) => [s.id, s.status]))
   const isBlocked = (s) =>
-    s.status !== DONE && (s.dependencies ?? []).some((id) => statusById.has(id) && statusById.get(id) !== DONE)
+    s.status !== DONE && s.dependencies.some((id) => statusById.has(id) && statusById.get(id) !== DONE)
 
   // Per-sprint rollup (committed vs delivered), used by velocity + gantt.
   const sprintRows = sprints.map((sp) => {
@@ -37,7 +57,7 @@ export function reportFromData(space, d) {
     const done = m.filter((s) => s.status === DONE)
     return {
       id: sp.id, name: sp.name ?? sp.id, status: sp.status,
-      start: sp.startDate ?? null, end: sp.endDate ?? null,
+      start: sp.start ?? null, end: sp.end ?? null,
       committed: m.length, committedPts: sum(m, (s) => s.storyPoints),
       done: done.length, donePts: sum(done, (s) => s.storyPoints),
     }
@@ -72,8 +92,8 @@ export function reportFromData(space, d) {
 
   const now = Date.now()
   let elapsed = null
-  if (active?.startDate && active?.endDate) {
-    const t0 = new Date(active.startDate), t1 = new Date(active.endDate)
+  if (active?.start && active?.end) {
+    const t0 = new Date(active.start), t1 = new Date(active.end)
     if (t1 > t0) elapsed = Math.min(Math.max((now - t0) / (t1 - t0), 0), 1)
   }
 
@@ -89,22 +109,48 @@ export function reportFromData(space, d) {
     elapsed,
     velocityPerWeek,
   }
+  const hist = active && daily ? daily.bySprint.get(active.id) : null
   const burndown = active
-    ? { committed: activeCommittedPts, remaining: activeCommittedPts - activeDonePts, elapsed, sprint: active.name ?? active.id }
+    ? {
+      committed: activeCommittedPts,
+      remaining: activeCommittedPts - activeDonePts,
+      elapsed,
+      sprint: active.name ?? active.id,
+      start: active.start ?? null,
+      end: active.end ?? null,
+      // Real observed history when the export exists; otherwise say so, so the
+      // widget degrades visibly instead of drawing a straight line and implying
+      // the work burned down evenly.
+      days: hist?.days ?? null,
+      seriesSource: hist ? daily.source : null,
+      seriesGenerated: hist ? daily.generated : null,
+      seriesReason: hist
+        ? null
+        : 'no burndown.json beside the mirror — run scrum/scripts/export_burndown.py '
+          + '(the mirror itself carries no per-story transition timestamps)',
+    }
     : null
+  // Closed sprints with history too, so the widget can offer past sprints.
+  const history = daily
+    ? [...daily.bySprint.values()].map((s) => ({
+      sprint: s.sprint, name: s.name, status: s.status, start: s.start, end: s.end,
+      committed: s.committed, days: s.days,
+    }))
+    : []
 
-  return { space, scorecard, velocity, statusMix, burndown, sprints: sprintRows }
+  return { space, scorecard, velocity, statusMix, burndown, history, sprints: sprintRows }
 }
 
-async function reportSpace(space, p) {
-  return reportFromData(space, JSON.parse(await fs.readFile(p, 'utf8')))
+async function reportSpace(entry) {
+  return reportFromData(entry.space, await loadBacklog(entry), await dailySeries(entry.path))
 }
 
 export async function reports(backlogs) {
   if (!backlogs?.length) return { available: false, reason: 'no backlogs configured', spaces: [], roadmap: [] }
   const spaces = []
-  for (const { space, path: p } of backlogs) {
-    try { spaces.push(await reportSpace(space, p)) } catch (e) {
+  for (const b of backlogs) {
+    const space = b.space
+    try { spaces.push(await reportSpace(b)) } catch (e) {
       spaces.push({ space, available: false, reason: `backlog unreadable: ${e.message}` })
     }
   }

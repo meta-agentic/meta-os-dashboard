@@ -13,10 +13,17 @@ export class GitRepo {
     this.treeFetched = null
     this.textCache = new Map()
     this.dateCache = new Map()
+    this.blobCache = new Map() // blob sha → text; sha-keyed, so it self-invalidates
   }
 
   label() {
     return `${this.owner}/${this.repo}`
+  }
+
+  // Public web URL for a commit. github.com only — the token path is the API host,
+  // and this repo has no Enterprise base-URL setting to derive another origin from.
+  commitUrl(hash) {
+    return `https://github.com/${this.owner}/${this.repo}/commit/${hash}`
   }
 
   async fetch(url, opts = {}) {
@@ -74,6 +81,72 @@ export class GitRepo {
 
   async readJson(filePath) {
     return JSON.parse(await this.readText(filePath))
+  }
+
+  async graphql(query, variables = {}) {
+    const r = await fetch(`${API}/graphql`, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/vnd.github+json',
+        'User-Agent': 'meta-os-dashboard',
+        ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ query, variables }),
+    })
+    if (!r.ok) {
+      const e = new Error(`GitHub GraphQL ${r.status}: ${(await r.text().catch(() => '')).slice(0, 200)}`)
+      e.status = 502
+      throw e
+    }
+    const body = await r.json()
+    // GraphQL reports errors in a 200 body; surface them rather than returning holes.
+    if (body.errors?.length) {
+      const e = new Error(`GitHub GraphQL: ${body.errors.map((x) => x.message).join('; ').slice(0, 200)}`)
+      e.status = 502
+      throw e
+    }
+    return body.data
+  }
+
+  // Bulk file read: Map<path, text>. The contents API is one request per file, which
+  // a vault-native backlog (1000+ item files) would turn into a rate-limit incident on
+  // every poll — so this batches through GraphQL aliases instead, ~15 requests for a
+  // whole vault rather than ~1400.
+  //
+  // The cache is keyed by BLOB SHA, not path: the tree already tells us each file's
+  // sha, so unchanged content is never refetched and changed content can never be
+  // served stale. (A path-keyed cache with no TTL — which is what readText uses — would
+  // pin the first version read for the process's lifetime.)
+  async readManyText(paths, { batch = 100 } = {}) {
+    const tree = await this.ensureTree()
+    const out = new Map()
+    const misses = []
+    for (const p of paths) {
+      const sha = tree.get(p)?.sha
+      if (!sha) continue // not in the tree at this ref — caller treats as absent
+      if (this.blobCache.has(sha)) out.set(p, this.blobCache.get(sha))
+      else misses.push({ path: p, sha })
+    }
+    for (let i = 0; i < misses.length; i += batch) {
+      const chunk = misses.slice(i, i + batch)
+      const fields = chunk
+        .map((m, k) => `f${k}: object(oid: ${JSON.stringify(m.sha)}) { ... on Blob { text isBinary } }`)
+        .join('\n')
+      const data = await this.graphql(
+        `query($owner:String!,$name:String!){ repository(owner:$owner,name:$name){ ${fields} } }`,
+        { owner: this.owner, name: this.repo },
+      )
+      const repo = data?.repository ?? {}
+      chunk.forEach((m, k) => {
+        const blob = repo[`f${k}`]
+        // isBinary blobs return text: null — record the miss rather than caching null.
+        if (typeof blob?.text !== 'string') return
+        this.blobCache.set(m.sha, blob.text)
+        out.set(m.path, blob.text)
+      })
+    }
+    return out
   }
 
   async listDir(dirPath = '') {
@@ -171,13 +244,29 @@ export function createGithubContext(config) {
 
   const instance = mk(config.github.instance)
   const vault = mk(config.github.vault)
-  const framework = mk(config.github.framework, { owner: 'mova77', repo: 'meta-os' })
+  const framework = mk(config.github.framework, { owner: 'meta-agentic', repo: 'meta-os' })
 
-  const backlogs = (config.github.backlogs ?? []).map((b) => ({
-    space: b.space,
-    repo: new GitRepo({ owner: b.owner, repo: b.repo, ref: b.ref ?? 'main', token }),
-    path: b.path,
-  }))
+  // Two backlog sources, chosen by the shape of `path` so existing configs keep working:
+  //   path ending in .json → a pre-built backlog document (legacy mirror repo)
+  //   anything else        → vault-native (IOS-838): `path` is the space directory,
+  //                          defaulting to the space name, in `vault` unless the entry
+  //                          names its own owner/repo.
+  const backlogs = (config.github.backlogs ?? []).map((b) => {
+    if (typeof b.path === 'string' && b.path.endsWith('.json')) {
+      return {
+        space: b.space,
+        mode: 'document',
+        repo: new GitRepo({ owner: b.owner, repo: b.repo, ref: b.ref ?? 'main', token }),
+        path: b.path,
+      }
+    }
+    return {
+      space: b.space,
+      mode: 'vault',
+      repo: b.owner && b.repo ? new GitRepo({ owner: b.owner, repo: b.repo, ref: b.ref ?? 'main', token }) : vault,
+      path: b.path ?? b.space,
+    }
+  })
 
   return { instance, vault, framework, backlogs, token }
 }

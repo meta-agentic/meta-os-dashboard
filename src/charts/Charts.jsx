@@ -1,17 +1,53 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 
-// Categorical palette — mid-saturation hues that stay legible on both themes.
+// Categorical hues come from the active theme's --cat-* tokens, which are generated
+// and gated by the dataviz validator (CVD separation, lightness band, chroma floor,
+// contrast on that theme's own card). This list is only the pre-paint / SSR fallback
+// for when computed styles aren't readable yet.
 export const PALETTE = [
-  '#58a6ff', '#3fb950', '#d29922', '#a371f7', '#39c5cf',
-  '#ff7b72', '#f0883e', '#7ee787', '#bc8cff', '#f85149',
+  '#d77122', '#4593ea', '#2eac43', '#a16ff5', '#bc8500', '#00a4ae', '#e3625a', '#915e00',
 ]
-export const colorAt = (i) => PALETTE[i % PALETTE.length]
+
+function readCat() {
+  if (typeof document === 'undefined' || !document.documentElement) return PALETTE
+  const cs = getComputedStyle(document.documentElement)
+  const n = parseInt(cs.getPropertyValue('--cat-count'), 10)
+  if (!Number.isFinite(n) || n < 1) return PALETTE
+  const out = []
+  for (let i = 1; i <= n; i++) {
+    const v = cs.getPropertyValue(`--cat-${i}`).trim()
+    if (v) out.push(v)
+  }
+  return out.length ? out : PALETTE
+}
+
+// Re-read on theme/palette switch and on an OS light↔dark flip, so a running
+// dashboard repaints its charts without a reload.
+export function useCatColors() {
+  const [cols, setCols] = useState(readCat)
+  useEffect(() => {
+    const update = () => setCols(readCat())
+    update()
+    const mo = new MutationObserver(update)
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-palette'] })
+    const mq = window.matchMedia('(prefers-color-scheme: light)')
+    mq.addEventListener('change', update)
+    return () => { mo.disconnect(); mq.removeEventListener('change', update) }
+  }, [])
+  return cols
+}
+
+// A theme exposes only as many categorical slots as its hues can keep apart, so the
+// cycle length is the theme's, not a fixed 10. Cycling at all is a known compromise:
+// past `cat.length` series, identity should fold into "Other" rather than repeat a hue.
+export const colorAt = (i, cat = PALETTE) => cat[i % cat.length]
 
 const fmt = (n) => (Number.isInteger(n) ? String(n) : n.toFixed(1))
 
 // Horizontal bars — scales with long labels and many categories better than
 // vertical columns in a narrow widget. Rows with children read as clickable.
 export function BarChart({ data, onSelect, unit }) {
+  const cat = useCatColors()
   const max = Math.max(1, ...data.map((d) => d.value))
   if (!data.length) return <div className="degraded">no data</div>
   return (
@@ -29,7 +65,7 @@ export function BarChart({ data, onSelect, unit }) {
           >
             <span className="bar-label">{d.label}</span>
             <span className="bar-track">
-              <i style={{ width: `${(d.value / max) * 100}%`, background: d.color || colorAt(i) }} />
+              <i style={{ width: `${(d.value / max) * 100}%`, background: d.color || colorAt(i, cat) }} />
             </span>
             <span className="bar-val">{fmt(d.value)}</span>
           </button>
@@ -50,6 +86,7 @@ function slicePath(cx, cy, r, a0, a1) {
 // Donut (pie with a hole for a cleaner center) + legend. Slices with children
 // are clickable to drill down.
 export function PieChart({ data, onSelect, unit }) {
+  const cat = useCatColors()
   const total = data.reduce((a, d) => a + d.value, 0)
   if (total <= 0) return <div className="degraded">no data</div>
   const R = 52, C = 60, hole = 26
@@ -58,7 +95,7 @@ export function PieChart({ data, onSelect, unit }) {
     const a0 = a
     const a1 = a + (d.value / total) * Math.PI * 2
     a = a1
-    return { d, i, a0, a1, color: d.color || colorAt(i) }
+    return { d, i, a0, a1, color: d.color || colorAt(i, cat) }
   })
   return (
     <div className="pie-wrap">
@@ -103,41 +140,91 @@ export function PieChart({ data, onSelect, unit }) {
   )
 }
 
-// 1-D strip plot — the honest way to show a *distribution* of a single quantity
-// (one dot per item, jittered off the axis). Reveals spread, clusters and outliers
-// that a bar-of-means would hide. Optional two-class colouring via each point's `cls`.
-export function StripPlot({ points, unit = 'value', max, median, fmt: f = fmt }) {
+// Dot-plot stacking (Wilkinson): each dot takes the lowest row in which it doesn't
+// touch an already-placed neighbour, so a dense cluster builds a *countable column*
+// rather than a pile of translucent circles on one spot. Deterministic — no jitter
+// and no random seed, so the same data always draws the same picture.
+function stackRows(xs, step) {
+  const rows = new Array(xs.length).fill(0)
+  const placed = []
+  for (const i of xs.map((_, j) => j).sort((a, b) => xs[a] - xs[b])) {
+    let row = 0
+    while (placed.some((p) => p.row === row && Math.abs(p.x - xs[i]) < step)) row++
+    rows[i] = row
+    placed.push({ x: xs[i], row })
+  }
+  return rows
+}
+
+// 1-D distribution of a single quantity, one dot per item. Reveals spread, clusters
+// and outliers that a bar-of-means would hide. Optional two-class colouring via `cls`.
+//
+// Two deliberate choices, both about not lying at density:
+//  - dots are STACKED, not jittered-and-blended. Overlapping translucent marks
+//    saturate to a solid blob after three or four overlaps, so the densest part of
+//    the distribution — the part you most want to read — is the part that turns
+//    unreadable. A column you can count never does that.
+//  - `scale="log"` is the right axis for a quantity spanning decades (per-session
+//    spend routinely does). On a linear axis a heavy tail pushes the whole body of
+//    the distribution into the first few pixels; log gives every decade equal room.
+export function StripPlot({ points, unit = 'value', max, median, fmt: f = fmt, scale = 'linear' }) {
   if (!points?.length) return <div className="degraded">no data</div>
-  const W = 340, H = 66, padL = 8, padR = 8, axis = 30
-  const hi = max ?? Math.max(1, ...points.map((p) => p.v))
-  const x = (v) => padL + Math.min(v / hi, 1) * (W - padL - padR)
-  const ticks = [0, hi / 2, hi]
+  const W = 340, H = 118, padL = 8, padR = 8, axis = H - 24, bandTop = 16
+  const vals = points.map((p) => p.v)
+  const hi = Math.max(1, max ?? Math.max(...vals))
+  // Log domain is anchored to whole decades so every tick is a power of ten.
+  const log = scale === 'log'
+  const pos = vals.filter((v) => v > 0)
+  const lo = log && pos.length ? 10 ** Math.floor(Math.log10(Math.min(...pos))) : 0
+  const top = log ? 10 ** Math.ceil(Math.log10(Math.max(hi, lo * 10))) : hi
+  const span = W - padL - padR
+  const x = log
+    ? (v) => padL + Math.min(Math.max(Math.log10(Math.max(v, lo) / lo) / Math.log10(top / lo), 0), 1) * span
+    : (v) => padL + Math.min(v / top, 1) * span
+  const decades = log ? Math.round(Math.log10(top / lo)) : 0
+  const stride = log ? Math.ceil((decades + 1) / 7) : 1 // thin the ticks before labels collide
+  const ticks = log
+    ? Array.from({ length: decades + 1 }, (_, i) => lo * 10 ** i).filter((_, i) => i % stride === 0)
+    : [0, top / 2, top]
+
+  // Fit the tallest column into the band: a smaller radius packs more dots per row,
+  // which lowers the stack, so a couple of shrink passes always converge.
+  const xs = vals.map(x)
+  const bandH = axis - bandTop
+  let r = 3.4, rows = stackRows(xs, r * 2 + 0.6)
+  for (let i = 0; i < 4 && (Math.max(...rows) + 1) * (r * 2 + 0.6) > bandH; i++) {
+    r *= 0.75
+    rows = stackRows(xs, r * 2 + 0.6)
+  }
+  const step = r * 2 + 0.6
+  const y = (row) => Math.max(bandTop + r, axis - r - 1 - row * step)
+
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="strip-svg" role="img" aria-label={`distribution of ${unit}`}>
+    <svg viewBox={`0 0 ${W} ${H}`} className="strip-svg" role="img"
+      aria-label={`distribution of ${unit}${log ? ', logarithmic axis' : ''}`}>
       <line x1={padL} y1={axis} x2={W - padR} y2={axis} className="axis" />
       {ticks.map((t, i) => (
         <g key={i}>
-          <line x1={x(t)} y1={axis - 4} x2={x(t)} y2={axis + 4} className="axis" />
-          <text x={x(t)} y={axis + 16} className="ax-tick" textAnchor="middle">{f(t)}</text>
+          <line x1={x(t)} y1={axis} x2={x(t)} y2={axis + 4} className="axis" />
+          <text x={x(t)} y={axis + 14} className="ax-tick" textAnchor="middle">{f(t)}</text>
         </g>
       ))}
       {median != null && (
         <g>
-          <line x1={x(median)} y1={axis - 20} x2={x(median)} y2={axis + 6} className="strip-median" />
-          {/* clamp the label so a median near the axis start doesn't clip off-canvas */}
-          <text x={Math.max(padL + 24, Math.min(x(median), W - padR - 24))} y={axis - 23}
+          <line x1={x(median)} y1={bandTop - 4} x2={x(median)} y2={axis} className="strip-median" />
+          {/* clamp the label so a median near either end doesn't clip off-canvas */}
+          <text x={Math.max(padL + 26, Math.min(x(median), W - padR - 26))} y={bandTop - 7}
             className="ax-unit" textAnchor="middle">median {f(median)}</text>
         </g>
       )}
-      {points.map((p, i) => {
-        const jit = (i % 2 ? 1 : -1) * (2 + ((i * 7) % 7))
-        return (
-          <circle key={i} cx={x(p.v)} cy={axis + jit} r={3.4} className={'strip-dot ' + (p.cls || '')}>
-            <title>{p.label ? `${p.label}: ${f(p.v)} ${unit}` : `${f(p.v)} ${unit}`}</title>
-          </circle>
-        )
-      })}
-      <text x={(W) / 2} y={H - 2} className="ax-unit" textAnchor="middle">{unit} →</text>
+      {points.map((p, i) => (
+        <circle key={i} cx={xs[i]} cy={y(rows[i])} r={r} className={'strip-dot ' + (p.cls || '')}>
+          <title>{p.label ? `${p.label}: ${f(p.v)} ${unit}` : `${f(p.v)} ${unit}`}</title>
+        </circle>
+      ))}
+      <text x={W / 2} y={H - 2} className="ax-unit" textAnchor="middle">
+        {unit} →{log ? ' (log scale)' : ''}
+      </text>
     </svg>
   )
 }
