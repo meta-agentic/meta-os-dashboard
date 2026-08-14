@@ -39,12 +39,62 @@ const isGithub = config.source === 'github'
 let ghCtx = null
 let instanceRoot, frameworkRoot, fileRoots, dataDir
 
+// MOS-51 — three-level config. This file is the DEPLOYMENT level (bootstrap pointer,
+// auth, corsOrigins, dataDir, claudeHome). Estate knowledge (`vars`, `backlogs`,
+// `memory`) belongs to the INSTANCE, in `meta-os.config.json` at the instance root,
+// so a skill or script can read the estate with this dashboard uninstalled.
+//
+// Precedence: estate supplies defaults, deployment overrides — a laptop with a
+// different checkout layout overrides paths without touching estate config.
+// Back-compat: if the instance has no meta-os.config.json, nothing changes and an
+// existing all-in-one instance.config.json keeps working untouched.
+const ESTATE_KEYS = ['vars', 'backlogs', 'memory']
+
+function mergeEstate(estate, deployment) {
+  if (!estate) return deployment
+  const merged = { ...deployment }
+  // vars is a flat map of prefixes: union them, deployment wins per key.
+  merged.vars = { ...(estate.vars ?? {}), ...(deployment.vars ?? {}) }
+  // backlogs/memory are whole units — a deployment that declares one replaces it
+  // outright rather than half-merging two topologies into something neither side wrote.
+  for (const k of ESTATE_KEYS) {
+    if (k === 'vars') continue
+    if (deployment[k] === undefined && estate[k] !== undefined) merged[k] = estate[k]
+  }
+  return merged
+}
+
+async function loadEstateConfig() {
+  try {
+    if (isGithub) {
+      // Deployed: read it from the instance repo through the existing GitHub reader.
+      return await ghCtx.instance.readJson('meta-os.config.json')
+    }
+    // Local: resolve instanceRoot with the deployment's own vars first — it is the
+    // pointer that tells us where the instance is, so it cannot depend on estate vars.
+    const root = read.expandVars(config.instanceRoot, config.vars ?? {})
+    if (!root) return null
+    return JSON.parse(await fs.readFile(path.join(root, 'meta-os.config.json'), 'utf8'))
+  } catch (e) {
+    // Absent is the normal back-compat case, not an error. Anything else is worth
+    // saying out loud — a malformed estate config silently ignored is how a dashboard
+    // ends up reporting a stale topology with no indication why.
+    if (e?.code !== 'ENOENT' && e?.status !== 404) {
+      console.warn(`Estate config present but unusable, continuing without it: ${e.message}`)
+    }
+    return null
+  }
+}
+
 if (isGithub) {
   ghCtx = createGithubContext(config)
+  config = mergeEstate(await loadEstateConfig(), config)
   instanceRoot = `github:${ghCtx.instance.label()}`
   frameworkRoot = `github:${ghCtx.framework.label()}`
   fileRoots = null
 } else {
+  // Merge BEFORE expanding: the estate may contribute vars that estate paths use.
+  config = mergeEstate(await loadEstateConfig(), config)
   config = read.expandVars(config, config.vars ?? {})
   instanceRoot = config.instanceRoot
   frameworkRoot =
