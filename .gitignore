@@ -13,5 +13,7 @@ public/snapshots/
 
 # Agent runtime state — absolute local paths, churns every session (never portable).
 .claude-flow/
+.swarm/
+ruvector.db
 .claude/proven-config.json
 .claude/.proven-config-version

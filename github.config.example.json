@@ -22,13 +22,7 @@
     "_backlogsComment": "Vault-native: each entry names a space and the server reads <space>/{raw,wiki,output}/*.md plus <space>/sprints/*.md from the `vault` repo above (ADR-MOS-01/04/06). Omit owner/repo/path to default to that repo and the space's own directory; set them to read a space from a different repo. An entry whose `path` ends in .json instead reads a pre-built backlog document, for a deployment still on a mirror.",
     "backlogs": [
       {
-        "space": "ios"
-      },
-      {
-        "space": "iam"
-      },
-      {
-        "space": "vec"
+        "space": "example"
       }
     ]
   },
