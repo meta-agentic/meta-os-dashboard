@@ -1,7 +1,7 @@
 {
   "_comment": "Deployed API mode \u2014 server reads private repos via GITHUB_TOKEN (env var, never in the browser). Pair with GitHub Pages frontend using VITE_API_URL.",
   "source": "github",
-  "corsOrigins": "https://mova77.github.io,http://localhost:5173",
+  "corsOrigins": "https://<you>.github.io,http://localhost:5173",
   "vars": {},
   "github": {
     "instance": {
@@ -21,12 +21,6 @@
     },
     "_backlogsComment": "Vault-native: each entry names a space and the server reads <space>/{raw,wiki,output}/*.md plus <space>/sprints/*.md from the `vault` repo above (ADR-MOS-01/04/06). Omit owner/repo/path to default to that repo and the space's own directory; set them to read a space from a different repo. An entry whose `path` ends in .json instead reads a pre-built backlog document, for a deployment still on a mirror.",
     "backlogs": [
-      {
-        "space": "example"
-      },
-      {
-        "space": "example"
-      },
       {
         "space": "example"
       }
@@ -56,7 +50,7 @@
     "issuer": "https://accounts.google.com",
     "clientId": "YOUR_GOOGLE_OAUTH_CLIENT_ID.apps.googleusercontent.com",
     "audience": "YOUR_GOOGLE_OAUTH_CLIENT_ID.apps.googleusercontent.com",
-    "redirectUri": "https://mova77.github.io/meta-os-dashboard/",
+    "redirectUri": "https://<you>.github.io/meta-os-dashboard/",
     "scope": "openid email profile",
     "loginLabel": "Sign in with Google",
     "loginHint": "Use your Google account. Only allow-listed emails can access this instance.",

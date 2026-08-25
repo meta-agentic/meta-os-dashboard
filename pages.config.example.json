@@ -4,8 +4,7 @@
   "repos": [
     { "repo": "<you>/<your-instance-repo>", "dir": "instance" },
     { "repo": "meta-agentic/meta-os", "dir": "framework" },
-    { "repo": "<you>/<your-vault-repo>", "dir": "vaults/ios" },
-    { "repo": "<you>/<your-vault-repo>", "dir": "vaults/iam" }
+    { "repo": "<you>/<your-vault-repo>", "dir": "vaults/example" }
   ],
   "instanceConfig": {
     "instanceRoot": "${workDir}/instance",

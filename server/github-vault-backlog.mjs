@@ -1,7 +1,7 @@
 // Vault-native backlog for deployed (GitHub) mode — IOS-838.
 //
 // The derived <space>.backlog.json files are gitignored in the instance repo, so a
-// deployed server can never read them; the old <your-backlog-mirror> mirror is retired. This
+// deployed server can never read them; the old external backlog mirror is retired. This
 // reads the vault itself — per-item markdown under <space>/{raw,wiki,output}/<ID>.md
 // and sprint files under <space>/sprints/<SPRINT-ID>.md (ADR-MOS-01/04/06) — which
 // also removes the staleness window the derived cache had: an item added after the

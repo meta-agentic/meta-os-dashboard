@@ -10,3 +10,8 @@ public/snapshots/
 
 # per-user dashboard boards (server persistence)
 .data/
+
+# agent runtime state — machine-local, never shared
+.claude-flow/
+.swarm/
+ruvector.db

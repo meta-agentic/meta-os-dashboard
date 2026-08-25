@@ -1,48 +1,20 @@
 {
   "vars": {
-    "mova77": "/path/to/your/estate",
-    "derived": "/path/to/instance/automations/backlog/derived"
+    "_comment": "Optional. Reusable prefixes; ${name} in any config value or a projects/*.md 'path:' expands to these, so a repo-root move is a one-line change.",
+    "code": "/path/to/your/code-root"
   },
   "instanceRoot": "${code}/your-instance-vault",
-  "frameworkRoot": "(optional) ${code}/meta-os \u2014 defaults to resolving the instance's systems/ symlink",
-  "claudeHome": "(optional) /Users/you/.claude \u2014 engine home whose session logs feed the usage widget; defaults to ~/.claude",
-  "_backlogsComment": "Vault-native: `path` is the space directory in your vault; the server reads <space>/{raw,wiki,output}/*.md and <space>/sprints/*.md directly, so there is no derived backlog.json to regenerate. A `path` ending in .json still reads a pre-built backlog document.",
+  "frameworkRoot": "(optional) ${code}/meta-os — defaults to resolving the instance's systems/ symlink",
+  "claudeHome": "(optional) /Users/you/.claude — engine home whose session logs feed the usage widget; defaults to ~/.claude",
+  "_backlogsComment": "Vault-native: `path` is the space directory in your vault; the server reads <space>/{raw,wiki,output}/*.md and <space>/sprints/*.md directly, so there is no derived backlog.json to regenerate. A `path` ending in .json still reads a pre-built backlog document. One entry per space — add as many as you have.",
   "backlogs": [
     {
       "space": "example",
-      "path": "${code}/your-vault/ios"
-    },
-    {
-      "space": "example",
-      "path": "${code}/your-vault/iam"
-    },
-    {
-      "space": "example",
-      "path": "${code}/your-vault/vec"
-    },
-    {
-      "space": "mos",
-      "path": "${code}/your-vault/mos"
-    },
-    {
-      "space": "mrpg",
-      "path": "${code}/your-vault/mrpg"
-    },
-    {
-      "space": "ray",
-      "path": "${code}/your-vault/ray"
-    },
-    {
-      "space": "snmp",
-      "path": "${code}/your-vault/snmp"
-    },
-    {
-      "space": "mae",
-      "path": "${code}/your-vault/mae"
+      "path": "${code}/your-vault/example"
     }
   ],
   "memory": {
-    "_comment": "Optional. Configurable memory topology. Omit this whole block and memory falls back to the default: the instance's own memory/{raw,wiki,output} as the sole canon root plus vaults/* as federated mounts \u2014 byte-for-byte the prior behaviour. 'roots' are canon (counted as the raw\u2192wiki\u2192output pipeline); each has a 'layout' of flat | tier/project | project/tier. 'federated' mounts are navigation context, never counted as canon. ${var} expands here exactly as in backlogs. Broken/dangling paths are skipped and reported (topology.skipped), never fatal.",
+    "_comment": "Optional. Configurable memory topology. Omit this whole block and memory falls back to the default: the instance's own memory/{raw,wiki,output} as the sole canon root plus vaults/* as federated mounts — byte-for-byte the prior behaviour. 'roots' are canon (counted as the raw→wiki→output pipeline); each has a 'layout' of flat | tier/project | project/tier. 'federated' mounts are navigation context, never counted as canon. ${var} expands here exactly as in backlogs. Broken/dangling paths are skipped and reported (topology.skipped), never fatal.",
     "roots": [
       {
         "label": "instance",
@@ -51,7 +23,7 @@
       },
       {
         "label": "estate",
-        "path": "${code}/vault",
+        "path": "${code}/your-vault",
         "layout": "project/tier"
       }
     ],
@@ -63,7 +35,7 @@
     ]
   },
   "auth": {
-    "_comment": "OIDC \u2014 Google (now) or Tessera (later). enabled = UI login gate. enforce = API requires JWT (Google id_token). allowedEmails strongly recommended so random Google accounts cannot access your vault.",
+    "_comment": "OIDC — Google (now) or Tessera (later). enabled = UI login gate. enforce = API requires JWT (Google id_token). allowedEmails strongly recommended so random Google accounts cannot access your vault.",
     "enabled": false,
     "enforce": false,
     "provider": "google",
