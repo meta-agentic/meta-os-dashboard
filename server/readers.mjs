@@ -30,13 +30,32 @@ export async function ontology(frameworkRoot) {
 // Expand ${var} references from instance.config.json `vars` — recursively over strings,
 // arrays and objects. Lets a single prefix variable (e.g. a shared repo root) repoint every
 // project/backlog path in one shot, instead of hardcoding absolute paths that rot on a move.
-export function expandVars(value, vars = {}) {
+// Depth cap: this walks caller-supplied structures, and `registry()` feeds it YAML
+// front-matter from vault notes — where an anchor/alias can build a cycle. Unbounded
+// recursion turned that into a RangeError that took the whole reader down, so bottom
+// out instead and let the rest of the config through.
+const MAX_DEPTH = 32
+
+export function expandVars(value, vars = {}, depth = 0) {
   if (typeof value === 'string') {
-    return value.replace(/\$\{(\w+)\}/g, (m, k) => (k in vars ? vars[k] : m))
+    // `k in vars` walks the prototype chain, so `${constructor}`, `${toString}` and
+    // `${__proto__}` all resolved to inherited members and were interpolated straight
+    // into filesystem paths. Only an OWN key is a declared variable; anything else is
+    // left literal, exactly as an unknown `${foo}` already was.
+    return value.replace(/\$\{(\w+)\}/g, (m, k) => {
+      if (!Object.hasOwn(vars, k)) return m
+      const v = vars[k]
+      // A declared var must be a scalar. Substituting an object yields "[object Object]"
+      // inside a path, which is never what the author meant.
+      return typeof v === 'string' || typeof v === 'number' ? String(v) : m
+    })
   }
-  if (Array.isArray(value)) return value.map((v) => expandVars(v, vars))
+  if (depth >= MAX_DEPTH) return value
+  if (Array.isArray(value)) return value.map((v) => expandVars(v, vars, depth + 1))
   if (value && typeof value === 'object') {
-    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, expandVars(v, vars)]))
+    return Object.fromEntries(
+      Object.entries(value).map(([k, v]) => [k, expandVars(v, vars, depth + 1)]),
+    )
   }
   return value
 }
