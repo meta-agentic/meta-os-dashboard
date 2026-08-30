@@ -10,7 +10,12 @@ import * as read from '../server/readers.mjs'
 
 const NAME = 'OS heartbeat'
 const configPath = process.env.META_OS_CONFIG ?? new URL('../instance.config.json', import.meta.url).pathname
-const config = JSON.parse(await fs.readFile(configPath, 'utf8'))
+// The config's paths carry `${var}` placeholders defined by its own `vars` block.
+// The server expands the whole config on load (server/index.mjs); this script must do
+// the same, or every path it touches stays a literal "${mova77}/…" and the run dies
+// on ENOENT after launchd has already reported success.
+const rawConfig = JSON.parse(await fs.readFile(configPath, 'utf8'))
+const config = read.expandVars(rawConfig, rawConfig.vars ?? {})
 const instanceRoot = config.instanceRoot
 const frameworkRoot = config.frameworkRoot ?? path.dirname(await fs.realpath(path.join(instanceRoot, 'systems')))
 
