@@ -6,6 +6,8 @@ import Lanes from './widgets/Lanes.jsx'
 import SprintSummary from './widgets/SprintSummary.jsx'
 import Burndown from './widgets/Burndown.jsx'
 import Velocity from './widgets/Velocity.jsx'
+import Packs from './widgets/Packs.jsx'
+import Skills from './widgets/Skills.jsx'
 import Memory from './widgets/Memory.jsx'
 import MemoryFlux from './widgets/MemoryFlux.jsx'
 import Automations from './widgets/Automations.jsx'
@@ -26,7 +28,7 @@ import { useAuth } from './auth/AuthProvider.jsx'
 import Onboarding from './Onboarding.jsx'
 import { deriveOnboarding } from './onboarding.js'
 
-const FEEDS = ['meta', 'ontology', 'registry', 'automations', 'memory', 'events', 'lanes', 'lint', 'outputs', 'usage', 'report']
+const FEEDS = ['meta', 'ontology', 'registry', 'automations', 'memory', 'events', 'lanes', 'lint', 'outputs', 'usage', 'report', 'packs']
 
 const WIDGETS = [
   { i: 'lanes', title: 'Sprint Lanes', render: (d) => <Lanes data={d.lanes} /> },
@@ -46,6 +48,8 @@ const WIDGETS = [
   { i: 'gantt', title: 'Roadmap', render: (d) => <Gantt data={d.report} /> },
   { i: 'burndown', title: 'Burndown', render: (d) => <Burndown data={d.report} /> },
   { i: 'velocity', title: 'Velocity', render: (d) => <Velocity data={d.report} /> },
+  { i: 'packs', title: 'Packs mounted', render: (d) => <Packs data={d.packs} /> },
+  { i: 'skills', title: 'Skills by discipline', render: (d) => <Skills data={d.packs} /> },
   { i: 'report', title: 'Scrum Report', render: (d) => <Report data={d.report} /> },
 ]
 
@@ -66,6 +70,8 @@ const DEFAULT_LAYOUT = [
   { i: 'gantt', x: 6, y: 45, w: 6, h: 11, minW: 4, minH: 7 },
   { i: 'burndown', x: 0, y: 56, w: 6, h: 9, minW: 4, minH: 6 },
   { i: 'velocity', x: 6, y: 56, w: 6, h: 9, minW: 4, minH: 6 },
+  { i: 'packs', x: 0, y: 65, w: 6, h: 9, minW: 4, minH: 6 },
+  { i: 'skills', x: 6, y: 65, w: 6, h: 9, minW: 4, minH: 6 },
   { i: 'report', x: 0, y: 65, w: 12, h: 12, minW: 5, minH: 9 },
   { i: 'graph-table', x: 0, y: 77, w: 6, h: 8, minW: 3, minH: 5 },
 ]
@@ -121,6 +127,8 @@ const DEFAULT_BOARDS = [
       { i: 'activity', x: 0, y: 13, w: 8, h: 7 },
       { i: 'lint', x: 8, y: 13, w: 4, h: 7 },
       { i: 'registry', x: 0, y: 20, w: 12, h: 8 },
+      { i: 'packs', x: 0, y: 28, w: 6, h: 9 },
+      { i: 'skills', x: 6, y: 28, w: 6, h: 9 },
     ],
   },
 ]
