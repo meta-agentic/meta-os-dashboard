@@ -1496,3 +1496,15 @@ line.zap { stroke: var(--accent); stroke-opacity: 0.9; }
 .sw-cats i { flex: 1; height: 9px; border-radius: 1px; }
 .nav-sub { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--dim); margin: 0.5rem 0 0.3rem; }
 .tradeoff { color: var(--wip); margin-left: 0.2em; font-weight: 700; }
+
+/* Packs + Skills (MOS-85). The pair reads the discipline surface: a health
+   summary and a by-discipline browser. Only tokens, no literals. */
+.filter {
+  width: 100%; box-sizing: border-box; margin-bottom: 0.5rem;
+  font: inherit; font-size: 0.8rem; color: var(--fg);
+  background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+  padding: 0.35rem 0.6rem;
+}
+.filter:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.skill-list { margin: 0.25rem 0 0.6rem 0.9rem; border-left: 1px solid var(--border); padding-left: 0.7rem; }
+.skill-list > li { margin-bottom: 0.45rem; }

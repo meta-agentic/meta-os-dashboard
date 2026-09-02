@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url'
 import * as read from '../server/readers.mjs'
 import { graphSources, graphView } from '../server/graph.mjs'
 import { lint } from '../server/lint.mjs'
+import { packs } from '../server/packs.mjs'
 import { reports } from '../server/reports.mjs'
 
 const root = path.dirname(fileURLToPath(import.meta.url))
@@ -54,6 +55,7 @@ await write('memory', await read.memory(instanceRoot))
 await write('events', await read.events(instanceRoot, config.backlogs))
 await write('lanes', await read.lanes(config.backlogs))
 await write('lint', await lint(instanceRoot, frameworkRoot))
+await write('packs', await packs(instanceRoot, frameworkRoot, config.claudeHome))
 await write('outputs', await read.outputs(instanceRoot))
 await write('report', await reports(config.backlogs))
 await write('usage', { available: false, reason: 'engine usage is local-only — not included in static snapshots' })
