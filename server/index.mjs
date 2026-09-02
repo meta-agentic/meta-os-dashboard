@@ -6,6 +6,7 @@ import path from 'node:path'
 import * as read from './readers.mjs'
 import { graphSources, graphView } from './graph.mjs'
 import { lint } from './lint.mjs'
+import { packs } from './packs.mjs'
 import { usage } from './usage.mjs'
 import * as files from './files.mjs'
 import * as boards from './boards.mjs'
@@ -174,6 +175,9 @@ if (isGithub) {
   app.get('/api/outputs', api(() => gh.outputs(ghCtx)))
   app.get('/api/usage', api(() => gh.usage()))
   app.get('/api/lint', api(() => gh.lint(ghCtx)))
+  // No GitHub twin: mount state is a property of the machine running the skills,
+  // which a remote tree cannot observe. Degrade with the reason instead of 404.
+  app.get('/api/packs', api(async () => ({ available: false, reason: 'mount state is local-only — not observable from a GitHub source' })))
   app.get('/api/graphs', api(() => ghGraph.graphSources(ghCtx)))
   app.get('/api/graph', api(async (req) => {
     const { name, ...opts } = req.query
@@ -206,6 +210,7 @@ if (isGithub) {
     return usage(config.claudeHome, reg.projects ?? [])
   }))
   app.get('/api/lint', api(() => lint(instanceRoot, frameworkRoot)))
+  app.get('/api/packs', api(() => packs(instanceRoot, frameworkRoot, config.claudeHome)))
   app.get('/api/graphs', api(async () => {
     const reg = await read.registry(instanceRoot, config.vars ?? {})
     return graphSources(instanceRoot, reg.projects ?? [])
