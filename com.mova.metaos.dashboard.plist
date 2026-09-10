@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  meta-os-dashboard as a launchd service.
+
+  Install:   cp com.mova.metaos.dashboard.plist ~/Library/LaunchAgents/
+             launchctl load ~/Library/LaunchAgents/com.mova.metaos.dashboard.plist
+  Status:    launchctl list | grep metaos.dashboard
+  Logs:      tail -f /tmp/metaos-dashboard.log /tmp/metaos-dashboard.err
+  Stop:      launchctl unload ~/Library/LaunchAgents/com.mova.metaos.dashboard.plist
+  Remove:    ...then rm ~/Library/LaunchAgents/com.mova.metaos.dashboard.plist
+
+  Why launchd and not a shell script: a process started from a Claude Code
+  session is parented to that session and reaped by its background-job
+  supervisor — it killed `npm run dev`, `npm run server` and a 40-line
+  dependency-free static server alike, while the host still had 31% memory
+  free. Independence comes from the process NOT being a child of the session,
+  which is what launchd provides. Follows the convention already established
+  by com.mova.metaos.heartbeat.
+-->
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.mova.metaos.dashboard</string>
+
+	<!-- `npm run dev` = concurrently(server/index.mjs :3777, vite :5173).
+	     For the API alone, swap the three ProgramArguments strings below for:
+	       <string>/Users/mova/.nvm/versions/node/v24.15.0/bin/node</string>
+	       <string>server/index.mjs</string> -->
+	<key>ProgramArguments</key>
+	<array>
+		<string>/Users/mova/.nvm/versions/node/v24.15.0/bin/node</string>
+		<string>/Users/mova/.nvm/versions/node/v24.15.0/lib/node_modules/npm/bin/npm-cli.js</string>
+		<string>run</string>
+		<string>dev</string>
+	</array>
+
+	<key>WorkingDirectory</key>
+	<string>/Users/mova/code/mova77/meta-os-dashboard</string>
+
+	<!-- launchd starts with a bare PATH and loads no shell profile, so nvm's
+	     node bin must be named explicitly or npm/vite/concurrently won't resolve. -->
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>PATH</key>
+		<string>/Users/mova/.nvm/versions/node/v24.15.0/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+	</dict>
+
+	<key>RunAtLoad</key>
+	<true/>
+	<key>KeepAlive</key>
+	<true/>
+
+	<key>StandardOutPath</key>
+	<string>/tmp/metaos-dashboard.log</string>
+	<key>StandardErrorPath</key>
+	<string>/tmp/metaos-dashboard.err</string>
+</dict>
+</plist>
