@@ -340,3 +340,73 @@ export function LineChart({ data, unit = 'value', xLabel = 'category' }) {
     </svg>
   )
 }
+
+// Overlaid multi-series line — several series read against ONE shared pair of axes,
+// which is the only way a comparison between them is honest: a common y scale in a
+// common unit, and a common x domain so a point's horizontal position means the same
+// thing for every series. Series are identified by colour + legend, not by a second
+// axis (a dual axis manufactures correlations that aren't in the data).
+//
+// `series`: [{ key, label, points: [{ x: number, label, value }] }] — x is numeric so
+// the domain is genuinely shared even when series don't share sample points; a series
+// simply has no mark where it has no datum, and its line connects its own neighbours.
+// A one-point series still draws its dot rather than vanishing.
+export function MultiLineChart({ series, unit = 'value', xLabel = 'x', xFmt = fmt, yMax }) {
+  const cat = useCatColors()
+  const shown = (series ?? []).filter((s) => s.points?.length)
+  if (!shown.length) return <div className="degraded">no series selected</div>
+
+  const W = 340, H = 176, padL = 34, padR = 12, padT = 12, padB = 40
+  const xs = shown.flatMap((s) => s.points.map((p) => p.x))
+  const x0 = Math.min(...xs), x1 = Math.max(...xs)
+  const span = x1 - x0
+  const max = Math.max(1, yMax ?? Math.max(...shown.flatMap((s) => s.points.map((p) => p.value))))
+  // A degenerate domain (every series sampled at one instant) would divide by zero;
+  // park those marks in the middle rather than at a meaningless edge.
+  const X = (v) => (span > 0 ? padL + ((v - x0) / span) * (W - padL - padR) : (padL + W - padR) / 2)
+  const Y = (v) => H - padB - (v / max) * (H - padB - padT)
+  const ticks = [0, max / 2, max]
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="line-svg multi" role="img"
+      aria-label={`${xLabel} vs ${unit}, ${shown.length} series overlaid`}>
+      {ticks.map((t, i) => (
+        <g key={'y' + i}>
+          <line x1={padL} y1={Y(t)} x2={W - padR} y2={Y(t)} className="grid" />
+          <text x={padL - 4} y={Y(t) + 3} className="ax-tick" textAnchor="end">{fmt(t)}</text>
+        </g>
+      ))}
+      <line x1={padL} y1={padT} x2={padL} y2={H - padB} className="axis" />
+      <line x1={padL} y1={H - padB} x2={W - padR} y2={H - padB} className="axis" />
+      <text transform={`translate(9 ${(padT + H - padB) / 2}) rotate(-90)`} className="ax-unit" textAnchor="middle">{unit}</text>
+
+      {shown.map((s, si) => {
+        const color = s.color || colorAt(s.ci ?? si, cat)
+        const pts = [...s.points].sort((a, b) => a.x - b.x).map((p) => ({ ...p, px: X(p.x), py: Y(p.value) }))
+        return (
+          <g key={s.key}>
+            {pts.length > 1 && (
+              <polyline points={pts.map((p) => `${p.px.toFixed(1)},${p.py.toFixed(1)}`).join(' ')}
+                className="ml-path" style={{ stroke: color }} />
+            )}
+            {pts.map((p, i) => (
+              <circle key={i} cx={p.px} cy={p.py} r={pts.length === 1 ? 3.5 : 2.6}
+                className="ml-dot" style={{ stroke: color, fill: pts.length === 1 ? color : undefined }}>
+                <title>{`${s.label} · ${p.label}: ${fmt(p.value)} ${unit}`}</title>
+              </circle>
+            ))}
+          </g>
+        )
+      })}
+
+      {/* x axis: domain endpoints + midpoint, then the dimension name */}
+      {(span > 0 ? [x0, (x0 + x1) / 2, x1] : [x0]).map((t, i, a) => (
+        <text key={'x' + i} x={X(t)} y={H - padB + 13} className="ax-tick"
+          textAnchor={a.length === 1 ? 'middle' : i === 0 ? 'start' : i === a.length - 1 ? 'end' : 'middle'}>
+          {xFmt(t)}
+        </text>
+      ))}
+      <text x={(padL + W - padR) / 2} y={H - 4} className="ax-unit" textAnchor="middle">{xLabel} →</text>
+    </svg>
+  )
+}
