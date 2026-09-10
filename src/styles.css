@@ -1338,6 +1338,22 @@ line.zap { stroke: var(--accent); stroke-opacity: 0.9; }
 .line-svg .dot { fill: var(--card); stroke: var(--accent); stroke-width: 1.5; }
 .line-svg .dot.end { fill: var(--accent); }
 
+/* Overlaid multi-series line: one shared pair of axes, colour carries series identity. */
+.line-svg .grid { stroke: var(--border); stroke-width: 1; opacity: 0.4; }
+.line-svg.multi .ml-path { fill: none; stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round; }
+.line-svg.multi .ml-dot { fill: var(--card); stroke-width: 1.5; }
+
+/* Series legend doubles as the on/off control; an off series keeps its hue as an
+   outline so the swatch still says which colour will come back. */
+.series-legend { flex-direction: row; flex-wrap: wrap; gap: 0.15rem 0.9rem; min-width: 0; margin-top: 0.45rem; max-height: 7.5rem; overflow-y: auto; }
+.series-legend li { flex: 1 1 9.5rem; }
+.series-legend .legend-b.toggle { cursor: pointer; border-radius: 4px; padding: 0.12rem 0.2rem; }
+.series-legend .legend-b.toggle i { border: 1.5px solid transparent; }
+.series-legend .legend-b.toggle:hover { background: var(--border); }
+.series-legend .legend-b.on .legend-lbl { color: var(--fg); }
+.series-legend .legend-b.off { opacity: 0.5; }
+.series-legend .legend-b.off .legend-lbl { text-decoration: line-through; }
+
 /* ── File / hex preview widget ─────────────────────────────────────────── */
 .fp { display: flex; flex-direction: column; height: 100%; gap: 0.4rem; }
 .fp-bar { display: flex; align-items: center; gap: 0.5rem; }
