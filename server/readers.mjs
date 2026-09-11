@@ -550,7 +550,14 @@ export async function events(instanceRoot, backlogs, limit = 40) {
 // field (the swarm-harness rule: a lane is a distinct codebase/service). Forecast is
 // velocity-based from closed sprints; the backlog mirror has no per-story transition
 // timestamps, so cycle-time is reported unavailable rather than faked.
-const STATE = { 'TO DO': 'todo', PLANNED: 'todo', 'IN PROGRESS': 'in-progress', DONE: 'done' }
+// Every status the vault can hold must map, or the item vanishes from flow entirely.
+// REFINED is the normal state of freshly-planned work, so omitting it made a just-opened
+// sprint render as "no active sprint" — the space looked stuck rather than ready.
+const STATE = {
+  'TO DO': 'todo', PLANNED: 'todo', REFINED: 'todo',
+  'IN PROGRESS': 'in-progress', 'IN REVIEW': 'in-progress',
+  DONE: 'done',
+}
 
 export async function lanes(backlogs) {
   if (!backlogs?.length) return unavailable('no backlogs configured in instance.config.json')
