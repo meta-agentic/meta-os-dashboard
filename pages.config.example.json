@@ -2,10 +2,9 @@
   "_comment": "Used by .github/workflows/pages.yml to clone your instance vault and federated vault repos into a build-time tree. Copy to pages.config.json and adjust paths. Private repos need the default GITHUB_TOKEN (same org) or a PAT in secrets.PAGES_CLONE_TOKEN.",
   "workDir": ".pages",
   "repos": [
-    { "repo": "meta-agentic/mova-os", "dir": "instance" },
+    { "repo": "<you>/<your-instance-repo>", "dir": "instance" },
     { "repo": "meta-agentic/meta-os", "dir": "framework" },
-    { "repo": "mova77/vault-ios", "dir": "vaults/ios" },
-    { "repo": "mova77/vault-iam", "dir": "vaults/iam" }
+    { "repo": "<you>/<your-vault-repo>", "dir": "vaults/example" }
   ],
   "instanceConfig": {
     "instanceRoot": "${workDir}/instance",

@@ -1,6 +1,6 @@
 {
   "vars": {
-    "mova77": "/path/to/your/estate",
+    "code": "/path/to/your/code-root",
     "derived": "/path/to/instance/automations/backlog/derived"
   },
   "instanceRoot": "${code}/your-instance-vault",
@@ -74,7 +74,7 @@
     "scope": "openid email profile",
     "loginLabel": "Sign in with Google",
     "allowedEmails": [
-      "marco.vanadia@gmail.com"
+      "you@example.com"
     ]
   }
 }

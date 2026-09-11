@@ -1,7 +1,7 @@
 {
   "_comment": "Deployed API mode \u2014 server reads private repos via GITHUB_TOKEN (env var, never in the browser). Pair with GitHub Pages frontend using VITE_API_URL.",
   "source": "github",
-  "corsOrigins": "https://mova77.github.io,http://localhost:5173",
+  "corsOrigins": "https://<you>.github.io,http://localhost:5173",
   "vars": {},
   "github": {
     "instance": {
@@ -56,12 +56,12 @@
     "issuer": "https://accounts.google.com",
     "clientId": "YOUR_GOOGLE_OAUTH_CLIENT_ID.apps.googleusercontent.com",
     "audience": "YOUR_GOOGLE_OAUTH_CLIENT_ID.apps.googleusercontent.com",
-    "redirectUri": "https://mova77.github.io/meta-os-dashboard/",
+    "redirectUri": "https://<you>.github.io/meta-os-dashboard/",
     "scope": "openid email profile",
     "loginLabel": "Sign in with Google",
     "loginHint": "Use your Google account. Only allow-listed emails can access this instance.",
     "allowedEmails": [
-      "marco.vanadia@gmail.com"
+      "you@example.com"
     ]
   }
 }
