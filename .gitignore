@@ -10,3 +10,8 @@ public/snapshots/
 
 # per-user dashboard boards (server persistence)
 .data/
+
+# Agent runtime state — absolute local paths, churns every session (never portable).
+.claude-flow/
+.claude/proven-config.json
+.claude/.proven-config-version
