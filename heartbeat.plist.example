@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  The OS heartbeat (scripts/heartbeat.mjs) as a daily launchd job.
+
+  A template, like dashboard.plist.example: every value below marked /path/to/... or
+  com.example... is machine-local, so this file is tracked with placeholders and the
+  filled-in copy is gitignored.
+
+  Install:   node scripts/install-heartbeat.mjs --label com.yourname.metaos.heartbeat
+             cp com.yourname.metaos.heartbeat.plist ~/Library/LaunchAgents/
+             launchctl load ~/Library/LaunchAgents/com.yourname.metaos.heartbeat.plist
+  Status:    launchctl list | grep metaos.heartbeat
+  Logs:      tail -f ~/Library/Logs/metaos-heartbeat.log ~/Library/Logs/metaos-heartbeat.err
+  Reload:    launchctl unload <plist> && launchctl load <plist>
+
+  Do not hand-edit the filled-in copy when the checkout moves. Re-run
+  install-heartbeat.mjs from the new location and reload: it derives every absolute
+  path from the checkout it is run out of and from `process.execPath`, so a move is a
+  re-run rather than four paths to remember. The job was dead for eight weeks because
+  a checkout moved and this file did not follow it.
+
+  Two things launchd does not do for you:
+
+  - It loads no shell profile and starts with a bare PATH, so a node from a version
+    manager (nvm, fnm, asdf, volta) must be named by absolute path. That path pins a
+    node version; re-run the installer after a node upgrade removes the old one.
+  - It reports only an exit code. When the exec itself fails — a stale ProgramArguments
+    path gives 78 (EX_CONFIG) — the process never starts, so StandardErrorPath is never
+    created and nothing is written anywhere. An exit code of 78 in `launchctl list` with
+    no log file at all is that case, and it means these paths are wrong.
+
+  Logs go under ~/Library/Logs rather than /tmp: /tmp is purged on reboot, which is the
+  wrong retention for the only evidence a scheduled job leaves behind.
+-->
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.example.metaos.heartbeat</string>
+
+	<key>ProgramArguments</key>
+	<array>
+		<string>/path/to/node/bin/node</string>
+		<string>/path/to/meta-os-dashboard/scripts/heartbeat.mjs</string>
+	</array>
+
+	<!-- The script resolves instance.config.json relative to its own file URL, so it does
+	     not depend on this value; it is set so a crash dump or core file lands in the
+	     checkout rather than in /. -->
+	<key>WorkingDirectory</key>
+	<string>/path/to/meta-os-dashboard</string>
+
+	<key>StartCalendarInterval</key>
+	<dict>
+		<key>Hour</key>
+		<integer>9</integer>
+		<key>Minute</key>
+		<integer>0</integer>
+	</dict>
+
+	<key>StandardOutPath</key>
+	<string>/path/to/home/Library/Logs/metaos-heartbeat.log</string>
+	<key>StandardErrorPath</key>
+	<string>/path/to/home/Library/Logs/metaos-heartbeat.err</string>
+</dict>
+</plist>
