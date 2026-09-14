@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  meta-os-dashboard as a launchd service.
+
+  A template. Every value below marked /path/to/... or com.example... is
+  machine-local, so this file is tracked with placeholders and the filled-in
+  copy is gitignored — the same split this repo already uses for
+  instance.config.example.json.
+
+  Fill in:   /path/to/node/bin              dirname "$(which node)"
+             /path/to/npm/bin/npm-cli.js    "$(npm root -g)"/npm/bin/npm-cli.js
+             /path/to/meta-os-dashboard     the absolute path of this checkout
+             com.example.metaos.dashboard   your own reverse-DNS label
+
+  Install:   cp dashboard.plist.example com.example.metaos.dashboard.plist
+             # ...edit the four values above, then:
+             cp com.example.metaos.dashboard.plist ~/Library/LaunchAgents/
+             launchctl load ~/Library/LaunchAgents/com.example.metaos.dashboard.plist
+  Status:    launchctl list | grep metaos.dashboard
+  Logs:      tail -f /tmp/metaos-dashboard.log /tmp/metaos-dashboard.err
+  Stop:      launchctl unload ~/Library/LaunchAgents/com.example.metaos.dashboard.plist
+  Remove:    ...then rm ~/Library/LaunchAgents/com.example.metaos.dashboard.plist
+
+  Why launchd and not a shell script: a process started from a Claude Code
+  session is parented to that session and reaped by its background-job
+  supervisor — it killed `npm run dev`, `npm run server` and a 40-line
+  dependency-free static server alike, while the host still had 31% memory
+  free. Independence comes from the process NOT being a child of the session,
+  which is what launchd provides.
+-->
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.example.metaos.dashboard</string>
+
+	<!-- `npm run dev` = concurrently(server/index.mjs :3777, vite :5173).
+	     For the API alone, swap the three ProgramArguments strings below for:
+	       <string>/path/to/node/bin/node</string>
+	       <string>server/index.mjs</string> -->
+	<key>ProgramArguments</key>
+	<array>
+		<string>/path/to/node/bin/node</string>
+		<string>/path/to/npm/bin/npm-cli.js</string>
+		<string>run</string>
+		<string>dev</string>
+	</array>
+
+	<key>WorkingDirectory</key>
+	<string>/path/to/meta-os-dashboard</string>
+
+	<!-- launchd starts with a bare PATH and loads no shell profile, so if node
+	     comes from a version manager (nvm, fnm, asdf, volta) its bin dir must be
+	     named explicitly or npm/vite/concurrently won't resolve. -->
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>PATH</key>
+		<string>/path/to/node/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+	</dict>
+
+	<key>RunAtLoad</key>
+	<true/>
+	<key>KeepAlive</key>
+	<true/>
+
+	<key>StandardOutPath</key>
+	<string>/tmp/metaos-dashboard.log</string>
+	<key>StandardErrorPath</key>
+	<string>/tmp/metaos-dashboard.err</string>
+</dict>
+</plist>

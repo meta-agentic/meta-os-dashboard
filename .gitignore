@@ -17,3 +17,6 @@ public/snapshots/
 ruvector.db
 .claude/proven-config.json
 .claude/.proven-config-version
+
+# filled-in launchd manifest (absolute paths, machine-local) — template is dashboard.plist.example
+*.metaos.dashboard.plist
