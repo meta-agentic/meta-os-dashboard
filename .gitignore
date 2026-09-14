@@ -18,5 +18,7 @@ ruvector.db
 .claude/proven-config.json
 .claude/.proven-config-version
 
-# filled-in launchd manifest (absolute paths, machine-local) — template is dashboard.plist.example
+# filled-in launchd manifests (absolute paths, machine-local) — templates are
+# dashboard.plist.example and heartbeat.plist.example
 *.metaos.dashboard.plist
+*.metaos.heartbeat.plist
