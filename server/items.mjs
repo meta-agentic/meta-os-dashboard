@@ -43,13 +43,30 @@ export function itemDetailRow(d, file) {
     const t = byId.get(id)
     return t ? { id, title: t.title, status: t.status, flowState: STATE[t.status] ?? null } : { id }
   }
+  // Parent chain (this item's epic, that epic's own epic, and so on), furthest
+  // ancestor first. Carries kind/project too, so the client can show the same tag
+  // row for a parent as it does for the item itself. A cycle (malformed data) or an
+  // unknown id just ends the walk rather than looping or guessing further.
+  const parentLink = (id) => {
+    const t = byId.get(id)
+    return t ? { id, title: t.title, status: t.status, flowState: STATE[t.status] ?? null, kind: t.kind, project: t.project } : { id }
+  }
+  const parents = []
+  const seen = new Set([item.id])
+  for (let cur = item.epic; cur && !seen.has(cur); ) {
+    seen.add(cur)
+    const p = parentLink(cur)
+    parents.push(p)
+    cur = byId.get(cur)?.epic ?? null
+  }
+  parents.reverse()
   const links = (ids) => [...new Set(ids.map(String))].map(link)
   const backlinks = (pick) =>
     all.filter((s) => s.id !== item.id && pick(s)).map((s) => link(s.id)).sort((a, b) => idKey(a.id).localeCompare(idKey(b.id)))
   return {
     ...row(item, blockedBy(item)),
     priority: file.fm.priority ?? null,
-    epicLink: item.epic ? link(item.epic) : null,
+    parents,
     dependencies: links(item.dependencies),
     relates: links(item.relates),
     dependents: backlinks((s) => s.dependencies.includes(item.id)),
