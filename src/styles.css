@@ -1407,6 +1407,10 @@ th.num .wi-sort { justify-content: flex-end; }
 
 /* detail page */
 .wi-detail { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 0.8rem; padding-right: 0.2rem; }
+.wi-parents { display: flex; flex-direction: column; gap: 0.3rem; padding-bottom: 0.5rem; margin-bottom: 0.1rem; border-bottom: 1px dashed var(--border); }
+.wi-parent { display: flex; flex-direction: column; gap: 0.1rem; border-left: 2px solid var(--border); padding-left: 0.5rem; }
+.wi-parent .wi-dtags { font-size: 0.72rem; }
+.wi-parent-title { font-size: 0.78rem; color: var(--dim); }
 .wi-dhead { display: flex; flex-direction: column; gap: 0.35rem; }
 .wi-dtags { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
 .wi-dtags .wi-id { font-size: 0.85rem; font-weight: 600; }

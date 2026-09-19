@@ -152,6 +152,26 @@ function Detail({ view, onOpen }) {
   const blocked = (it.blockedBy ?? []).map((id) => it.dependencies.find((d) => d.id === id) ?? { id })
   return (
     <div className="wi-detail">
+      {it.parents?.length > 0 && (
+        <div className="wi-parents">
+          {it.parents.map((p, i) => (
+            <div className="wi-parent" key={p.id} style={{ paddingLeft: `${i * 0.7}rem` }}>
+              <div className="wi-dtags">
+                <span className="dim small">parent</span>
+                {p.title != null ? (
+                  <button className="chip wi-link mono" onClick={() => onOpen(p.id)} title={`Open ${p.id}`}>{p.id}</button>
+                ) : (
+                  <span className="chip wi-link off mono" title="not an item in this space">{p.id}</span>
+                )}
+                {p.title != null && <Pill status={p.status} flowState={p.flowState} small />}
+                {p.kind && <span className="chip small">{p.kind}</span>}
+                {p.project && <span className="chip small mono">{p.project}</span>}
+              </div>
+              <div className="wi-parent-title">{p.title ?? <em className="dim">unknown here</em>}</div>
+            </div>
+          ))}
+        </div>
+      )}
       <header className="wi-dhead">
         <div className="wi-dtags">
           <span className="wi-id mono">{it.id}</span>
@@ -162,17 +182,11 @@ function Detail({ view, onOpen }) {
         </div>
         <h3 className="wi-dtitle">{it.title}</h3>
       </header>
-      {(meta.length > 0 || it.epicLink || labels.length > 0) && (
+      {(meta.length > 0 || labels.length > 0) && (
         <dl className="wi-meta">
           {meta.map(([k, v]) => (
             <div key={k}><dt>{k}</dt><dd>{String(v)}</dd></div>
           ))}
-          {it.epicLink && (
-            <div><dt>epic</dt><dd>
-              <button className="chip wi-link" onClick={() => onOpen(it.epicLink.id)} title={it.epicLink.title ?? `Open ${it.epicLink.id}`}>{it.epicLink.id}</button>
-              {it.epicLink.title && <span className="wi-ltitle dim" title={it.epicLink.title}>{it.epicLink.title}</span>}
-            </dd></div>
-          )}
           {labels.length > 0 && (
             <div className="wi-labels"><dt>labels</dt><dd>{labels.map((l) => <span key={l} className="chip">{l}</span>)}</dd></div>
           )}
