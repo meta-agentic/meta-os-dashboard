@@ -187,9 +187,12 @@ function Detail({ view, space, onOpen }) {
   )
 }
 
-export default function WorkItems({ spaces }) {
-  const options = spaces?.length ? spaces : []
-  const [space, setSpace] = useState(options[0] ?? '')
+export default function WorkItems({ spaces, selected }) {
+  // Driven entirely by the global project filter bar (App.jsx), not an internal
+  // picker — this table only ever shows one project, so it needs exactly one
+  // selected there; zero or several fall through to a guidance state below.
+  const selectedList = useMemo(() => [...(selected ?? [])], [selected])
+  const space = selectedList.length === 1 ? selectedList[0] : ''
   const [list, setList] = useState({ status: 'idle' })
   const [q, setQ] = useState('')
   const [state, setState] = useState('')
@@ -199,10 +202,6 @@ export default function WorkItems({ spaces }) {
   const cache = useRef(new Map())
   const scrollPos = useRef(0)
   const seq = useRef(0)
-
-  useEffect(() => {
-    if (!space && options.length) setSpace(options[0])
-  }, [options.join(',')])
 
   const loadList = () => {
     if (!space) return setList({ status: 'idle' })
@@ -268,10 +267,7 @@ export default function WorkItems({ spaces }) {
   return (
     <div className="wi">
       <div className="fp-bar wi-bar">
-        <select className="fp-root" value={space} onChange={(e) => setSpace(e.target.value)} disabled={!options.length} title="Backlog space">
-          {!options.length && <option value="">no spaces</option>}
-          {options.map((s) => <option key={s} value={s}>{s.toUpperCase()}</option>)}
-        </select>
+        {space && <span className="mono wi-space" title="Project — set from the filter bar above">{space.toUpperCase()}</span>}
         {view ? (
           <>
             <button className="fp-btn" onClick={back} title={trail.length ? `Back to ${trail[trail.length - 1]}` : 'Back to the table'}>← back</button>
@@ -314,8 +310,15 @@ export default function WorkItems({ spaces }) {
 
       {view ? (
         <Detail view={view} space={space} onOpen={open} />
-      ) : list.status === 'idle' ? (
+      ) : !spaces?.length ? (
         <div className="degraded">no backlog spaces configured — add one under `backlogs` in instance.config.json</div>
+      ) : selectedList.length === 0 ? (
+        <div className="degraded">select a project in the bar above to browse its work items</div>
+      ) : selectedList.length > 1 ? (
+        <div className="degraded">
+          {selectedList.length} projects selected — Work Items shows one at a time; narrow the selection above
+          ({selectedList.map((s) => s.toUpperCase()).join(', ')})
+        </div>
       ) : list.status === 'loading' ? (
         <div className="degraded">loading {space.toUpperCase()}…</div>
       ) : list.status === 'error' ? (

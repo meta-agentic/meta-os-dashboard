@@ -1371,6 +1371,7 @@ line.zap { stroke: var(--accent); stroke-opacity: 0.9; }
 /* ── Work items widget ──────────────────────────────────────────────────── */
 .wi { display: flex; flex-direction: column; height: 100%; gap: 0.5rem; min-height: 0; }
 .wi-bar { flex-wrap: wrap; row-gap: 0.35rem; }
+.wi-space { font-size: 0.72rem; font-weight: 600; color: var(--accent); background: var(--card); border: 1px solid var(--border); border-radius: 5px; padding: 0.18rem 0.5rem; white-space: nowrap; }
 .wi-search { flex: 1 1 12rem; min-width: 8rem; font: inherit; font-size: 0.75rem; color: var(--fg); background: var(--bg); border: 1px solid var(--border); border-radius: 5px; padding: 0.18rem 0.5rem; }
 .wi-search:focus { outline: none; border-color: var(--accent); }
 .wi-count { white-space: nowrap; font-variant-numeric: tabular-nums; }

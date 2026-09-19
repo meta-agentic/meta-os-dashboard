@@ -53,7 +53,9 @@ const WIDGETS = [
   { i: 'skills', title: 'Skills by discipline', render: (d) => <Skills data={d.packs} /> },
   { i: 'report', title: 'Scrum Report', render: (d) => <Report data={d.report} /> },
   // Fetches on demand (whole-space list + per-item detail), not from the polled feeds.
-  { i: 'work-items', title: 'Work Items', render: (d) => <WorkItems spaces={projectOptions(d)} /> },
+  // Driven by the global project filter bar, not its own picker — ctx.selectedProjects
+  // is the same Set every space-scoped widget reads.
+  { i: 'work-items', title: 'Work Items', render: (d, ctx) => <WorkItems spaces={projectOptions(d)} selected={ctx?.selectedProjects} /> },
 ]
 
 const DEFAULT_LAYOUT = [
@@ -554,7 +556,7 @@ export default function App() {
                 ×
               </button>
             </div>
-            <div className="wgt-body">{w.render(scopeToProject(data, w.i, selectedProjects))}</div>
+            <div className="wgt-body">{w.render(scopeToProject(data, w.i, selectedProjects), { selectedProjects })}</div>
           </div>
         ))}
       </Grid>
