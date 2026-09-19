@@ -148,17 +148,46 @@ function loadPrefs() {
     return { ...DEFAULT_PREFS }
   }
 }
-// Group filter is GLOBAL and persisted: groups are an alternative axis to boards,
-// so hiding "diagrams" should mean hiding it everywhere, not per board. It keys on
-// group NAME rather than id, because each board mints its own ids — the "diagrams"
-// on Delivery and a "diagrams" elsewhere are different ids for the same idea.
-// Stored apart from the boards doc: this is a view preference, not layout.
-const GROUPFILTER_KEY = 'meta-os.groupfilter.v1'
-const UNGROUPED = '\u0000ungrouped'   // sentinel; cannot collide with a real name
-function loadGroupFilter() {
+// Widgets whose data is keyed by backlog SPACE (ios, iam, vec, ...) — the only ones
+// the global project filter can act on. Registry uses a different, unlinked project
+// vocabulary (repo entries, no `space` field), and most other widgets (Graph, Packs,
+// Files, Usage, ...) have no project axis at all, so the filter leaves them alone.
+const SPACE_SCOPED = new Set(['lanes', 'sprint-summary', 'distribution', 'activity'])
+
+// Every backlog space currently known to the lanes feed — the option list for the
+// project filter bar. Derived live so a newly-onboarded space shows up without a
+// code change.
+const projectOptions = (data) =>
+  [...new Set((data?.lanes?.spaces ?? []).filter((s) => s.available !== false).map((s) => s.space))].sort()
+
+// Narrows the shared feed data down to the selected projects, for one space-scoped
+// widget. An empty selection means no filter. `lanes`/`sprint-summary`/
+// `distribution` all read `d.lanes.spaces`; `activity` reads `d.events.events`,
+// whose rows carry the space as `actor`.
+function scopeToProject(data, widgetId, selected) {
+  if (!selected.size || !SPACE_SCOPED.has(widgetId)) return data
+  if (widgetId === 'activity') {
+    return {
+      ...data,
+      events: data.events && { ...data.events, events: (data.events.events ?? []).filter((e) => selected.has(e.actor)) },
+    }
+  }
+  return {
+    ...data,
+    lanes: data.lanes && { ...data.lanes, spaces: (data.lanes.spaces ?? []).filter((s) => selected.has(s.space)) },
+  }
+}
+
+// Project filter is GLOBAL and persisted, like the group filter it replaces:
+// zero or more selected projects, applying to every space-scoped widget on every
+// board — not a per-board layout concern, so it's stored apart from the boards doc.
+// Empty selection = no filter (show every project), same as the old "no groups
+// hidden" state.
+const PROJECTFILTER_KEY = 'meta-os.projectfilter.v1'
+function loadProjectFilter() {
   try {
-    const raw = JSON.parse(localStorage.getItem(GROUPFILTER_KEY) || 'null')
-    if (Array.isArray(raw?.hidden)) return new Set(raw.hidden)
+    const raw = JSON.parse(localStorage.getItem(PROJECTFILTER_KEY) || 'null')
+    if (Array.isArray(raw?.selected)) return new Set(raw.selected)
   } catch { /* private mode */ }
   return new Set()
 }
@@ -173,7 +202,7 @@ function loadOnboarding() {
 }
 const Grid = WidthProvider(GridLayout)
 const newId = (p = 'b') => p + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36)
-const normBoard = (b) => ({ groups: [], membership: {}, ...b, layout: withFloors(b.layout) })
+const normBoard = (b) => ({ ...b, layout: withFloors(b.layout) })
 
 function loadBoards() {
   try {
@@ -201,7 +230,7 @@ export default function App() {
   const [data, setData] = useState({})
   const [error, setError] = useState(null)
   const [{ boards, activeId }, setState] = useState(loadBoards)
-  const [hiddenGroups, setHiddenGroups] = useState(loadGroupFilter)
+  const [selectedProjects, setSelectedProjects] = useState(loadProjectFilter)
   const [editingId, setEditingId] = useState(null)
   const [prefs, setPrefs] = useState(loadPrefs)
   const [onboarding, setOnboarding] = useState(loadOnboarding)
@@ -296,23 +325,14 @@ export default function App() {
       const rm = pendingRemove.current
       pendingRemove.current = null
       let layout = withFloors(next)
-      let membership = b.membership
-      if (rm) {
-        layout = layout.filter((l) => l.i !== rm)
-        membership = { ...b.membership }
-        delete membership[rm]
-      }
-      return { ...b, layout, membership }
+      if (rm) layout = layout.filter((l) => l.i !== rm)
+      return { ...b, layout }
     })
 
   const titleOf = (id) => WIDGETS.find((w) => w.i === id)?.title ?? id
   const removeWidget = (id) => {
     if (!window.confirm(`Remove "${titleOf(id)}" from this board?`)) return
-    patchActive((b) => {
-      const membership = { ...b.membership }
-      delete membership[id]
-      return { ...b, layout: b.layout.filter((l) => l.i !== id), membership }
-    })
+    patchActive((b) => ({ ...b, layout: b.layout.filter((l) => l.i !== id) }))
   }
   // Drag a widget clear out of the grid to remove it (confirmed). onDragStop fires
   // before onLayoutChange, which then drops the flagged item from the layout.
@@ -346,7 +366,7 @@ export default function App() {
   const renameBoard = (id, name) => patchBoards((bs) => bs.map((b) => (b.id === id ? { ...b, name: name.trim() || b.name } : b)))
   const resetActive = () => {
     const preset = DEFAULT_BOARDS.find((p) => p.id === active.id)
-    patchActive((b) => ({ ...b, layout: withFloors(preset?.layout ?? DEFAULT_LAYOUT), groups: [], membership: {} }))
+    patchActive((b) => ({ ...b, layout: withFloors(preset?.layout ?? DEFAULT_LAYOUT) }))
   }
   const addWidget = (id) => {
     if (!id) return
@@ -355,31 +375,18 @@ export default function App() {
     patchActive((b) => ({ ...b, layout: withFloors([...b.layout, { ...def, i: id, x: 0, y }]) }))
   }
 
-  // groups
-  const assignGroup = (widgetId, value) => {
-    if (value === '__new') {
-      const name = window.prompt('New group name', 'Group')
-      if (!name) return
-      const gid = newId('g')
-      patchActive((b) => ({
-        ...b,
-        groups: [...b.groups, { id: gid, name: name.trim() || 'Group', collapsed: false }],
-        membership: { ...b.membership, [widgetId]: gid },
-      }))
-      return
-    }
-    patchActive((b) => {
-      const membership = { ...b.membership }
-      if (value) membership[widgetId] = value
-      else delete membership[widgetId]
-      return { ...b, membership }
-    })
+  // project filter
+  const toggleProject = (name) => setSelectedProjects((prev) => {
+    const next = new Set(prev)
+    if (next.has(name)) next.delete(name)
+    else next.add(name)
+    try { localStorage.setItem(PROJECTFILTER_KEY, JSON.stringify({ selected: [...next] })) } catch { /* private mode */ }
+    return next
+  })
+  const clearProjects = () => {
+    setSelectedProjects(new Set())
+    try { localStorage.removeItem(PROJECTFILTER_KEY) } catch { /* private mode */ }
   }
-  const ungroup = (gid) =>
-    patchActive((b) => {
-      const membership = Object.fromEntries(Object.entries(b.membership).filter(([, v]) => v !== gid))
-      return { ...b, groups: b.groups.filter((g) => g.id !== gid), membership }
-    })
 
   if (error) return <div className="degraded">API unreachable: {error}</div>
   if (!data.meta) return <div className="degraded">loading…</div>
@@ -391,28 +398,11 @@ export default function App() {
   const suppressGrid = onb.fresh && !onboarding.dismissed && !showGridAnyway
 
   const inLayout = new Set(active.layout.map((l) => l.i))
-  // Every group name across every board — the filter is global, so a name stays
-  // togglable even while looking at a board with no widget in it.
-  const groupNameById = new Map(boards.flatMap((b) => b.groups.map((g) => [g.id, g.name])))
-  const allGroupNames = [...new Set(boards.flatMap((b) => b.groups.map((g) => g.name)))].sort()
-  const nameOf = (wid) => groupNameById.get(active.membership[wid]) ?? UNGROUPED
-  // Visibility is now the global group filter alone. Per-board `collapsed` is gone:
-  // with the panel moved out of the board there was no control left to un-collapse a
-  // group, so it could only ever hide widgets irrecoverably. The field is still
-  // tolerated in stored docs, just no longer consulted.
-  const visible = WIDGETS.filter((w) => inLayout.has(w.i) && !hiddenGroups.has(nameOf(w.i)))
+  const visible = WIDGETS.filter((w) => inLayout.has(w.i))
   const visibleIds = new Set(visible.map((w) => w.i))
   const gridLayout = active.layout.filter((l) => visibleIds.has(l.i))
-  // What toggling a name does on THIS board — the number that makes the chip honest.
-  const countByName = (name) => active.layout.filter((l) => nameOf(l.i) === name).length
-  const toggleGroupFilter = (name) => setHiddenGroups((prev) => {
-    const next = new Set(prev)
-    if (next.has(name)) next.delete(name)
-    else next.add(name)
-    try { localStorage.setItem(GROUPFILTER_KEY, JSON.stringify({ hidden: [...next] })) } catch { /* private mode */ }
-    return next
-  })
   const missing = WIDGETS.filter((w) => !inLayout.has(w.i))
+  const projects = projectOptions(data)
 
   const dens = DENSITY[prefs.density] || DENSITY.comfortable
 
@@ -444,43 +434,31 @@ export default function App() {
             ))}
           </select>
         )}
-        <button className="ghostbtn" onClick={resetActive} title="Restore the default layout & clear groups on this board">
+        <button className="ghostbtn" onClick={resetActive} title="Restore the default layout on this board">
           Reset layout
         </button>
       </header>
 
-      {(allGroupNames.length > 0 || hiddenGroups.size > 0) && (
-        <div className="groupbar" role="group" aria-label="Group filter">
-          <span className="dim small">groups</span>
-          {[...allGroupNames, UNGROUPED].map((name) => {
-            const on = !hiddenGroups.has(name)
-            const n = countByName(name)
-            const label = name === UNGROUPED ? "ungrouped" : name
-            const gid = active.groups.find((g) => g.name === name)?.id
+      {projects.length > 0 && (
+        <div className="projectbar" role="group" aria-label="Project filter">
+          <span className="dim small">projects</span>
+          {projects.map((p) => {
+            const on = selectedProjects.has(p)
             return (
-              <span key={name} className={"gchip" + (on ? "" : " collapsed")}>
-                <button
-                  className="gchip-toggle"
-                  onClick={() => toggleGroupFilter(name)}
-                  title={(on ? "Hide" : "Show") + " " + label + " everywhere — "
-                    + n + " widget" + (n === 1 ? "" : "s") + " on this board"}
-                >
-                  <span className="chev">{on ? "\u25be" : "\u25b8"}</span> {label}
-                  <span className="gcount">{n}</span>
-                </button>
-                {gid && (
-                  <button className="gchip-x" onClick={() => ungroup(gid)}
-                          title={"Dissolve " + label + " on this board"}
-                          aria-label={"Dissolve group " + label}>×</button>
-                )}
-              </span>
+              <button
+                key={p}
+                className={'pchip' + (on ? ' on' : '')}
+                onClick={() => toggleProject(p)}
+                aria-pressed={on}
+                title={(on ? 'Remove ' : 'Filter to ') + p.toUpperCase()
+                  + ' \u2014 narrows Sprint Lanes, Sprint Summary, Distribution & Activity'}
+              >
+                {p.toUpperCase()}
+              </button>
             )
           })}
-          {hiddenGroups.size > 0 && (
-            <button className="ghostbtn" onClick={() => {
-              setHiddenGroups(new Set())
-              try { localStorage.removeItem(GROUPFILTER_KEY) } catch { /* private mode */ }
-            }} title="Show every group again">show all</button>
+          {selectedProjects.size > 0 && (
+            <button className="ghostbtn" onClick={clearProjects} title="Clear the project filter">show all</button>
           )}
         </div>
       )}
@@ -558,19 +536,6 @@ export default function App() {
               <span className="wgt-grip" aria-hidden="true">⠿</span>
               <span className="wgt-title">{w.title}</span>
               <span className="spacer" />
-              <select
-                className="wgt-group"
-                title="Assign to a group"
-                value={active.membership[w.i] || ''}
-                onChange={(e) => assignGroup(w.i, e.target.value)}
-                onMouseDown={(e) => e.stopPropagation()}
-              >
-                <option value="">— no group —</option>
-                {active.groups.map((g) => (
-                  <option key={g.id} value={g.id}>{g.name}</option>
-                ))}
-                <option value="__new">＋ New group…</option>
-              </select>
               <button
                 className="wgt-x"
                 title="Remove from board"
@@ -581,7 +546,7 @@ export default function App() {
                 ×
               </button>
             </div>
-            <div className="wgt-body">{w.render(data)}</div>
+            <div className="wgt-body">{w.render(scopeToProject(data, w.i, selectedProjects))}</div>
           </div>
         ))}
       </Grid>
