@@ -29,6 +29,17 @@ function pushIssue(issues, feed, source, reason) {
   issues.push({ feed, source: source || null, reason: String(reason) })
 }
 
+// Readers phrase a missing file as a sentence ("no automations/events.jsonl yet")
+// — good for the one-time banner, too long for a checklist row. Most of them share
+// that "no <path> yet" shape, so pull the path back out (dropping the extension,
+// the noisy part) instead of hardcoding a label per reason. Anything that doesn't
+// match (error messages, "X unreadable: ...") is left as-is — still readable, just
+// not shortened.
+function shortLabel(reason) {
+  const m = reason.match(/^no\s+(.+?)(?:\.\w+)?\s+yet$/i)
+  return m ? m[1] : reason
+}
+
 // Walk one feed's payload, collecting every available:false it exposes.
 function collectFeed(issues, feed, payload) {
   if (!payload || typeof payload !== 'object') return
@@ -74,6 +85,7 @@ export function deriveOnboarding(data) {
   }
   const steps = [...byReason.values()].map((s) => ({
     reason: s.reason,
+    short: shortLabel(s.reason),
     feeds: [...s.feeds],
     sources: [...s.sources],
   }))
