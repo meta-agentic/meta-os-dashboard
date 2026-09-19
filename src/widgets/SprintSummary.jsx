@@ -70,10 +70,17 @@ function Tile({ label, value, sub, cls }) {
 export default function SprintSummary({ data }) {
   const spaces = data?.spaces ?? []
   const broken = spaces.filter((s) => s.available === false)
-  const active = spaces.filter((s) => s.available !== false && (s.lanes?.length ?? 0) > 0)
+  // A space with lanes but no live sprint is showing its last CLOSED sprint
+  // (server fallback) — still worth a row, just labeled so it isn't mistaken for
+  // live work. `idle` is the genuine "nothing to show" case: no sprint ever closed.
+  const withSprint = spaces.filter((s) => s.available !== false && (s.lanes?.length ?? 0) > 0)
   const idle = spaces.filter((s) => s.available !== false && (s.lanes?.length ?? 0) === 0)
+  const anyLive = withSprint.some((s) => s.sprintActive)
 
-  const rows = active.map((s) => ({ space: s.space, sprint: s.sprint?.[0] ?? null, t: totals(s), blocked: blockedItems(s) }))
+  const rows = withSprint.map((s) => ({
+    space: s.space, sprint: s.sprint?.[0] ?? null, live: s.sprintActive,
+    t: totals(s), blocked: blockedItems(s),
+  }))
   const grand = rows.length
     ? rows.map((r) => r.t).reduce(add)
     : null
@@ -81,9 +88,9 @@ export default function SprintSummary({ data }) {
   const allBlocked = rows.flatMap((r) => r.blocked)
 
   return (
-    <Card title="Sprint Summary — active flow totals" data={data}>
+    <Card title={anyLive ? 'Sprint Summary — active flow totals' : 'Sprint Summary — no active sprint (last closed shown)'} data={data}>
       {!rows.length ? (
-        <div className="dim small">no active sprint in any space</div>
+        <div className="dim small">no sprint data in any space</div>
       ) : (
         <>
           <div className="tiles">
@@ -111,15 +118,18 @@ export default function SprintSummary({ data }) {
               </tr>
             </thead>
             <tbody>
-              {rows.map(({ space, sprint, t, blocked }) => {
+              {rows.map(({ space, sprint, live, t, blocked }) => {
                 const c = completion(t)
                 const el = elapsed(sprint)
                 // Behind = more of the window spent than of the work finished.
                 const behind = c && el != null && el - c.pct >= 20
                 return (
-                  <tr key={space}>
+                  <tr key={space} className={live ? undefined : 'dim'}>
                     <td className="mono">{space.toUpperCase()}</td>
-                    <td className="dim small">{sprint ? sprint.name : '—'}</td>
+                    <td className="dim small">
+                      {sprint ? sprint.name : '—'}
+                      {sprint && !live && <span className="dim small"> (closed)</span>}
+                    </td>
                     <td className="num">{el == null ? '—' : `${el}%`}</td>
                     <td className="num">{t.todo}{t.ptTodo > 0 && <div className="dim small">{t.ptTodo}pt</div>}</td>
                     <td className="num">{t.wip}{t.ptWip > 0 && <div className="dim small">{t.ptWip}pt</div>}</td>
@@ -154,7 +164,7 @@ export default function SprintSummary({ data }) {
 
       {idle.length > 0 && (
         <div className="dim small">
-          no active sprint: {idle.map((s) => s.space.toUpperCase()).join(' · ')}
+          no sprint data: {idle.map((s) => s.space.toUpperCase()).join(' · ')}
         </div>
       )}
       {broken.map((s) => (
