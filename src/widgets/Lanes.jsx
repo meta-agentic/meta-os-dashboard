@@ -48,8 +48,10 @@ function QueueBar({ queues }) {
 }
 
 export default function Lanes({ data }) {
-  // Spaces with no active sprint collapse into one summary line instead of an
-  // empty section each — they carry no flow to show.
+  // Spaces with no sprint data at all (never closed one either) collapse into one
+  // summary line instead of an empty section each — they carry no flow to show.
+  // A space with lanes but no LIVE sprint is showing its last closed one (server
+  // fallback) — still rendered, just chipped so it isn't mistaken for active work.
   const idle = (data?.spaces ?? []).filter((s) => s.available !== false && s.lanes.length === 0)
   const active = (data?.spaces ?? []).filter((s) => s.available === false || s.lanes.length > 0)
   return (
@@ -58,7 +60,7 @@ export default function Lanes({ data }) {
         s.available === false ? (
           <div key={s.space} className="degraded">{s.space}: {s.reason}</div>
         ) : (
-          <div key={s.space} className="space">
+          <div key={s.space} className={`space${s.sprintActive ? '' : ' dim'}`}>
             <div className="spacehead">
               <strong>{s.space.toUpperCase()}</strong>
               {s.sprint.map((sp) => (
@@ -66,6 +68,7 @@ export default function Lanes({ data }) {
                   {sp.name} · {sp.start} → {sp.end}
                 </span>
               ))}
+              {!s.sprintActive && <span className="chip">closed — no active sprint</span>}
               <span className="spacer" />
               {s.forecast.throughputPerWeek != null && (
                 <span className="chip">throughput {s.forecast.throughputPerWeek}/wk</span>

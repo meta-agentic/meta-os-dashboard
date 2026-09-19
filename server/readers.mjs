@@ -567,12 +567,22 @@ export async function lanes(backlogs) {
     try {
       const d = await loadBacklog(b)
       const active = d.sprints.filter((s) => s.status === 'IN PROGRESS')
-      const activeIds = new Set(active.map((s) => s.id))
+      // No sprint IN PROGRESS: fall back to the most recently CLOSED one so the
+      // widget still has something to render instead of going blank. `sprintActive`
+      // tells the client which case it is so it can label the row as closed.
+      const closedSprints = d.sprints
+        .filter((s) => s.status === 'CLOSED' && s.start && s.end)
+        .sort((a, b) => a.end.localeCompare(b.end))
+      const lastClosed = closedSprints.at(-1)
+      const target = active.length ? active : lastClosed ? [lastClosed] : []
+      const sprintActive = active.length > 0
+
+      const targetIds = new Set(target.map((s) => s.id))
       // Membership is linked from both sides (story.sprint and the sprint file's
       // committed[]), and a sprint often only has the latter — union them.
-      const activeIssues = new Set(active.flatMap((s) => s.issues))
+      const targetIssues = new Set(target.flatMap((s) => s.issues))
       const inSprint = d.stories.filter(
-        (s) => sprintMembers(s).some((id) => activeIds.has(id)) || activeIssues.has(s.id),
+        (s) => sprintMembers(s).some((id) => targetIds.has(id)) || targetIssues.has(s.id),
       )
 
       // Blocked is DERIVED (ontology flow.item_states): a not-done story whose
@@ -608,7 +618,7 @@ export async function lanes(backlogs) {
       })).sort((a, b) => b.wip + b.depth - (a.wip + a.depth))
 
       // Velocity: done stories per week over closed sprints that have dates.
-      const closed = d.sprints.filter((s) => s.status === 'CLOSED' && s.start && s.end)
+      const closed = closedSprints
       const doneBySprint = new Map()
       for (const s of d.stories) {
         if (s.status !== 'DONE') continue
@@ -649,7 +659,8 @@ export async function lanes(backlogs) {
       const remaining = laneRows.reduce((acc, l) => acc + l.depth + l.wip, 0)
       spaces.push({
         space,
-        sprint: active.map((s) => ({ id: s.id, name: s.name, start: s.start, end: s.end })),
+        sprint: target.map((s) => ({ id: s.id, name: s.name, start: s.start, end: s.end })),
+        sprintActive,
         lanes: laneRows,
         forecast: {
           throughputPerWeek: throughput ? +throughput.toFixed(1) : null,

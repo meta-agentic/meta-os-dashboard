@@ -457,10 +457,19 @@ export async function lanes(ctx) {
     try {
       const d = await loadBacklog(b)
       const active = d.sprints.filter((s) => s.status === 'IN PROGRESS')
-      const activeIds = new Set(active.map((s) => s.id))
-      const activeIssues = new Set(active.flatMap((s) => s.issues))
+      // No sprint IN PROGRESS: fall back to the most recently CLOSED one so the
+      // widget still has something to render instead of going blank.
+      const closedSprints = d.sprints
+        .filter((s) => s.status === 'CLOSED' && s.start && s.end)
+        .sort((a, b) => a.end.localeCompare(b.end))
+      const lastClosed = closedSprints.at(-1)
+      const target = active.length ? active : lastClosed ? [lastClosed] : []
+      const sprintActive = active.length > 0
+
+      const targetIds = new Set(target.map((s) => s.id))
+      const targetIssues = new Set(target.flatMap((s) => s.issues))
       const inSprint = d.stories.filter(
-        (s) => sprintMembers(s).some((id) => activeIds.has(id)) || activeIssues.has(s.id),
+        (s) => sprintMembers(s).some((id) => targetIds.has(id)) || targetIssues.has(s.id),
       )
       const statusById = new Map(d.stories.map((s) => [s.id, s.status]))
       const blockedBy = (s) =>
@@ -492,7 +501,7 @@ export async function lanes(ctx) {
         points: { todo: pts(l.queues.todo), wip: pts(l.queues['in-progress']), done: pts(l.queues.done) },
       })).sort((a, b) => b.wip + b.depth - (a.wip + a.depth))
 
-      const closed = d.sprints.filter((s) => s.status === 'CLOSED' && s.start && s.end)
+      const closed = closedSprints
       const doneBySprint = new Map()
       for (const s of d.stories ?? []) {
         if (s.status === 'DONE' && s.sprint) doneBySprint.set(s.sprint, (doneBySprint.get(s.sprint) ?? 0) + 1)
@@ -529,7 +538,8 @@ export async function lanes(ctx) {
       const remaining = laneRows.reduce((acc, l) => acc + l.depth + l.wip, 0)
       spaces.push({
         space,
-        sprint: active.map((s) => ({ id: s.id, name: s.name, start: s.start, end: s.end })),
+        sprint: target.map((s) => ({ id: s.id, name: s.name, start: s.start, end: s.end })),
+        sprintActive,
         lanes: laneRows,
         forecast: {
           throughputPerWeek: throughput ? +throughput.toFixed(1) : null,
