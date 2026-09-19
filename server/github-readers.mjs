@@ -235,13 +235,15 @@ async function legacyMemory(ctx) {
 // given owner/repo/ref for. `path` is repo-relative. Broken paths and unknown repo
 // labels skip-and-report via the additive `topology` diagnostics; existing keys keep
 // their shape, so the Memory / Memory Flux widgets need zero changes.
-async function configuredMemory(ctx, memoryConfig, vars) {
+async function configuredMemory(ctx, memoryConfig, vars, knownSpaces) {
   const roots = (memoryConfig.roots ?? []).map((r) => ({ ...r, path: expandVars(r.path ?? '', vars) }))
   const mounts = (memoryConfig.federated ?? []).map((f) => ({ ...f, path: expandVars(f.path ?? '', vars) }))
   const skipped = []
   const rootReport = []
   const tierNotes = { raw: [], wiki: [], output: [] }
   const projectRows = new Map() // name -> { notes, newest }
+  // See readers.mjs configuredMemory() — same reasoning, kept in sync.
+  const spaceFilter = knownSpaces?.size ? knownSpaces : null
 
   for (const [i, r] of roots.entries()) {
     const label = r.label ?? `root[${i}]`
@@ -263,6 +265,7 @@ async function configuredMemory(ctx, memoryConfig, vars) {
     const { tiers, projects } = await enumerateRoot(repo, r.path, layout)
     for (const tier of TIERS) tierNotes[tier].push(...tiers[tier])
     for (const [name, p] of projects) {
+      if (spaceFilter && !spaceFilter.has(name)) continue
       const cur = projectRows.get(name) ?? { notes: 0, newest: null }
       cur.notes += p.notes
       if (p.newest && (cur.newest === null || p.newest > cur.newest)) cur.newest = p.newest
@@ -308,10 +311,11 @@ async function configuredMemory(ctx, memoryConfig, vars) {
 // federated[] }); absent it, the deployed dashboard falls back to the default
 // single-root topology (legacyMemory). `vars` drives ${...} expansion in configured
 // paths, exactly as for backlogs and as in the local reader.
-export async function memory(ctx, memoryConfig = null, vars = {}) {
+export async function memory(ctx, memoryConfig = null, vars = {}, backlogs = []) {
   try {
+    const knownSpaces = new Set((backlogs ?? []).map((b) => b.space).filter(Boolean))
     if (memoryConfig && Array.isArray(memoryConfig.roots)) {
-      return await configuredMemory(ctx, memoryConfig, vars)
+      return await configuredMemory(ctx, memoryConfig, vars, knownSpaces)
     }
     return await legacyMemory(ctx)
   } catch (e) {

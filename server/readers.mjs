@@ -277,13 +277,20 @@ async function legacyMemory(instanceRoot) {
 // partitioned roots and the federated mounts share the existing federated.vaults shape,
 // so the Memory / Memory Flux widgets need zero changes. Broken paths skip-and-report
 // via the additive `topology` diagnostics; existing keys keep their shape.
-async function configuredMemory(memoryConfig, vars, instanceRoot) {
+async function configuredMemory(memoryConfig, vars, instanceRoot, knownSpaces) {
   const roots = (memoryConfig.roots ?? []).map((r) => ({ ...r, path: expandVars(r.path, vars) }))
   const mounts = (memoryConfig.federated ?? []).map((f) => ({ ...f, path: expandVars(f.path, vars) }))
   const skipped = []
   const rootReport = []
   const tierNotes = { raw: [], wiki: [], output: [] }
   const projectRows = new Map() // name -> { notes, newest }
+  // A project-partitioned root (layout tier/project | project/tier) auto-discovers
+  // every subdirectory as a "project" — vault-root housekeeping (tooling scripts,
+  // swarm-run reports) sits alongside real backlog spaces with no way to tell them
+  // apart by directory shape alone. When the instance declares `backlogs`, that
+  // list IS the set of real spaces, so filter to it; unconfigured, show everything
+  // (unchanged behaviour for an instance with no backlog spaces at all).
+  const spaceFilter = knownSpaces?.size ? knownSpaces : null
 
   for (const [i, r] of roots.entries()) {
     const label = r.label ?? `root[${i}]`
@@ -301,6 +308,7 @@ async function configuredMemory(memoryConfig, vars, instanceRoot) {
     const { tiers, projects } = await enumerateRoot(r.path, layout)
     for (const tier of TIERS) tierNotes[tier].push(...tiers[tier])
     for (const [name, p] of projects) {
+      if (spaceFilter && !spaceFilter.has(name)) continue
       const cur = projectRows.get(name) ?? { notes: 0, newest: null }
       cur.notes += p.notes
       if (p.newest && (cur.newest === null || p.newest > cur.newest)) cur.newest = p.newest
@@ -342,10 +350,13 @@ async function configuredMemory(memoryConfig, vars, instanceRoot) {
 // `memoryConfig` is the optional instance.config.json `memory` block ({ roots[],
 // federated[] }); absent it, the instance falls back to the default single-root
 // topology. `vars` drives ${...} expansion in configured paths, exactly as for backlogs.
-export async function memory(instanceRoot, memoryConfig = null, vars = {}) {
+// `backlogs` (instance.config.json's own backlogs[]) is the authority for which
+// project-partitioned-root subdirectories are real spaces vs. vault-root housekeeping.
+export async function memory(instanceRoot, memoryConfig = null, vars = {}, backlogs = []) {
   try {
+    const knownSpaces = new Set((backlogs ?? []).map((b) => b.space).filter(Boolean))
     if (memoryConfig && Array.isArray(memoryConfig.roots)) {
-      return await configuredMemory(memoryConfig, vars, instanceRoot)
+      return await configuredMemory(memoryConfig, vars, instanceRoot, knownSpaces)
     }
     return await legacyMemory(instanceRoot)
   } catch (e) {
