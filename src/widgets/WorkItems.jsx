@@ -16,6 +16,7 @@ const cmpText = (a, b) => String(a ?? '').localeCompare(String(b ?? ''))
 const cmpNum = (a, b) => (a == null) - (b == null) || (a ?? 0) - (b ?? 0)
 
 const COLS = [
+  { k: 'space', label: 'project', w: '4.5rem', cmp: (a, b) => cmpText(a.space, b.space) },
   { k: 'id', label: 'id', w: '7.5rem', cmp: (a, b) => cmpText(idKey(a.id), idKey(b.id)) },
   { k: 'title', label: 'title', w: 'auto', cmp: (a, b) => cmpText(a.title, b.title) },
   { k: 'status', label: 'status', w: '7.5rem', cmp: (a, b) => cmpText(a.flowState ?? 'z', b.flowState ?? 'z') || cmpText(a.status, b.status) },
@@ -88,12 +89,13 @@ function Table({ rows, sort, onSort, onOpen, scrollPos }) {
           {first > 0 && <tr className="wi-pad" style={{ height: first * ROW }}><td colSpan={COLS.length} /></tr>}
           {rows.slice(first, last).map((r) => (
             <tr
-              key={r.id}
+              key={r.space + r.id}
               className="wi-row"
               tabIndex={0}
-              onClick={() => onOpen(r.id)}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(r.id) } }}
+              onClick={() => onOpen(r.id, r.space)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(r.id, r.space) } }}
             >
+              <td className="mono dim">{r.space}</td>
               <td className="wi-id mono">{r.id}</td>
               <td className="wi-title" title={r.title}>{r.title}</td>
               <td><Pill status={r.status} flowState={r.flowState} /></td>
@@ -133,7 +135,7 @@ function Links({ title, links, tone, onOpen }) {
   )
 }
 
-function Detail({ view, space, onOpen }) {
+function Detail({ view, onOpen }) {
   if (view.error) return <div className="degraded">{view.error}</div>
   if (!view.item) return <div className="degraded">loading {view.id}…</div>
   const it = view.item
@@ -182,35 +184,45 @@ function Detail({ view, space, onOpen }) {
       ) : (
         <div className="degraded">no body — {view.reason ?? 'no source file for this item'}</div>
       )}
-      {it.path && <div className="wi-foot dim small mono">{space}/{it.path}</div>}
+      {it.path && <div className="wi-foot dim small mono">{view.space}/{it.path}</div>}
     </div>
   )
 }
 
 export default function WorkItems({ spaces, selected }) {
   // Driven entirely by the global project filter bar (App.jsx), not an internal
-  // picker — this table only ever shows one project, so it needs exactly one
-  // selected there; zero or several fall through to a guidance state below.
-  const selectedList = useMemo(() => [...(selected ?? [])], [selected])
-  const space = selectedList.length === 1 ? selectedList[0] : ''
+  // picker. Any number of projects can be selected — their items are fetched in
+  // parallel and merged into one table, each row tagged with its origin space.
+  const selectedList = useMemo(() => [...(selected ?? [])].sort(), [selected])
+  const selectedKey = selectedList.join(',')
   const [list, setList] = useState({ status: 'idle' })
   const [q, setQ] = useState('')
   const [state, setState] = useState('')
   const [sort, setSort] = useState({ k: 'id', dir: 1 })
-  const [view, setView] = useState(null) // null → table; { id, item?, error?, reason? }
-  const [trail, setTrail] = useState([]) // ids walked through to reach `view`
-  const cache = useRef(new Map())
+  const [view, setView] = useState(null) // null → table; { id, space, item?, error?, reason? }
+  const [trail, setTrail] = useState([]) // { id, space } steps walked through to reach `view`
+  const cache = useRef(new Map()) // id -> { space, item, reason } — ids are globally unique
   const scrollPos = useRef(0)
   const seq = useRef(0)
 
   const loadList = () => {
-    if (!space) return setList({ status: 'idle' })
+    if (!selectedList.length) return setList({ status: 'idle' })
     if (isStatic) return setList({ status: 'error', reason: 'Work items need the live API — not available on static GitHub Pages' })
     const n = ++seq.current
     setList({ status: 'loading' })
-    apiGet(`/api/items?space=${encodeURIComponent(space)}`)
-      .then((d) => { if (n === seq.current) setList(d.available === false ? { status: 'error', reason: d.reason } : { status: 'ok', items: d.items }) })
-      .catch((e) => { if (n === seq.current) setList({ status: 'error', reason: String(e) }) })
+    Promise.all(selectedList.map((sp) =>
+      apiGet(`/api/items?space=${encodeURIComponent(sp)}`).then((d) => ({ sp, d })).catch((e) => ({ sp, err: String(e) })),
+    )).then((results) => {
+      if (n !== seq.current) return
+      const items = []
+      const failed = []
+      for (const r of results) {
+        if (r.err || r.d.available === false) failed.push({ space: r.sp, reason: r.err ?? r.d.reason })
+        else items.push(...r.d.items.map((it) => ({ ...it, space: r.sp })))
+      }
+      if (!items.length && failed.length) return setList({ status: 'error', reason: failed.map((f) => `${f.space}: ${f.reason}`).join(' · ') })
+      setList({ status: 'ok', items, failed })
+    })
   }
   useEffect(() => {
     cache.current = new Map()
@@ -218,33 +230,33 @@ export default function WorkItems({ spaces, selected }) {
     setView(null)
     setTrail([])
     loadList()
-  }, [space])
+  }, [selectedKey])
 
-  const open = (id, push = true) => {
-    if (push && view?.id) setTrail((t) => [...t, view.id])
+  const open = (id, itemSpace, push = true) => {
+    if (push && view?.id) setTrail((t) => [...t, { id: view.id, space: view.space }])
     const hit = cache.current.get(id)
-    if (hit) return setView({ id, ...hit })
-    setView({ id })
-    apiGet(`/api/item?space=${encodeURIComponent(space)}&id=${encodeURIComponent(id)}`)
+    if (hit) return setView({ id, space: hit.space, ...hit })
+    setView({ id, space: itemSpace })
+    apiGet(`/api/item?space=${encodeURIComponent(itemSpace)}&id=${encodeURIComponent(id)}`)
       .then((d) => {
-        const next = d.available === false ? { error: d.reason } : { item: d.item, reason: d.reason }
+        const next = d.available === false ? { space: itemSpace, error: d.reason } : { space: itemSpace, item: d.item, reason: d.reason }
         if (!next.error) cache.current.set(id, next)
         setView((v) => (v?.id === id ? { id, ...next } : v))
       })
-      .catch((e) => setView((v) => (v?.id === id ? { id, error: String(e) } : v)))
+      .catch((e) => setView((v) => (v?.id === id ? { id, space: itemSpace, error: String(e) } : v)))
   }
   const back = () => {
     if (!trail.length) return setView(null)
-    const id = trail[trail.length - 1]
+    const step = trail[trail.length - 1]
     setTrail((t) => t.slice(0, -1))
-    open(id, false)
+    open(step.id, step.space, false)
   }
   const jump = (i) => {
     // i === -1 → the table; otherwise reopen trail[i] and drop everything after it
     if (i < 0) { setTrail([]); return setView(null) }
-    const id = trail[i]
+    const step = trail[i]
     setTrail((t) => t.slice(0, i))
-    open(id, false)
+    open(step.id, step.space, false)
   }
   const onSort = (k) => setSort((s) => (s.k === k ? { k, dir: -s.dir } : { k, dir: 1 }))
 
@@ -256,7 +268,7 @@ export default function WorkItems({ spaces, selected }) {
       .filter((r) => {
         if (state === 'other' ? r.flowState : state && r.flowState !== state) return false
         if (!needle) return true
-        return [r.id, r.title, r.epic, r.project, ...(r.labels ?? [])].some((v) => String(v ?? '').toLowerCase().includes(needle))
+        return [r.space, r.id, r.title, r.epic, r.project, ...(r.labels ?? [])].some((v) => String(v ?? '').toLowerCase().includes(needle))
       })
       .sort((a, b) => col.cmp(a, b) * sort.dir || cmpText(idKey(a.id), idKey(b.id)))
   }, [list, q, state, sort])
@@ -267,16 +279,20 @@ export default function WorkItems({ spaces, selected }) {
   return (
     <div className="wi">
       <div className="fp-bar wi-bar">
-        {space && <span className="mono wi-space" title="Project — set from the filter bar above">{space.toUpperCase()}</span>}
+        {selectedList.length > 0 && (
+          <span className="wi-spaces" title="Projects — set from the filter bar above">
+            {selectedList.map((s) => <span key={s} className="mono wi-space">{s.toUpperCase()}</span>)}
+          </span>
+        )}
         {view ? (
           <>
-            <button className="fp-btn" onClick={back} title={trail.length ? `Back to ${trail[trail.length - 1]}` : 'Back to the table'}>← back</button>
+            <button className="fp-btn" onClick={back} title={trail.length ? `Back to ${trail[trail.length - 1].id}` : 'Back to the table'}>← back</button>
             <nav className="wi-crumbs mono" aria-label="Navigation trail">
               <button className="wi-crumb" onClick={() => jump(-1)}>all items</button>
-              {trail.map((id, i) => (
+              {trail.map((step, i) => (
                 <React.Fragment key={i}>
                   <span className="dim">›</span>
-                  <button className="wi-crumb" onClick={() => jump(i)}>{id}</button>
+                  <button className="wi-crumb" onClick={() => jump(i)}>{step.id}</button>
                 </React.Fragment>
               ))}
               <span className="dim">›</span>
@@ -288,7 +304,7 @@ export default function WorkItems({ spaces, selected }) {
             <input
               className="wi-search"
               type="search"
-              placeholder="filter id, title, epic, lane, label…"
+              placeholder="filter project, id, title, epic, lane, label…"
               value={q}
               onChange={(e) => setQ(e.target.value)}
               disabled={list.status !== 'ok'}
@@ -301,30 +317,30 @@ export default function WorkItems({ spaces, selected }) {
               <span className="dim small wi-count">
                 {rows.length !== total ? `${rows.length} of ${total}` : total} items
                 {blocked > 0 && <> · <span className="warn">{blocked} blocked</span></>}
+                {list.failed?.length > 0 && (
+                  <> · <span className="warn" title={list.failed.map((f) => `${f.space}: ${f.reason}`).join('\n')}>
+                    {list.failed.length} project{list.failed.length === 1 ? '' : 's'} failed
+                  </span></>
+                )}
               </span>
             )}
-            <button className="fp-btn" onClick={loadList} disabled={!space} title="Reload this space">↻</button>
+            <button className="fp-btn" onClick={loadList} disabled={!selectedList.length} title="Reload">↻</button>
           </>
         )}
       </div>
 
       {view ? (
-        <Detail view={view} space={space} onOpen={open} />
+        <Detail view={view} onOpen={(id) => open(id, view.space)} />
       ) : !spaces?.length ? (
         <div className="degraded">no backlog spaces configured — add one under `backlogs` in instance.config.json</div>
       ) : selectedList.length === 0 ? (
-        <div className="degraded">select a project in the bar above to browse its work items</div>
-      ) : selectedList.length > 1 ? (
-        <div className="degraded">
-          {selectedList.length} projects selected — Work Items shows one at a time; narrow the selection above
-          ({selectedList.map((s) => s.toUpperCase()).join(', ')})
-        </div>
+        <div className="degraded">select one or more projects in the bar above to browse their work items</div>
       ) : list.status === 'loading' ? (
-        <div className="degraded">loading {space.toUpperCase()}…</div>
+        <div className="degraded">loading {selectedList.map((s) => s.toUpperCase()).join(', ')}…</div>
       ) : list.status === 'error' ? (
-        <div className="degraded">{space.toUpperCase()}: {list.reason}</div>
+        <div className="degraded">{list.reason}</div>
       ) : !total ? (
-        <div className="degraded">{space.toUpperCase()} has no work items yet</div>
+        <div className="degraded">no work items in {selectedList.map((s) => s.toUpperCase()).join(', ')}</div>
       ) : !rows.length ? (
         <div className="degraded">no items match{q ? ` “${q}”` : ''}{state ? ` in ${STATES.find(([v]) => v === state)?.[1]}` : ''}</div>
       ) : (
