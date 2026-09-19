@@ -553,7 +553,7 @@ export async function events(instanceRoot, backlogs, limit = 40) {
 // Every status the vault can hold must map, or the item vanishes from flow entirely.
 // REFINED is the normal state of freshly-planned work, so omitting it made a just-opened
 // sprint render as "no active sprint" — the space looked stuck rather than ready.
-const STATE = {
+export const STATE = {
   'TO DO': 'todo', PLANNED: 'todo', REFINED: 'todo',
   'IN PROGRESS': 'in-progress', 'IN REVIEW': 'in-progress',
   DONE: 'done',

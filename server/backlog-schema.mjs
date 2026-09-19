@@ -11,7 +11,7 @@
 // is translated on the way in.
 //
 // Canonical story/epic: { id, title, status, storyPoints, epic, project, sprint,
-//                         dependencies[], labels[], kind }
+//                         dependencies[], relates[], labels[], kind }
 // Canonical sprint:     { id, name, status: 'IN PROGRESS'|'CLOSED'|'PLANNED',
 //                         start, end, goal, issues[], deliveredSP, deliveredItems }
 // Item `status` stays the vault's own vocabulary (TO DO / IN PROGRESS / DONE / …) —
@@ -45,6 +45,7 @@ export function normalizeStory(s) {
     project: s.project ?? null,
     sprint: s.sprint ?? null,
     dependencies: arr(s.dependencies),
+    relates: arr(s.relates),
     labels: arr(s.labels),
     kind: (s.kind ?? s.type ?? null) || null,
   }

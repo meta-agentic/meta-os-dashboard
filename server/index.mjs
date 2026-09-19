@@ -11,6 +11,7 @@ import { usage } from './usage.mjs'
 import * as files from './files.mjs'
 import * as boards from './boards.mjs'
 import { reports } from './reports.mjs'
+import { items, itemDetail } from './items.mjs'
 import { createGithubContext } from './github.mjs'
 import * as gh from './github-readers.mjs'
 import * as ghGraph from './github-graph.mjs'
@@ -170,6 +171,8 @@ if (isGithub) {
   app.get('/api/memory', api(() => gh.memory(ghCtx, config.memory ?? null, config.vars ?? {})))
   app.get('/api/activity', api(() => gh.activity(ghCtx)))
   app.get('/api/lanes', api(() => gh.lanes(ghCtx)))
+  app.get('/api/items', api((req) => gh.items(ghCtx, String(req.query.space ?? ''))))
+  app.get('/api/item', api((req) => gh.itemDetail(ghCtx, String(req.query.space ?? ''), String(req.query.id ?? ''))))
   app.get('/api/report', api(() => gh.reports(ghCtx)))
   app.get('/api/events', api(() => gh.events(ghCtx)))
   app.get('/api/outputs', api(() => gh.outputs(ghCtx)))
@@ -198,6 +201,9 @@ if (isGithub) {
   app.get('/api/memory', api(() => read.memory(instanceRoot, config.memory ?? null, config.vars ?? {})))
   app.get('/api/activity', api(() => read.activity(instanceRoot)))
   app.get('/api/lanes', api(() => read.lanes(config.backlogs)))
+  // On-demand, not part of the client's polled feed set: the list is the whole space.
+  app.get('/api/items', api((req) => items(config.backlogs, String(req.query.space ?? ''))))
+  app.get('/api/item', api((req) => itemDetail(config.backlogs, String(req.query.space ?? ''), String(req.query.id ?? ''))))
   app.get('/api/report', api(() => reports(config.backlogs)))
   app.get('/api/events', api(() => read.events(instanceRoot, config.backlogs)))
   // Live delta stream over the same normalized timeline (local source only — SSE relies

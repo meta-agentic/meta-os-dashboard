@@ -46,3 +46,39 @@ export async function vaultBacklog(repo, space) {
     .filter((x) => x.fm)
   return backlogFromVault({ items, sprintDocs })
 }
+
+// One item with its body — the remote twin of vault-backlog.loadItem. The tree is
+// already cached, so the fast path costs one content read; the fallback batches the
+// whole space through readManyText rather than one REST call per file.
+export async function vaultItem(repo, space, id) {
+  const tree = await repo.ensureTree()
+  const parse = (p, text) => {
+    if (typeof text !== 'string') return null
+    try {
+      const doc = matter(text)
+      return doc.data && String(doc.data.id ?? '') === id
+        ? { fm: doc.data, body: doc.content, path: p.slice(space.length + 1) }
+        : null
+    } catch {
+      return null
+    }
+  }
+  if (/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(id)) {
+    for (const t of TIERS) {
+      const p = `${space}/${t}/${id}.md`
+      if (!tree.has(p)) continue
+      const hit = parse(p, await repo.readText(p))
+      if (hit) return { file: hit }
+    }
+  }
+  const paths = [...tree.keys()].filter((p) => {
+    const parts = p.split('/')
+    return parts.length === 3 && parts[0] === space && TIERS.has(parts[1]) && p.endsWith('.md')
+  })
+  const texts = await repo.readManyText(paths)
+  for (const p of paths) {
+    const hit = parse(p, texts.get(p))
+    if (hit) return { file: hit }
+  }
+  return { file: null, reason: `no item ${id} in this space` }
+}
