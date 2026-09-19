@@ -144,12 +144,15 @@ export default function Nav({ open, onClose, prefs, setPrefs, meta, auth, packs,
                   <code className="ok">done</code>
                 </div>
               ))}
-              {onboarding.steps.map((s, i) => (
-                <div className="nav-kv" key={i} title={[...s.feeds, ...s.sources].join(', ') || undefined}>
-                  <span>{s.reason}</span>
-                  <code className="warn">missing</code>
-                </div>
-              ))}
+              {onboarding.steps.map((s, i) => {
+                const affects = [...s.feeds, ...s.sources].join(', ')
+                return (
+                  <div className="nav-kv" key={i} title={s.reason + (affects ? ` — affects ${affects}` : '')}>
+                    <span className="mono">{s.short}</span>
+                    <code className="warn">missing</code>
+                  </div>
+                )
+              })}
               {onboarding.complete && (
                 <p className="nav-note">All {onboarding.checkedFeeds} checked feeds are available — nothing outstanding.</p>
               )}
