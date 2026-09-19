@@ -10,8 +10,8 @@
 // what keeps that from happening again: readers speak ONE schema, and each source
 // is translated on the way in.
 //
-// Canonical story/epic: { id, title, status, storyPoints, epic, project, sprint,
-//                         dependencies[], relates[], labels[], kind }
+// Canonical story/epic: { id, title, status, storyPoints, priority, epic, project,
+//                         sprint, dependencies[], relates[], labels[], kind }
 // Canonical sprint:     { id, name, status: 'IN PROGRESS'|'CLOSED'|'PLANNED',
 //                         start, end, goal, issues[], deliveredSP, deliveredItems }
 // Item `status` stays the vault's own vocabulary (TO DO / IN PROGRESS / DONE / …) —
@@ -41,6 +41,7 @@ export function normalizeStory(s) {
     title: s.title ?? '',
     status: String(s.status ?? '').toUpperCase(),
     storyPoints: num(s.storyPoints),
+    priority: s.priority ?? null,
     epic: s.epic ?? null,
     project: s.project ?? null,
     sprint: s.sprint ?? null,
