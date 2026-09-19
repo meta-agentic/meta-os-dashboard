@@ -36,7 +36,7 @@ const DENSITIES = [
   { v: 'compact', label: 'Compact' },
 ]
 
-export default function Nav({ open, onClose, prefs, setPrefs, meta, auth }) {
+export default function Nav({ open, onClose, prefs, setPrefs, meta, auth, packs }) {
   const set = (patch) => setPrefs((p) => ({ ...p, ...patch }))
   const vars = meta?.vars && Object.keys(meta.vars).length ? meta.vars : null
 
@@ -128,6 +128,45 @@ export default function Nav({ open, onClose, prefs, setPrefs, meta, auth }) {
               </div>
             ))}
           <p className="nav-note">Folders &amp; path variables are defined in <code>instance.config.json</code>.</p>
+        </details>
+
+        <details className="nav-sec">
+          <summary>Skill packs</summary>
+          {!packs?.available ? (
+            <p className="nav-note">{packs?.reason ?? 'no pack data yet'}</p>
+          ) : (
+            <>
+              <div className="nav-kv"><span>Packs declared</span><code>{packs.totals?.packs ?? 0}</code></div>
+              <div className="nav-kv"><span>Skills declared</span><code>{packs.totals?.declaredSkills ?? 0}</code></div>
+              <div className="nav-kv">
+                <span>Mounted</span>
+                <code>{packs.mountsKnown === false ? '—' : packs.totals?.mounted ?? 0}</code>
+              </div>
+              <div className="nav-kv">
+                <span>Drifted / missing</span>
+                <code className={packs.mountsKnown !== false && (packs.totals?.drifted || packs.totals?.missing) ? 'warn' : undefined}>
+                  {packs.mountsKnown === false ? '—' : (packs.totals?.drifted ?? 0) + (packs.totals?.missing ?? 0)}
+                </code>
+              </div>
+              {packs.mountsKnown === false && <p className="nav-note">mount state unknown — {packs.mountReason}</p>}
+              {(packs.packs ?? []).map((p) => {
+                const bad = packs.mountsKnown !== false && (p.counts.drifted > 0 || p.counts.missing > 0)
+                return (
+                  <div className="nav-kv" key={p.name} title={`${p.local ? 'local' : 'remote'} pack${p.head ? ` · ${p.head}` : ''}`}>
+                    <span className="mono">{p.name}</span>
+                    <code className={bad ? 'warn' : undefined}>
+                      {packs.mountsKnown === false ? '—' : `${p.counts.mounted}/${p.declaredSkills}`}
+                    </code>
+                  </div>
+                )
+              })}
+              {packs.undeclared?.length > 0 && (
+                <p className="nav-note">
+                  + {packs.undeclared.length} mounted skill{packs.undeclared.length === 1 ? '' : 's'} no pack declares
+                </p>
+              )}
+            </>
+          )}
         </details>
 
         <details className="nav-sec">
