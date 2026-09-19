@@ -135,61 +135,68 @@ function Links({ title, links, tone, onOpen }) {
   )
 }
 
+// One summary block for any item-shaped object — the item being viewed AND every
+// ancestor above it render through this, so "what does an item look like" has one
+// answer, not two. `current` is the item actually being viewed: its id is plain
+// text (nowhere to navigate to, you're already here); every ancestor's id is a
+// button. An ancestor the space doesn't know (`title == null`) still gets a row,
+// just an inert one.
+function ItemHeader({ it, onOpen, current }) {
+  const known = it.title != null
+  const tagged = new Set([it.kind, it.priority, it.project].filter(Boolean).map((v) => String(v).toLowerCase()))
+  const labels = (it.labels ?? []).filter((l) => !tagged.has(String(l).toLowerCase()))
+  return (
+    <div className="wi-ihead">
+      <div className="wi-dtags">
+        {current || !known ? (
+          <span className="wi-id mono" title={!known ? 'not an item in this space' : undefined}>{it.id}</span>
+        ) : (
+          <button className="chip wi-link mono wi-id" onClick={() => onOpen(it.id)} title={`Open ${it.id}`}>{it.id}</button>
+        )}
+        {known && <Pill status={it.status} flowState={it.flowState} />}
+        {it.kind && <span className="chip">{it.kind}</span>}
+        {it.priority && <span className="chip">{it.priority}</span>}
+        {it.project && <span className="chip mono">{it.project}</span>}
+        {it.storyPoints != null && <span className="chip mono">{it.storyPoints}pt</span>}
+      </div>
+      {known ? (
+        <>
+          <h3 className="wi-dtitle">{it.title}</h3>
+          {labels.length > 0 && (
+            <div className="wi-labels">{labels.map((l) => <span key={l} className="chip">{l}</span>)}</div>
+          )}
+        </>
+      ) : (
+        <div className="wi-dtitle dim"><em>unknown here</em></div>
+      )}
+    </div>
+  )
+}
+
 function Detail({ view, onOpen }) {
   if (view.error) return <div className="degraded">{view.error}</div>
   if (!view.item) return <div className="degraded">loading {view.id}…</div>
   const it = view.item
-  // kind/priority/lane are already header tags — never repeat them below, in the
-  // meta grid or in the labels row (a label that just restates one, e.g. the lane
-  // code showing up again as a tag, is dropped rather than shown twice).
-  const tagged = new Set([it.kind, it.priority, it.project].filter(Boolean).map((v) => String(v).toLowerCase()))
   const meta = [
-    ['points', it.storyPoints],
     ['sprint', Array.isArray(it.sprint) ? it.sprint.join(', ') : it.sprint],
   ].filter(([, v]) => v != null && v !== '')
-  const labels = (it.labels ?? []).filter((l) => !tagged.has(String(l).toLowerCase()))
   const hasLinks = [it.blockedBy, it.dependencies, it.relates, it.dependents, it.relatedBy, it.children].some((l) => l?.length)
   const blocked = (it.blockedBy ?? []).map((id) => it.dependencies.find((d) => d.id === id) ?? { id })
+  const chain = [...(it.parents ?? []), it]
   return (
     <div className="wi-detail">
-      {it.parents?.length > 0 && (
-        <div className="wi-parents">
-          {it.parents.map((p, i) => (
-            <div className="wi-parent" key={p.id} style={{ paddingLeft: `${i * 0.7}rem` }}>
-              <div className="wi-dtags">
-                <span className="dim small">parent</span>
-                {p.title != null ? (
-                  <button className="chip wi-link mono" onClick={() => onOpen(p.id)} title={`Open ${p.id}`}>{p.id}</button>
-                ) : (
-                  <span className="chip wi-link off mono" title="not an item in this space">{p.id}</span>
-                )}
-                {p.title != null && <Pill status={p.status} flowState={p.flowState} small />}
-                {p.kind && <span className="chip small">{p.kind}</span>}
-                {p.project && <span className="chip small mono">{p.project}</span>}
-              </div>
-              <div className="wi-parent-title">{p.title ?? <em className="dim">unknown here</em>}</div>
-            </div>
-          ))}
-        </div>
-      )}
-      <header className="wi-dhead">
-        <div className="wi-dtags">
-          <span className="wi-id mono">{it.id}</span>
-          <Pill status={it.status} flowState={it.flowState} />
-          {it.kind && <span className="chip">{it.kind}</span>}
-          {it.priority && <span className="chip">{it.priority}</span>}
-          {it.project && <span className="chip mono">{it.project}</span>}
-        </div>
-        <h3 className="wi-dtitle">{it.title}</h3>
-      </header>
-      {(meta.length > 0 || labels.length > 0) && (
+      <div className="wi-chain">
+        {chain.map((step, i) => (
+          <div className="wi-chain-row" key={step.id} style={{ paddingLeft: `${0.5 + i * 0.7}rem` }}>
+            <ItemHeader it={step} onOpen={onOpen} current={step === it} />
+          </div>
+        ))}
+      </div>
+      {meta.length > 0 && (
         <dl className="wi-meta">
           {meta.map(([k, v]) => (
             <div key={k}><dt>{k}</dt><dd>{String(v)}</dd></div>
           ))}
-          {labels.length > 0 && (
-            <div className="wi-labels"><dt>labels</dt><dd>{labels.map((l) => <span key={l} className="chip">{l}</span>)}</dd></div>
-          )}
         </dl>
       )}
       <div className="wi-linkgrid">

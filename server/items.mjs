@@ -25,7 +25,7 @@ function index(d) {
 
 const row = (s, blockers) => ({
   id: s.id, title: s.title, status: s.status, flowState: STATE[s.status] ?? null,
-  kind: s.kind, storyPoints: s.storyPoints, epic: s.epic, project: s.project,
+  kind: s.kind, storyPoints: s.storyPoints, priority: s.priority, epic: s.epic, project: s.project,
   sprint: s.sprint, labels: s.labels, blockedBy: blockers.length ? blockers : null,
 })
 
@@ -44,12 +44,13 @@ export function itemDetailRow(d, file) {
     return t ? { id, title: t.title, status: t.status, flowState: STATE[t.status] ?? null } : { id }
   }
   // Parent chain (this item's epic, that epic's own epic, and so on), furthest
-  // ancestor first. Carries kind/project too, so the client can show the same tag
-  // row for a parent as it does for the item itself. A cycle (malformed data) or an
-  // unknown id just ends the walk rather than looping or guessing further.
+  // ancestor first. Full row shape — same fields as the item itself — so the client
+  // can render one ancestor exactly like it renders the item it belongs to. A cycle
+  // (malformed data) or an unknown id just ends the walk rather than looping or
+  // guessing further.
   const parentLink = (id) => {
     const t = byId.get(id)
-    return t ? { id, title: t.title, status: t.status, flowState: STATE[t.status] ?? null, kind: t.kind, project: t.project } : { id }
+    return t ? row(t, []) : { id }
   }
   const parents = []
   const seen = new Set([item.id])
@@ -65,7 +66,6 @@ export function itemDetailRow(d, file) {
     all.filter((s) => s.id !== item.id && pick(s)).map((s) => link(s.id)).sort((a, b) => idKey(a.id).localeCompare(idKey(b.id)))
   return {
     ...row(item, blockedBy(item)),
-    priority: file.fm.priority ?? null,
     parents,
     dependencies: links(item.dependencies),
     relates: links(item.relates),
