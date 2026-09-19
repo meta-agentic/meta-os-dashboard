@@ -4,6 +4,15 @@ const day = 864e5
 const statusClass = (s) => (s === 'CLOSED' ? 'done' : s === 'IN PROGRESS' ? 'wip' : 'todo')
 const shortDate = (t) => new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 
+// Overdue sprints get their own tone, regardless of status: a sprint whose window
+// has already closed but isn't fully delivered is worth flagging even if it's
+// technically still IN PROGRESS or hasn't been marked CLOSED yet. 0% delivered is
+// the harder signal (danger) than partial delivery (warn).
+function tone(b, now) {
+  if (new Date(b.end).getTime() < now && b.donePct < 100) return b.donePct === 0 ? 'danger' : 'warn'
+  return statusClass(b.status)
+}
+
 // Month-boundary ticks across the [min,max] window for the timeline grid.
 function monthTicks(min, max) {
   const ticks = []
@@ -87,14 +96,14 @@ export default function Gantt({ data }) {
           const width = Math.max(pct(+new Date(b.end) + day) - left, 1.5)
           return (
             <div className="gantt-row" key={b.space + b.id}>
-              <span className="gantt-lbl" title={`${b.space} · ${b.name}`}>
-                <span className="chip">{b.space}</span> {b.name}
+              <span className="gantt-lbl" title={`${b.space} · ${b.id} · ${b.name}`}>
+                <span className="chip">{b.space}</span> <span className="mono dim">{b.id}</span> {b.name}
               </span>
               <span className="gantt-track">
                 <span
-                  className={'gantt-bar ' + statusClass(b.status)}
+                  className={'gantt-bar ' + tone(b, now)}
                   style={{ left: `${left}%`, width: `${width}%` }}
-                  title={`${b.name}: ${shortDate(b.start)} → ${shortDate(b.end)} · ${b.donePct}% delivered`}
+                  title={`${b.id} — ${b.name}: ${shortDate(b.start)} → ${shortDate(b.end)} · ${b.donePct}% delivered`}
                 >
                   <i className="gantt-fill" style={{ width: `${b.donePct}%` }} />
                   <span className="gantt-bar-lbl">{b.donePct}%</span>

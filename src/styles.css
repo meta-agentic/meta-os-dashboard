@@ -1440,22 +1440,29 @@ th.num .wi-sort { justify-content: flex-end; }
 
 /* ── Gantt / roadmap widget ────────────────────────────────────────────── */
 .gantt { display: flex; flex-direction: column; height: 100%; }
-.gantt-axis { position: relative; height: 1.1rem; margin-left: 9rem; border-bottom: 1px solid var(--border); }
+.gantt-axis { position: relative; height: 1.1rem; margin-left: 11.8rem; border-bottom: 1px solid var(--border); }
 .gantt-tick { position: absolute; transform: translateX(-50%); font-size: 0.62rem; color: var(--dim); text-transform: uppercase; letter-spacing: 0.04em; }
 .gantt-rows { position: relative; flex: 1; min-height: 0; overflow: auto; padding-top: 0.3rem; }
-.gantt-grid { position: absolute; top: 0; bottom: 0; left: 0; width: 1px; background: var(--border); opacity: 0.4; margin-left: 9rem; }
-.gantt-today { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--wip); margin-left: 9rem; z-index: 2; opacity: 0.8; }
+.gantt-grid { position: absolute; top: 0; bottom: 0; left: 0; width: 1px; background: var(--border); opacity: 0.4; margin-left: 11.8rem; }
+.gantt-today { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--wip); margin-left: 11.8rem; z-index: 2; opacity: 0.8; }
 .gantt-row { display: flex; align-items: center; gap: 0.4rem; height: 1.7rem; }
-.gantt-lbl { width: 8.6rem; flex: none; font-size: 0.72rem; color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gantt-lbl { width: 11.4rem; flex: none; font-size: 0.72rem; color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gantt-track { position: relative; flex: 1; height: 100%; }
 .gantt-bar { position: absolute; top: 50%; transform: translateY(-50%); height: 1.05rem; border-radius: 4px; overflow: hidden; display: flex; align-items: center; min-width: 3px; }
 .gantt-bar.done { background: color-mix(in srgb, var(--accent) 32%, transparent); border: 1px solid var(--accent); }
 .gantt-bar.wip { background: color-mix(in srgb, var(--wip) 32%, transparent); border: 1px solid var(--wip); }
 .gantt-bar.todo { background: var(--card); border: 1px solid var(--border); }
+/* Overdue tones — independent of raw status, see Gantt.jsx's tone(). warn reuses
+   the same amber as wip (the "caution" colour), danger reuses the red already
+   used for blocked/problem states elsewhere (chip.down, .warn text). */
+.gantt-bar.warn { background: color-mix(in srgb, var(--wip) 32%, transparent); border: 1px solid var(--wip); }
+.gantt-bar.danger { background: color-mix(in srgb, var(--warn) 32%, transparent); border: 1px solid var(--warn); }
 .gantt-fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent); opacity: 0.5; }
 .gantt-bar.wip .gantt-fill { background: var(--wip); }
+.gantt-bar.warn .gantt-fill { background: var(--wip); }
+.gantt-bar.danger .gantt-fill { background: var(--warn); }
 .gantt-bar-lbl { position: relative; font-size: 0.6rem; padding: 0 0.3rem; color: var(--fg); font-variant-numeric: tabular-nums; }
-.gantt-foot { display: flex; justify-content: space-between; margin-left: 9rem; padding-top: 0.2rem; border-top: 1px solid var(--border); }
+.gantt-foot { display: flex; justify-content: space-between; margin-left: 11.8rem; padding-top: 0.2rem; border-top: 1px solid var(--border); }
 
 /* ── Scrum report widget ───────────────────────────────────────────────── */
 .report { display: flex; flex-direction: column; gap: 0.7rem; }
