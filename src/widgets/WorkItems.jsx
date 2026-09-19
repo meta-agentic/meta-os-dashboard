@@ -1,4 +1,5 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import Markdown from 'markdown-to-jsx'
 import { apiGet, isStatic } from '../api.js'
 
 // Fixed row height is what makes the window arithmetic exact — keep in step with
@@ -209,7 +210,7 @@ function Detail({ view, onOpen }) {
         {!hasLinks && <div className="dim small">no links to other items</div>}
       </div>
       {it.body != null ? (
-        <pre className="wi-prose">{it.body || <span className="dim">(empty body)</span>}</pre>
+        it.body ? <div className="wi-prose"><Markdown>{it.body}</Markdown></div> : <div className="dim">(empty body)</div>
       ) : (
         <div className="degraded">no body — {view.reason ?? 'no source file for this item'}</div>
       )}

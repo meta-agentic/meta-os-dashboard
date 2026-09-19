@@ -1428,7 +1428,26 @@ th.num .wi-sort { justify-content: flex-end; }
 .wi-link.down:hover { background: var(--warn); border-color: var(--warn); color: var(--on-accent); }
 .wi-link.off { color: var(--dim); cursor: default; }
 .wi-ltitle { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.wi-prose { margin: 0; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 0.74rem; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--fg); background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 0.7rem 0.9rem; }
+.wi-prose { font-size: 0.8rem; line-height: 1.55; overflow-wrap: anywhere; color: var(--fg); background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 0.7rem 0.9rem; }
+.wi-prose > *:first-child { margin-top: 0; }
+.wi-prose > *:last-child { margin-bottom: 0; }
+.wi-prose h1, .wi-prose h2, .wi-prose h3, .wi-prose h4, .wi-prose h5, .wi-prose h6 { margin: 1.1em 0 0.4em; font-weight: 600; line-height: 1.3; color: var(--fg); }
+.wi-prose h1 { font-size: 1.05rem; }
+.wi-prose h2 { font-size: 0.96rem; }
+.wi-prose h3, .wi-prose h4, .wi-prose h5, .wi-prose h6 { font-size: 0.85rem; }
+.wi-prose p { margin: 0.6em 0; }
+.wi-prose ul, .wi-prose ol { margin: 0.5em 0; padding-left: 1.4em; }
+.wi-prose li { margin: 0.2em 0; }
+.wi-prose li > p { margin: 0.2em 0; }
+.wi-prose blockquote { margin: 0.6em 0; padding: 0.1rem 0.9rem; border-left: 3px solid var(--border); color: var(--dim); }
+.wi-prose a { color: var(--accent); }
+.wi-prose hr { border: none; border-top: 1px solid var(--border); margin: 1em 0; }
+.wi-prose code { font-family: ui-monospace, SFMono-Regular, monospace; font-size: 0.85em; background: var(--card); border: 1px solid var(--border); border-radius: 4px; padding: 0.05em 0.35em; }
+.wi-prose pre { margin: 0.6em 0; overflow: auto; background: var(--card); border: 1px solid var(--border); border-radius: 6px; padding: 0.6rem 0.8rem; }
+.wi-prose pre code { background: none; border: none; padding: 0; font-size: 0.78rem; line-height: 1.5; }
+.wi-prose table { border-collapse: collapse; margin: 0.6em 0; font-size: 0.78rem; }
+.wi-prose th, .wi-prose td { border: 1px solid var(--border); padding: 0.25rem 0.55rem; text-align: left; }
+.wi-prose th { background: var(--card); font-weight: 600; }
 .wi-foot { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .code { flex: 1; min-height: 0; overflow: auto; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 0.72rem; line-height: 1.5; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 0.3rem 0; }
 .cl { display: flex; }
