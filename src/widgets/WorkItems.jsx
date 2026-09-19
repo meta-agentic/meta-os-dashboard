@@ -139,10 +139,15 @@ function Detail({ view, onOpen }) {
   if (view.error) return <div className="degraded">{view.error}</div>
   if (!view.item) return <div className="degraded">loading {view.id}…</div>
   const it = view.item
+  // kind/priority/lane are already header tags — never repeat them below, in the
+  // meta grid or in the labels row (a label that just restates one, e.g. the lane
+  // code showing up again as a tag, is dropped rather than shown twice).
+  const tagged = new Set([it.kind, it.priority, it.project].filter(Boolean).map((v) => String(v).toLowerCase()))
   const meta = [
-    ['kind', it.kind], ['points', it.storyPoints], ['priority', it.priority],
-    ['lane', it.project], ['sprint', Array.isArray(it.sprint) ? it.sprint.join(', ') : it.sprint],
+    ['points', it.storyPoints],
+    ['sprint', Array.isArray(it.sprint) ? it.sprint.join(', ') : it.sprint],
   ].filter(([, v]) => v != null && v !== '')
+  const labels = (it.labels ?? []).filter((l) => !tagged.has(String(l).toLowerCase()))
   const hasLinks = [it.blockedBy, it.dependencies, it.relates, it.dependents, it.relatedBy, it.children].some((l) => l?.length)
   const blocked = (it.blockedBy ?? []).map((id) => it.dependencies.find((d) => d.id === id) ?? { id })
   return (
@@ -153,23 +158,26 @@ function Detail({ view, onOpen }) {
           <Pill status={it.status} flowState={it.flowState} />
           {it.kind && <span className="chip">{it.kind}</span>}
           {it.priority && <span className="chip">{it.priority}</span>}
+          {it.project && <span className="chip mono">{it.project}</span>}
         </div>
         <h3 className="wi-dtitle">{it.title}</h3>
       </header>
-      <dl className="wi-meta">
-        {meta.map(([k, v]) => (
-          <div key={k}><dt>{k}</dt><dd>{String(v)}</dd></div>
-        ))}
-        {it.epicLink && (
-          <div><dt>epic</dt><dd>
-            <button className="chip wi-link" onClick={() => onOpen(it.epicLink.id)} title={it.epicLink.title ?? `Open ${it.epicLink.id}`}>{it.epicLink.id}</button>
-            {it.epicLink.title && <span className="wi-ltitle dim" title={it.epicLink.title}>{it.epicLink.title}</span>}
-          </dd></div>
-        )}
-        {it.labels?.length > 0 && (
-          <div className="wi-labels"><dt>labels</dt><dd>{it.labels.map((l) => <span key={l} className="chip">{l}</span>)}</dd></div>
-        )}
-      </dl>
+      {(meta.length > 0 || it.epicLink || labels.length > 0) && (
+        <dl className="wi-meta">
+          {meta.map(([k, v]) => (
+            <div key={k}><dt>{k}</dt><dd>{String(v)}</dd></div>
+          ))}
+          {it.epicLink && (
+            <div><dt>epic</dt><dd>
+              <button className="chip wi-link" onClick={() => onOpen(it.epicLink.id)} title={it.epicLink.title ?? `Open ${it.epicLink.id}`}>{it.epicLink.id}</button>
+              {it.epicLink.title && <span className="wi-ltitle dim" title={it.epicLink.title}>{it.epicLink.title}</span>}
+            </dd></div>
+          )}
+          {labels.length > 0 && (
+            <div className="wi-labels"><dt>labels</dt><dd>{labels.map((l) => <span key={l} className="chip">{l}</span>)}</dd></div>
+          )}
+        </dl>
+      )}
       <div className="wi-linkgrid">
         <Links title="Blocked by" links={blocked} tone="down" onOpen={onOpen} />
         <Links title="Dependencies" links={it.dependencies} onOpen={onOpen} />
