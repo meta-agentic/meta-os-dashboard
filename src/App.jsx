@@ -23,6 +23,7 @@ import Distribution from './widgets/Distribution.jsx'
 import FilePreview from './widgets/FilePreview.jsx'
 import Gantt from './widgets/Gantt.jsx'
 import Report from './widgets/Report.jsx'
+import WorkItems from './widgets/WorkItems.jsx'
 import { apiFetch, isStatic } from './api.js'
 import { useAuth } from './auth/AuthProvider.jsx'
 import Onboarding from './Onboarding.jsx'
@@ -51,6 +52,8 @@ const WIDGETS = [
   { i: 'packs', title: 'Packs mounted', render: (d) => <Packs data={d.packs} /> },
   { i: 'skills', title: 'Skills by discipline', render: (d) => <Skills data={d.packs} /> },
   { i: 'report', title: 'Scrum Report', render: (d) => <Report data={d.report} /> },
+  // Fetches on demand (whole-space list + per-item detail), not from the polled feeds.
+  { i: 'work-items', title: 'Work Items', render: (d) => <WorkItems spaces={projectOptions(d)} /> },
 ]
 
 const DEFAULT_LAYOUT = [
@@ -74,6 +77,7 @@ const DEFAULT_LAYOUT = [
   { i: 'skills', x: 6, y: 65, w: 6, h: 9, minW: 4, minH: 6 },
   { i: 'report', x: 0, y: 65, w: 12, h: 12, minW: 5, minH: 9 },
   { i: 'graph-table', x: 0, y: 77, w: 6, h: 8, minW: 3, minH: 5 },
+  { i: 'work-items', x: 0, y: 85, w: 12, h: 16, minW: 6, minH: 8 },
 ]
 // DEFAULT_LAYOUT above is the widget catalogue: the source of per-widget size floors
 // and the template for a freshly-added board. FLOORS is derived from it, so every id
@@ -118,6 +122,10 @@ const DEFAULT_BOARDS = [
       { i: 'velocity', x: 6, y: 31, w: 6, h: 9 },
       { i: 'report', x: 0, y: 40, w: 12, h: 12 },
     ],
+  },
+  {
+    id: 'items', name: 'Work Items',
+    layout: [{ i: 'work-items', x: 0, y: 0, w: 12, h: 22 }],
   },
   {
     id: 'operations', name: 'Operations',

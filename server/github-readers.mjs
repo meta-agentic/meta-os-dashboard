@@ -4,7 +4,8 @@ import matter from 'gray-matter'
 import YAML from 'yaml'
 import { annotateSchedule } from './cron.mjs'
 import { normalizeBacklog, sprintMembers } from './backlog-schema.mjs'
-import { vaultBacklog } from './github-vault-backlog.mjs'
+import { vaultBacklog, vaultItem } from './github-vault-backlog.mjs'
+import { itemRows, itemDetailRow } from './items.mjs'
 import { expandVars } from './readers.mjs'
 import { reportFromData } from './reports.mjs'
 
@@ -448,6 +449,37 @@ export async function events(ctx, limit = 40) {
 }
 
 const STATE = { 'TO DO': 'todo', PLANNED: 'todo', 'IN PROGRESS': 'in-progress', DONE: 'done' }
+
+// Work-item list / detail — GitHub twins of items.mjs, sharing its shape builders.
+const findSpace = (ctx, space) => (ctx.backlogs ?? []).find((b) => b.space === space)
+
+export async function items(ctx, space) {
+  const b = findSpace(ctx, space)
+  if (!b) return unavailable(space ? `no backlog configured for space "${space}"` : 'no space selected')
+  try {
+    return { available: true, space, items: itemRows(await loadBacklog(b)) }
+  } catch (e) {
+    return unavailable(`backlog unreadable: ${e.message}`)
+  }
+}
+
+export async function itemDetail(ctx, space, id) {
+  const b = findSpace(ctx, space)
+  if (!b) return unavailable(space ? `no backlog configured for space "${space}"` : 'no space selected')
+  if (!id) return unavailable('no item id given')
+  try {
+    const d = await loadBacklog(b)
+    const { file, reason } = b.mode === 'document'
+      ? { file: null, reason: 'backlog is a pre-built JSON document — no source file to read' }
+      : await vaultItem(b.repo, b.path, id)
+    if (file) return { available: true, space, item: itemDetailRow(d, file) }
+    const known = [...d.epics, ...d.stories].find((s) => s.id === id)
+    if (!known) return unavailable(reason)
+    return { available: true, space, item: itemDetailRow(d, { fm: known, body: null, path: null }), reason }
+  } catch (e) {
+    return unavailable(`item unreadable: ${e.message}`)
+  }
+}
 
 export async function lanes(ctx) {
   if (!ctx.backlogs?.length) return unavailable('no backlogs configured in github.backlogs')

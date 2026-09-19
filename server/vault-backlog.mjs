@@ -42,6 +42,37 @@ export async function vaultBacklog(spaceDir) {
   return backlogFromVault({ items, sprintDocs })
 }
 
+// One item's source file, front-matter AND body. Items are named <ID>.md on disk
+// (github-vault-backlog relies on the same), so the fast path is a direct read per
+// tier; the scan fallback exists for a space that names its files its own way —
+// the listing above deliberately discovers by front-matter, so this must too.
+export async function loadItem(entry, id) {
+  if (typeof entry.path === 'string' && entry.path.endsWith('.json')) {
+    return { file: null, reason: 'backlog is a pre-built JSON export — no source file to read' }
+  }
+  const safe = /^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(id) ? id : null
+  const parse = async (file) => {
+    try {
+      const doc = matter(await fs.readFile(file, 'utf8'))
+      return doc.data ? { fm: doc.data, body: doc.content, path: path.relative(entry.path, file) } : null
+    } catch {
+      return null
+    }
+  }
+  if (safe) {
+    for (const t of TIERS) {
+      const hit = await parse(path.join(entry.path, t, `${safe}.md`))
+      if (hit && String(hit.fm.id ?? '') === id) return { file: hit }
+    }
+  }
+  const files = (await Promise.all(TIERS.map((t) => mdIn(path.join(entry.path, t))))).flat()
+  for (const f of files) {
+    const hit = await parse(f)
+    if (hit && String(hit.fm.id ?? '') === id) return { file: hit }
+  }
+  return { file: null, reason: `no item ${id} in this space` }
+}
+
 // One backlog entry → the canonical shape. `path` ending in .json is a pre-built
 // backlog document (the derived export, or any legacy mirror); anything else is a
 // vault space directory. Same rule as the GitHub context, so both modes read the
