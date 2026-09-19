@@ -45,6 +45,26 @@ function Blocked({ by }) {
   )
 }
 
+// A story can carry more than one sprint (pulled forward, then again, ...). Shows
+// the most recent one; when there's more than one, a second rounded rectangle
+// peeks out from behind to say "there's a stack here", and hovering lists all of
+// them — the same title-tooltip pattern every other chip in this widget uses.
+function SprintChip({ sprint }) {
+  const list = Array.isArray(sprint) ? sprint : sprint ? [sprint] : []
+  if (!list.length) return null
+  const sorted = [...list].sort((a, b) => cmpText(idKey(a), idKey(b)))
+  const last = sorted[sorted.length - 1]
+  const stacked = sorted.length > 1
+  return (
+    <span
+      className={'chip mono wi-sprint' + (stacked ? ' stacked' : '')}
+      title={stacked ? `${sorted.length} sprints: ${sorted.join(', ')}` : `sprint ${last}`}
+    >
+      {last}
+    </span>
+  )
+}
+
 // Windowed table: only the rows inside the viewport (plus OVERSCAN either side) are
 // mounted; two spacer rows hold the scroll height of everything else.
 function Table({ rows, sort, onSort, onOpen, scrollPos }) {
@@ -159,6 +179,7 @@ function ItemHeader({ it, onOpen, current }) {
         {it.priority && <span className="chip">{it.priority}</span>}
         {it.project && <span className="chip mono">{it.project}</span>}
         {it.storyPoints != null && <span className="chip mono">{it.storyPoints}pt</span>}
+        <SprintChip sprint={it.sprint} />
       </div>
       {known ? (
         <>
@@ -178,9 +199,6 @@ function Detail({ view, onOpen }) {
   if (view.error) return <div className="degraded">{view.error}</div>
   if (!view.item) return <div className="degraded">loading {view.id}…</div>
   const it = view.item
-  const meta = [
-    ['sprint', Array.isArray(it.sprint) ? it.sprint.join(', ') : it.sprint],
-  ].filter(([, v]) => v != null && v !== '')
   const hasLinks = [it.blockedBy, it.dependencies, it.relates, it.dependents, it.relatedBy, it.children].some((l) => l?.length)
   const blocked = (it.blockedBy ?? []).map((id) => it.dependencies.find((d) => d.id === id) ?? { id })
   const chain = [...(it.parents ?? []), it]
@@ -193,13 +211,6 @@ function Detail({ view, onOpen }) {
           </div>
         ))}
       </div>
-      {meta.length > 0 && (
-        <dl className="wi-meta">
-          {meta.map(([k, v]) => (
-            <div key={k}><dt>{k}</dt><dd>{String(v)}</dd></div>
-          ))}
-        </dl>
-      )}
       <div className="wi-linkgrid">
         <Links title="Blocked by" links={blocked} tone="down" onOpen={onOpen} />
         <Links title="Dependencies" links={it.dependencies} onOpen={onOpen} />
