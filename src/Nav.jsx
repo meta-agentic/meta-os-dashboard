@@ -36,7 +36,7 @@ const DENSITIES = [
   { v: 'compact', label: 'Compact' },
 ]
 
-export default function Nav({ open, onClose, prefs, setPrefs, meta, auth, packs }) {
+export default function Nav({ open, onClose, prefs, setPrefs, meta, auth, packs, onboarding }) {
   const set = (patch) => setPrefs((p) => ({ ...p, ...patch }))
   const vars = meta?.vars && Object.keys(meta.vars).length ? meta.vars : null
 
@@ -128,6 +128,33 @@ export default function Nav({ open, onClose, prefs, setPrefs, meta, auth, packs 
               </div>
             ))}
           <p className="nav-note">Folders &amp; path variables are defined in <code>instance.config.json</code>.</p>
+        </details>
+
+        <details className="nav-sec" open={!onboarding?.complete}>
+          <summary>
+            Setup{onboarding ? (onboarding.complete ? ' — complete' : ` — ${onboarding.missingCount} step${onboarding.missingCount === 1 ? '' : 's'} left`) : ''}
+          </summary>
+          {!onboarding ? (
+            <p className="nav-note">loading…</p>
+          ) : (
+            <>
+              {onboarding.done.map((d) => (
+                <div className="nav-kv" key={d.feed}>
+                  <span>{d.label}</span>
+                  <code className="ok">done</code>
+                </div>
+              ))}
+              {onboarding.steps.map((s, i) => (
+                <div className="nav-kv" key={i} title={[...s.feeds, ...s.sources].join(', ') || undefined}>
+                  <span>{s.reason}</span>
+                  <code className="warn">missing</code>
+                </div>
+              ))}
+              {onboarding.complete && (
+                <p className="nav-note">All {onboarding.checkedFeeds} checked feeds are available — nothing outstanding.</p>
+              )}
+            </>
+          )}
         </details>
 
         <details className="nav-sec">

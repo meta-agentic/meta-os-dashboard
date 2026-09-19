@@ -408,7 +408,7 @@ export default function App() {
 
   return (
     <>
-      <Nav open={navOpen} onClose={() => setNavOpen(false)} prefs={prefs} setPrefs={setPrefs} meta={data.meta} auth={auth} packs={data.packs} />
+      <Nav open={navOpen} onClose={() => setNavOpen(false)} prefs={prefs} setPrefs={setPrefs} meta={data.meta} auth={auth} packs={data.packs} onboarding={onb} />
       <header>
         <button className="nav-toggle" onClick={() => setNavOpen(true)} title="Settings & navigation" aria-label="Open settings">☰</button>
         <h1>

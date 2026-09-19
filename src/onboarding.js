@@ -18,6 +18,7 @@ const FEED_LABELS = {
   automations: 'Automations',
   lint: 'Lint',
   outputs: 'Outputs',
+  packs: 'Skill packs',
 }
 
 // Sub-source arrays a feed may carry, each element being its own {available,reason}.
@@ -77,12 +78,24 @@ export function deriveOnboarding(data) {
     sources: [...s.sources],
   }))
 
+  // The other half of the checklist: feeds that report available AND raise no
+  // sub-source issue of their own — done, not merely "not currently complained
+  // about". A feed can be available:true and still show up in `steps` instead of
+  // here (e.g. automations is up but its events sub-source isn't) — that's the
+  // point: this list is a genuine done column, not just "not unavailable".
+  const issueFeeds = new Set(issues.map((it) => it.feed))
+  const done = feedsWithAvail
+    .filter((feed) => !unavailableFeeds.includes(feed) && !issueFeeds.has(feed))
+    .map((feed) => ({ feed, label: FEED_LABELS[feed] || feed }))
+    .sort((a, b) => a.label.localeCompare(b.label))
+
   const fresh =
     unavailableFeeds.length > 0 &&
     unavailableFeeds.length >= Math.ceil(feedsWithAvail.length / 2)
 
   return {
     steps,
+    done,
     fresh,
     missingCount: steps.length,
     checkedFeeds: feedsWithAvail.length,

@@ -1283,6 +1283,7 @@ line.zap { stroke: var(--accent); stroke-opacity: 0.9; }
 .nav-kv code { color: var(--fg); font-size: 0.72rem; text-align: right; }
 .nav-kv code.wrap { word-break: break-all; text-align: right; }
 .nav-kv code.warn { color: var(--warn); }
+.nav-kv code.ok { color: var(--ok); }
 .nav-note { font-size: 0.72rem; color: var(--dim); line-height: 1.45; margin: 0.6rem 0 0.4rem; }
 .nav-btn { font: inherit; font-size: 0.78rem; color: var(--fg); background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 0.4rem 0.8rem; cursor: pointer; }
 .nav-btn:disabled { opacity: 0.5; cursor: not-allowed; }
