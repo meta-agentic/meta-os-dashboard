@@ -8,6 +8,7 @@ import * as read from '../server/readers.mjs'
 import { graphSources, graphView } from '../server/graph.mjs'
 import { lint } from '../server/lint.mjs'
 import { packs } from '../server/packs.mjs'
+import { harness, harnessDir } from '../server/harness.mjs'
 import { reports } from '../server/reports.mjs'
 
 const root = path.dirname(fileURLToPath(import.meta.url))
@@ -60,6 +61,7 @@ await write('outputs', await read.outputs(instanceRoot))
 await write('report', await reports(config.backlogs))
 await write('usage', { available: false, reason: 'engine usage is local-only — not included in static snapshots' })
 await write('engines', { available: false, reason: 'meta-cli engines are local-only — not included in static snapshots' })
+await write('harness', await harness(harnessDir(config, instanceRoot)))
 
 const { sources, ...graphsMeta } = await graphSources(instanceRoot, projects)
 await write('graphs', { ...graphsMeta, sources })

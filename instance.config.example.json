@@ -6,6 +6,10 @@
   "instanceRoot": "${code}/your-instance-vault",
   "frameworkRoot": "(optional) ${code}/meta-os — defaults to resolving the instance's systems/ symlink",
   "claudeHome": "(optional) /Users/you/.claude — engine home whose session logs feed the usage widget; defaults to ~/.claude",
+  "harness": {
+    "_comment": "Optional. Directory of hand-authored harness declarations (one YAML per repo, shape in docs/harness.example.yaml) for the Harness widget. Relative to instanceRoot; defaults to <instanceRoot>/harness. May also live in the instance's meta-os.config.json.",
+    "dir": "harness"
+  },
   "metaCli": {
     "_comment": "Optional, off by default. Enables the meta-cli engines widget and the meta-cli hints in Usage / Sprint Lanes / Skills. bin = the meta binary (absolute path if the server runs without ~/.local/bin on PATH). runsDir = where meta writes runs (META_RUNS_DIR), relative to instanceRoot; omit to skip run counts. providers.<name>.plan is what you DECLARE about each subscription — it cannot be detected and is shown as declared. May also live in the instance's meta-os.config.json.",
     "enabled": false,

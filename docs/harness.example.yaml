@@ -1,0 +1,31 @@
+# Harness declaration — one file per repo, placed in YOUR instance, not in this package:
+#   <instanceRoot>/harness/<repo-name>.yaml   (or the directory set by harness.dir)
+# The Harness widget lists every declared gate that guards the repo's PRs. It is
+# hand-authored and read-only: nothing here is scanned from, or written to, the repo.
+repo: example-org/example-service   # owner/name, shown as the row title
+visibility: public                  # optional: public | private
+profile: scrum                      # optional: the agile profile that governs the repo, or none
+
+gates:
+  - name: commit-lint                         # short gate name
+    file: .github/workflows/commit-lint.yml   # optional: where the gate is defined
+    trigger: pull_request                     # optional: when it runs
+    scope: every commit in the PR             # optional: what it inspects
+    blocking: true                            # true = required check, false = advisory
+    checks:                                   # optional: what it rejects, one line each
+      - Conventional Commits subject prefix
+      - no AI-attribution trailer in the commit body
+
+  - name: build
+    file: .github/workflows/ci.yml
+    trigger: pull_request, push to main
+    blocking: true
+    checks:
+      - clean build and unit tests
+      - lint and type check
+
+  - name: dependency-review
+    trigger: pull_request
+    blocking: false
+    checks:
+      - flags newly added dependencies with known vulnerabilities
