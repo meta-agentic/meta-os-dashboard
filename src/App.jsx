@@ -7,6 +7,7 @@ import SprintSummary from './widgets/SprintSummary.jsx'
 import Burndown from './widgets/Burndown.jsx'
 import Velocity from './widgets/Velocity.jsx'
 import Packs from './widgets/Packs.jsx'
+import Harness from './widgets/Harness.jsx'
 import Skills from './widgets/Skills.jsx'
 import Memory from './widgets/Memory.jsx'
 import MemoryFlux from './widgets/MemoryFlux.jsx'
@@ -30,7 +31,7 @@ import { useAuth } from './auth/AuthProvider.jsx'
 import Onboarding from './Onboarding.jsx'
 import { deriveOnboarding } from './onboarding.js'
 
-const FEEDS = ['meta', 'ontology', 'registry', 'automations', 'memory', 'events', 'lanes', 'lint', 'outputs', 'usage', 'report', 'packs', 'engines']
+const FEEDS = ['meta', 'ontology', 'registry', 'automations', 'memory', 'events', 'lanes', 'lint', 'outputs', 'usage', 'report', 'packs', 'engines', 'harness']
 
 const WIDGETS = [
   { i: 'lanes', title: 'Sprint Lanes', render: (d) => <Lanes data={d.lanes} engines={d.engines} /> },
@@ -52,6 +53,7 @@ const WIDGETS = [
   { i: 'burndown', title: 'Burndown', render: (d) => <Burndown data={d.report} /> },
   { i: 'velocity', title: 'Velocity', render: (d) => <Velocity data={d.report} /> },
   { i: 'packs', title: 'Packs mounted', render: (d) => <Packs data={d.packs} /> },
+  { i: 'harness', title: 'Harness', render: (d) => <Harness data={d.harness} /> },
   { i: 'skills', title: 'Skills by discipline', render: (d) => <Skills data={d.packs} engines={d.engines} /> },
   { i: 'report', title: 'Scrum Report', render: (d) => <Report data={d.report} /> },
   // Fetches on demand (whole-space list + per-item detail), not from the polled feeds.
@@ -83,6 +85,7 @@ const DEFAULT_LAYOUT = [
   { i: 'graph-table', x: 0, y: 77, w: 6, h: 8, minW: 3, minH: 5 },
   { i: 'work-items', x: 0, y: 85, w: 12, h: 16, minW: 6, minH: 8 },
   { i: 'engines', x: 0, y: 101, w: 6, h: 9, minW: 4, minH: 6 },
+  { i: 'harness', x: 6, y: 101, w: 6, h: 9, minW: 4, minH: 6 },
 ]
 // DEFAULT_LAYOUT above is the widget catalogue: the source of per-widget size floors
 // and the template for a freshly-added board. FLOORS is derived from it, so every id
@@ -143,6 +146,7 @@ const DEFAULT_BOARDS = [
       { i: 'packs', x: 0, y: 28, w: 6, h: 9 },
       { i: 'skills', x: 6, y: 28, w: 6, h: 9 },
       { i: 'engines', x: 0, y: 37, w: 6, h: 9 },
+      { i: 'harness', x: 6, y: 37, w: 6, h: 9 },
     ],
   },
 ]

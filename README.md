@@ -33,6 +33,10 @@ in the framework repo for the full contract this app implements.
   faceted by type and project, dated from the instance git history.
 - **Engine usage** — tokens × model × project × day from the engine's local session
   logs (`claudeHome` config, default `~/.claude`). Local-only; no cost guessing.
+- **Harness**: which gates guard each repo's PRs, from hand-authored declarations in your
+  instance (`<instanceRoot>/harness/*.yaml`, or `harness.dir`; format in
+  [`docs/harness.example.yaml`](docs/harness.example.yaml)). Read-only. The package ships no
+  declarations of its own.
 - **meta-cli engines** *(opt-in, `metaCli.enabled`)*: which engines
   [meta-cli](https://github.com/meta-agentic/meta-cli) can reach (`meta which`, plus an
   Ollama probe), each subscription plan as you declared it, and meta runs per provider over
