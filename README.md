@@ -33,6 +33,11 @@ in the framework repo for the full contract this app implements.
   faceted by type and project, dated from the instance git history.
 - **Engine usage** — tokens × model × project × day from the engine's local session
   logs (`claudeHome` config, default `~/.claude`). Local-only; no cost guessing.
+- **meta-cli engines** *(opt-in, `metaCli.enabled`)*: which engines
+  [meta-cli](https://github.com/meta-agentic/meta-cli) can reach (`meta which`, plus an
+  Ollama probe), each subscription plan as you declared it, and meta runs per provider over
+  30 days. When enabled, Usage, Sprint Lanes and Skills also show where meta-cli can take
+  load off Claude. Local-only.
 - **Registry** — the project estate, linked out to each repo, with each project's
   delivery target (`output:` front-matter; blank = `memory/output/`).
 - **Ontology lint** — front-matter in the instance validated against the framework's

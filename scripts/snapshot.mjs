@@ -59,6 +59,7 @@ await write('packs', await packs(instanceRoot, frameworkRoot, config.claudeHome)
 await write('outputs', await read.outputs(instanceRoot))
 await write('report', await reports(config.backlogs))
 await write('usage', { available: false, reason: 'engine usage is local-only — not included in static snapshots' })
+await write('engines', { available: false, reason: 'meta-cli engines are local-only — not included in static snapshots' })
 
 const { sources, ...graphsMeta } = await graphSources(instanceRoot, projects)
 await write('graphs', { ...graphsMeta, sources })

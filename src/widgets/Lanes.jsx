@@ -1,5 +1,6 @@
 import React from 'react'
 import Card from './Card.jsx'
+import MetaCliHint from './MetaCliHint.jsx'
 
 // 2px time-progress line: the elapsed share of the sprint window in dark yellow,
 // the remainder dark gray.
@@ -47,7 +48,7 @@ function QueueBar({ queues }) {
   )
 }
 
-export default function Lanes({ data }) {
+export default function Lanes({ data, engines }) {
   // Spaces with no sprint data at all (never closed one either) collapse into one
   // summary line instead of an empty section each — they carry no flow to show.
   // A space with lanes but no LIVE sprint is showing its last closed one (server
@@ -118,6 +119,7 @@ export default function Lanes({ data }) {
           no active sprint: {idle.map((s) => s.space.toUpperCase()).join(' · ')}
         </div>
       )}
+      <MetaCliHint engines={engines} point="lanes" />
     </Card>
   )
 }

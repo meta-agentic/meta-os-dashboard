@@ -1,5 +1,6 @@
 import React from 'react'
 import Card from './Card.jsx'
+import MetaCliHint from './MetaCliHint.jsx'
 import { StripPlot, ScatterChart } from '../charts/Charts.jsx'
 
 const fmt = (n) =>
@@ -38,7 +39,7 @@ function DayBars({ days }) {
   )
 }
 
-export default function Usage({ data }) {
+export default function Usage({ data, engines }) {
   const models = Object.entries(data?.models ?? {})
   const reuse = cacheReuse(data?.totals)
   const sessionList = data?.sessionList ?? []
@@ -102,6 +103,7 @@ export default function Usage({ data }) {
         </div>
       )}
       <div className="dim small">cost n/a — {data?.costReason}</div>
+      <MetaCliHint engines={engines} point="usage" />
     </Card>
   )
 }

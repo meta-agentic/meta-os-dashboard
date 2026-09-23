@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react'
 import Card from './Card.jsx'
+import MetaCliHint from './MetaCliHint.jsx'
 
 // The complete skill surface, grouped by the discipline that owns it.
 //
@@ -11,7 +12,7 @@ import Card from './Card.jsx'
 //
 // Descriptions come from each SKILL.md's front-matter, so this reads the same text
 // the agent reads when deciding whether a skill applies.
-export default function Skills({ data }) {
+export default function Skills({ data, engines }) {
   const [q, setQ] = useState('')
   const [open, setOpen] = useState(() => new Set())
 
@@ -90,6 +91,7 @@ export default function Skills({ data }) {
           )
         })}
       </ul>
+      <MetaCliHint engines={engines} point="skills" />
     </Card>
   )
 }
