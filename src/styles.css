@@ -1610,3 +1610,11 @@ th.num .wi-sort { justify-content: flex-end; }
 .filter:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .skill-list { margin: 0.25rem 0 0.6rem 0.9rem; border-left: 1px solid var(--border); padding-left: 0.7rem; }
 .skill-list > li { margin-bottom: 0.45rem; }
+
+/* meta-cli enhancement point inside a host widget (MetaCliHint, MOS-148) */
+.metacli-hint {
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--border);
+  overflow-wrap: anywhere;
+}

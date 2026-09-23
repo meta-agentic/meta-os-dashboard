@@ -18,6 +18,7 @@ import GraphTable from './widgets/graph/GraphTable.jsx'
 import Lint from './widgets/Lint.jsx'
 import Outputs from './widgets/Outputs.jsx'
 import Usage from './widgets/Usage.jsx'
+import Engines from './widgets/Engines.jsx'
 import Nav from './Nav.jsx'
 import Distribution from './widgets/Distribution.jsx'
 import FilePreview from './widgets/FilePreview.jsx'
@@ -29,10 +30,10 @@ import { useAuth } from './auth/AuthProvider.jsx'
 import Onboarding from './Onboarding.jsx'
 import { deriveOnboarding } from './onboarding.js'
 
-const FEEDS = ['meta', 'ontology', 'registry', 'automations', 'memory', 'events', 'lanes', 'lint', 'outputs', 'usage', 'report', 'packs']
+const FEEDS = ['meta', 'ontology', 'registry', 'automations', 'memory', 'events', 'lanes', 'lint', 'outputs', 'usage', 'report', 'packs', 'engines']
 
 const WIDGETS = [
-  { i: 'lanes', title: 'Sprint Lanes', render: (d) => <Lanes data={d.lanes} /> },
+  { i: 'lanes', title: 'Sprint Lanes', render: (d) => <Lanes data={d.lanes} engines={d.engines} /> },
   { i: 'sprint-summary', title: 'Sprint Summary', render: (d) => <SprintSummary data={d.lanes} /> },
   { i: 'graph', title: 'Knowledge Graph', render: (d) => <GraphView ontology={d.ontology} /> },
   { i: 'graph-table', title: 'Graph Hubs', render: (d) => <GraphTable ontology={d.ontology} /> },
@@ -40,7 +41,8 @@ const WIDGETS = [
   { i: 'memory-flux', title: 'Memory Flux', render: (d) => <MemoryFlux memory={d.memory} events={d.events} ontology={d.ontology} /> },
   { i: 'outputs', title: 'Outputs', render: (d) => <Outputs data={d.outputs} /> },
   { i: 'automations', title: 'Automations', render: (d) => <Automations data={d.automations} /> },
-  { i: 'usage', title: 'Usage', render: (d) => <Usage data={d.usage} /> },
+  { i: 'usage', title: 'Usage', render: (d) => <Usage data={d.usage} engines={d.engines} /> },
+  { i: 'engines', title: 'meta-cli engines', render: (d) => <Engines data={d.engines} /> },
   { i: 'registry', title: 'Registry', render: (d) => <Registry data={d.registry} /> },
   { i: 'lint', title: 'Lint', render: (d) => <Lint data={d.lint} /> },
   { i: 'activity', title: 'Activity', render: (d) => <Activity data={d.events} /> },
@@ -50,7 +52,7 @@ const WIDGETS = [
   { i: 'burndown', title: 'Burndown', render: (d) => <Burndown data={d.report} /> },
   { i: 'velocity', title: 'Velocity', render: (d) => <Velocity data={d.report} /> },
   { i: 'packs', title: 'Packs mounted', render: (d) => <Packs data={d.packs} /> },
-  { i: 'skills', title: 'Skills by discipline', render: (d) => <Skills data={d.packs} /> },
+  { i: 'skills', title: 'Skills by discipline', render: (d) => <Skills data={d.packs} engines={d.engines} /> },
   { i: 'report', title: 'Scrum Report', render: (d) => <Report data={d.report} /> },
   // Fetches on demand (whole-space list + per-item detail), not from the polled feeds.
   // Driven by the global project filter bar, not its own picker — ctx.selectedProjects
@@ -80,6 +82,7 @@ const DEFAULT_LAYOUT = [
   { i: 'report', x: 0, y: 65, w: 12, h: 12, minW: 5, minH: 9 },
   { i: 'graph-table', x: 0, y: 77, w: 6, h: 8, minW: 3, minH: 5 },
   { i: 'work-items', x: 0, y: 85, w: 12, h: 16, minW: 6, minH: 8 },
+  { i: 'engines', x: 0, y: 101, w: 6, h: 9, minW: 4, minH: 6 },
 ]
 // DEFAULT_LAYOUT above is the widget catalogue: the source of per-widget size floors
 // and the template for a freshly-added board. FLOORS is derived from it, so every id
@@ -139,6 +142,7 @@ const DEFAULT_BOARDS = [
       { i: 'registry', x: 0, y: 20, w: 12, h: 8 },
       { i: 'packs', x: 0, y: 28, w: 6, h: 9 },
       { i: 'skills', x: 6, y: 28, w: 6, h: 9 },
+      { i: 'engines', x: 0, y: 37, w: 6, h: 9 },
     ],
   },
 ]

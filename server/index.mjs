@@ -8,6 +8,7 @@ import { graphSources, graphView } from './graph.mjs'
 import { lint } from './lint.mjs'
 import { packs } from './packs.mjs'
 import { usage } from './usage.mjs'
+import { engines } from './engines.mjs'
 import * as files from './files.mjs'
 import * as boards from './boards.mjs'
 import { reports } from './reports.mjs'
@@ -50,7 +51,7 @@ let instanceRoot, frameworkRoot, fileRoots, dataDir
 // different checkout layout overrides paths without touching estate config.
 // Back-compat: if the instance has no meta-os.config.json, nothing changes and an
 // existing all-in-one instance.config.json keeps working untouched.
-const ESTATE_KEYS = ['vars', 'backlogs', 'memory']
+const ESTATE_KEYS = ['vars', 'backlogs', 'memory', 'metaCli']
 
 function mergeEstate(estate, deployment) {
   if (!estate) return deployment
@@ -181,6 +182,8 @@ if (isGithub) {
   // No GitHub twin: mount state is a property of the machine running the skills,
   // which a remote tree cannot observe. Degrade with the reason instead of 404.
   app.get('/api/packs', api(async () => ({ available: false, reason: 'mount state is local-only — not observable from a GitHub source' })))
+  // Same reason: which engine CLIs are installed is a property of the machine.
+  app.get('/api/engines', api(async () => ({ available: false, reason: 'meta-cli engines are local-only — not observable from a GitHub source' })))
   app.get('/api/graphs', api(() => ghGraph.graphSources(ghCtx)))
   app.get('/api/graph', api(async (req) => {
     const { name, ...opts } = req.query
@@ -217,6 +220,9 @@ if (isGithub) {
   }))
   app.get('/api/lint', api(() => lint(instanceRoot, frameworkRoot)))
   app.get('/api/packs', api(() => packs(instanceRoot, frameworkRoot, config.claudeHome)))
+  // Opt-in (metaCli.enabled). guard(), not api(): every feed shares one Promise.all on
+  // the client, so this must answer with an error body rather than drop the request.
+  app.get('/api/engines', guard(() => engines(config.metaCli, config.claudeHome, instanceRoot)))
   app.get('/api/graphs', api(async () => {
     const reg = await read.registry(instanceRoot, config.vars ?? {})
     return graphSources(instanceRoot, reg.projects ?? [])
