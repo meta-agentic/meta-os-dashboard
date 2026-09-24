@@ -8,6 +8,13 @@ import matter from 'gray-matter'
 import YAML from 'yaml'
 
 const SKIP_FILES = new Set(['CLAUDE.md', 'README.md'])
+// Ephemeral swarm-pipeline artifacts, not notes: agent prompts fed to a speculative
+// lane ("you are a speculative lane...") and its draft output (draft vault items using
+// the vault's kind/space/id schema, not the ontology's type/tags — they only become
+// real notes/items once a PO picks a branch and the dispatcher applies them). Found by
+// the ontology lint 2026-09-24 flagging automations/swarm/speculation|speculative/*.md;
+// a per-file frontmatter fix would misrepresent what these files are.
+const SKIP_DIRS = new Set(['speculation', 'speculative'])
 
 async function loadOntology(frameworkRoot, instanceRoot) {
   const read = async (p) => {
@@ -24,6 +31,7 @@ async function loadOntology(frameworkRoot, instanceRoot) {
 async function* walk(dir) {
   for (const entry of await fs.readdir(dir, { withFileTypes: true })) {
     if (entry.name.startsWith('.')) continue
+    if (entry.isDirectory() && SKIP_DIRS.has(entry.name)) continue
     const full = path.join(dir, entry.name)
     if ((await fs.lstat(full)).isSymbolicLink()) continue
     if (entry.isDirectory()) yield* walk(full)
