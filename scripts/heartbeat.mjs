@@ -14,6 +14,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { lint } from '../server/lint.mjs'
 import * as read from '../server/readers.mjs'
+import { runlogAppend, runlogCheck } from './runlog-bridge.mjs'
 
 const NAME = 'OS heartbeat'
 // Resolved from this file, never from an absolute checkout path or the process CWD, so the
@@ -41,15 +42,32 @@ async function durable(line) {
   }
 }
 
+// Runs are recorded through the instance's guarded writer (scripts/runlog-bridge.mjs), which
+// refuses while the instance's git index is unmerged. A refusal is never "fixed" by
+// appending directly: that is exactly the write that once produced a file matching no stage.
 async function recordRun(instanceRoot, outcome, note) {
   await durable(`${outcome} — ${note}`)
   if (!instanceRoot) return // config never resolved; runs.jsonl location is unknown
+  const r = runlogAppend(instanceRoot, NAME, outcome, note)
+  if (r.status === 'ok') return
+  if (r.status === 'refused') return refused(r.detail)
+  if (r.status === 'error') return durable(`runlog.py could not record the run: ${r.detail}`)
+  // 'absent': an instance older than the shared writer. Keep the old direct append.
   const entry = JSON.stringify({ automation: NAME, ts: new Date().toISOString(), outcome, note })
   try {
     await fs.appendFile(path.join(instanceRoot, 'automations/runs.jsonl'), entry + '\n')
   } catch (e) {
     await durable(`could not append to automations/runs.jsonl: ${e.message}`)
   }
+}
+
+// The refusal must reach a person, not only a log: stderr (launchd's log, or the
+// terminal) plus the durable log, plus the instance writer's own macOS notification.
+// Exit 3 matches runlog.py's refusal code, so the scheduler holds a distinct status.
+async function refused(detail) {
+  console.error(`${NAME}: REFUSED — ${detail}`)
+  await durable(`REFUSED — ${detail}`)
+  process.exitCode = 3
 }
 
 // Set as soon as the config resolves, so a later failure still knows where runs.jsonl lives.
@@ -64,6 +82,15 @@ try {
   const config = read.expandVars(rawConfig, rawConfig.vars ?? {})
   instanceRoot = config.instanceRoot
   if (!instanceRoot) throw new Error(`no instanceRoot in ${configPath}`)
+
+  // Before ANY write into the instance (the note below, then runs.jsonl): if its git
+  // index is unmerged, write nothing and say so.
+  const guard = runlogCheck(instanceRoot, NAME)
+  if (guard.status === 'refused') {
+    await refused(guard.detail)
+    process.exit()
+  }
+  if (guard.status === 'error') throw new Error(`index guard unavailable: ${guard.detail}`)
   const frameworkRoot = config.frameworkRoot ?? path.dirname(await fs.realpath(path.join(instanceRoot, 'systems')))
 
   const today = new Date().toISOString().slice(0, 10)
