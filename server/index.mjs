@@ -20,6 +20,13 @@ import * as ghGraph from './github-graph.mjs'
 import * as ghFiles from './github-files.mjs'
 import { createAuthMiddleware } from './auth.mjs'
 import { createStream } from './stream.mjs'
+import { computeSourceHash } from '../scripts/source-hash.mjs'
+
+const pkg = JSON.parse(await fs.readFile(new URL('../package.json', import.meta.url), 'utf8'))
+// Computed once at boot, not per-request — the server's own source doesn't change under
+// it while it's running, so re-hashing on every /api/version call would be pure waste.
+const sourceHash = await computeSourceHash()
+const startedAt = new Date().toISOString()
 
 const defaultConfig = new URL('../instance.config.json', import.meta.url).pathname
 const configPath = process.env.META_OS_CONFIG ?? defaultConfig
@@ -162,6 +169,16 @@ app.get('/api/health', api(async () => ({
   instance: isGithub ? ghCtx.instance.label() : path.basename(instanceRoot),
 })))
 
+// MOS-146: detailed version/identity, so a dev-time launcher (or the frontend itself) can
+// tell whether THIS running process reflects the current server/ source before deciding
+// to reuse it, relocate around it, or warn that they've drifted apart.
+app.get('/api/version', api(async () => ({
+  pkgVersion: pkg.version,
+  sourceHash,
+  node: process.version,
+  pid: process.pid,
+  startedAt,
+})))
 
 if (isGithub) {
   app.get('/api/meta', api(() => gh.meta(ghCtx)))

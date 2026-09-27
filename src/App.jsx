@@ -247,6 +247,7 @@ function loadBoards() {
 export default function App() {
   const [data, setData] = useState({})
   const [error, setError] = useState(null)
+  const [apiHashMismatch, setApiHashMismatch] = useState(null)
   const [{ boards, activeId }, setState] = useState(loadBoards)
   const [selectedProjects, setSelectedProjects] = useState(loadProjectFilter)
   const [editingId, setEditingId] = useState(null)
@@ -268,6 +269,24 @@ export default function App() {
     const t = setInterval(refresh, prefs.refreshSec * 1000)
     return () => clearInterval(t)
   }, [prefs.refreshSec])
+
+  // MOS-146: not a widget feed, not polled — this build's own expectation (baked in at
+  // Vite startup, see vite.config.js) checked against whatever backend it happens to be
+  // talking to, once. A live backend can outlive the frontend that connected to it (this
+  // is the exact drift scripts/dev.mjs's reuse check also guards against, from the other
+  // direction), so a mismatch here is a real signal, not noise.
+  useEffect(() => {
+    if (isStatic) return // no live backend to check in a pre-built snapshot
+    apiFetch('/api/version')
+      .then((r) => r.json())
+      .then((v) => {
+        const expected = import.meta.env.VITE_EXPECTED_API_HASH
+        if (expected && v.sourceHash && v.sourceHash !== expected) {
+          setApiHashMismatch({ server: v.sourceHash, expected })
+        }
+      })
+      .catch(() => {}) // the FEEDS refresh above already surfaces a dead backend
+  }, [])
 
   useEffect(() => {
     const el = document.documentElement
@@ -436,6 +455,14 @@ export default function App() {
         {isStatic && <span className="static-badge" title="Read-only snapshot — rebuild CI to refresh">static snapshot</span>}
         {!isStatic && data.meta?.source === 'github' && (
           <span className="static-badge" title="Live reads via hosted API + GITHUB_TOKEN">github live</span>
+        )}
+        {apiHashMismatch && (
+          <span
+            className="static-badge warn"
+            title={`This build expects API sourceHash ${apiHashMismatch.expected}, but the running server reports ${apiHashMismatch.server}. Restart npm run dev to pick up the current server/ source.`}
+          >
+            backend out of date
+          </span>
         )}
         <span className="spacer" />
         <span className="dim hint">drag the header · resize from the edges</span>
