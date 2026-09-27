@@ -4,7 +4,7 @@
   "description": "Layer 3 of the meta-os Agentic OS: observability-first dashboard. Generic and public-safe; pointed at a private instance root via instance.config.json.",
   "type": "module",
   "scripts": {
-    "dev": "concurrently -n api,web -c blue,magenta \"node server/index.mjs\" \"vite\"",
+    "dev": "node scripts/dev.mjs",
     "server": "node server/index.mjs",
     "server:github": "META_OS_CONFIG=github.config.json node server/index.mjs",
     "snapshot": "node scripts/snapshot.mjs",
