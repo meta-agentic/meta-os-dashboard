@@ -70,12 +70,19 @@ const repoKey = (r) => String(r ?? '')
 
 // Origin URL of a clone, read from its git config (a linked worktree's .git is a
 // file pointing at the shared repository). null: not a clone; '': a clone with no origin.
+// `.git` is read directly rather than stat-ed first: EISDIR is the ordinary clone, so
+// there is no check-then-use window for the path to change in between.
 async function cloneOrigin(dir) {
   let gitDir = path.join(dir, '.git')
   try {
-    const st = await fs.stat(gitDir)
-    if (st.isFile()) {
-      const target = (await fs.readFile(gitDir, 'utf8')).match(/^gitdir:\s*(.+)$/m)?.[1]?.trim()
+    let pointer = null
+    try {
+      pointer = await fs.readFile(gitDir, 'utf8')
+    } catch (e) {
+      if (e.code !== 'EISDIR') return null
+    }
+    if (pointer !== null) {
+      const target = pointer.match(/^gitdir:\s*(.+)$/m)?.[1]?.trim()
       if (!target) return null
       gitDir = path.resolve(dir, target)
       const common = await fs.readFile(path.join(gitDir, 'commondir'), 'utf8').catch(() => null)
