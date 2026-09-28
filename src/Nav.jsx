@@ -210,7 +210,7 @@ export default function Nav({ open, onClose, prefs, setPrefs, meta, auth, packs,
           ) : auth?.status === 'disabled' || !auth ? (
             <p className="nav-note">
               Single-user mode. Set <code>auth</code> in config to require OIDC sign-in — profiles and
-              per-user boards will live here.
+              per-user tab layouts will live here.
             </p>
           ) : (
             <>
