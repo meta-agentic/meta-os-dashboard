@@ -14,6 +14,8 @@ import FederatedVaults from './widgets/FederatedVaults.jsx'
 import PromotionPipeline from './widgets/PromotionPipeline.jsx'
 import PromotionFlow from './widgets/PromotionFlow.jsx'
 import Ingestion from './widgets/Ingestion.jsx'
+import SessionSpend from './widgets/SessionSpend.jsx'
+import SessionScatter from './widgets/SessionScatter.jsx'
 import { LAYOUT_VERSION, migrateBoard } from './boardMigrations.js'
 import Automations from './widgets/Automations.jsx'
 import Registry from './widgets/Registry.jsx'
@@ -49,7 +51,9 @@ const WIDGETS = [
   { i: 'ingestion', title: 'Ingestion', render: (d) => <Ingestion events={d.events} /> },
   { i: 'outputs', title: 'Outputs', render: (d) => <Outputs data={d.outputs} /> },
   { i: 'automations', title: 'Automations', render: (d) => <Automations data={d.automations} /> },
-  { i: 'usage', title: 'Usage', render: (d) => <Usage data={d.usage} engines={d.engines} /> },
+  { i: 'usage', title: 'Engine Usage', render: (d) => <Usage data={d.usage} engines={d.engines} /> },
+  { i: 'session-spend', title: 'Per-session spend', render: (d) => <SessionSpend data={d.usage} /> },
+  { i: 'session-scatter', title: 'Cost × Throughput', render: (d) => <SessionScatter data={d.usage} /> },
   { i: 'engines', title: 'meta-cli engines', render: (d) => <Engines data={d.engines} /> },
   { i: 'registry', title: 'Registry', render: (d) => <Registry data={d.registry} /> },
   { i: 'lint', title: 'Lint', render: (d) => <Lint data={d.lint} /> },
@@ -82,6 +86,8 @@ const DEFAULT_LAYOUT = [
   { i: 'outputs', x: 8, y: 20, w: 4, h: 8, minW: 3, minH: 5 },
   { i: 'automations', x: 0, y: 29, w: 4, h: 8, minW: 3, minH: 5 },
   { i: 'usage', x: 0, y: 28, w: 6, h: 8, minW: 3, minH: 5 },
+  { i: 'session-spend', x: 0, y: 36, w: 6, h: 6, minW: 3, minH: 4 },
+  { i: 'session-scatter', x: 6, y: 36, w: 6, h: 9, minW: 3, minH: 6 },
   { i: 'registry', x: 6, y: 28, w: 3, h: 8, minW: 3, minH: 5 },
   { i: 'lint', x: 9, y: 28, w: 3, h: 8, minW: 3, minH: 5 },
   { i: 'activity', x: 0, y: 36, w: 8, h: 7, minW: 4, minH: 5 },
@@ -154,6 +160,8 @@ const DEFAULT_BOARDS = [
     layout: [
       { i: 'usage', x: 0, y: 0, w: 6, h: 9 },
       { i: 'automations', x: 6, y: 0, w: 6, h: 9 },
+      { i: 'session-spend', x: 0, y: 9, w: 6, h: 6 },
+      { i: 'session-scatter', x: 6, y: 9, w: 6, h: 9 },
       { i: 'activity', x: 0, y: 13, w: 8, h: 7 },
       { i: 'lint', x: 8, y: 13, w: 4, h: 7 },
       { i: 'registry', x: 0, y: 20, w: 12, h: 8 },
