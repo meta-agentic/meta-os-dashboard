@@ -90,6 +90,18 @@ function NextStrip({ rows, schedule }) {
   )
 }
 
+// The registry writes several schedules for one automation as "a · b" (e.g. "@daily ·
+// per commit touching the register"): each is its own trigger, so each is its own chip.
+function Cadence({ value }) {
+  const parts = String(value ?? '').split(/\s+·\s+/).map((c) => c.trim()).filter((c) => c && c !== '—')
+  if (!parts.length) return <span className="dim">event</span>
+  return (
+    <span className="cadence">
+      {parts.map((c) => <span key={c} className="chip mono">{c}</span>)}
+    </span>
+  )
+}
+
 export default function Automations({ data }) {
   return (
     <Card title="Automations" data={data}>
@@ -102,7 +114,7 @@ export default function Automations({ data }) {
             <tr key={i}>
               <td>{r.automation}</td>
               <td className="dim">{r.trigger}</td>
-              <td>{r.cadence && r.cadence !== '—' ? <span className="chip mono">{r.cadence}</span> : <span className="dim">event</span>}</td>
+              <td><Cadence value={r.cadence} /></td>
               <td><LastRun r={r} /></td>
               <td><Next r={r} /></td>
               <td>
