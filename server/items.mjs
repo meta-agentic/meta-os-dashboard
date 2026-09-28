@@ -14,7 +14,8 @@ const unavailable = (reason) => ({ available: false, reason })
 const idKey = (id) => String(id ?? '').replace(/\d+/g, (n) => n.padStart(8, '0'))
 
 function index(d) {
-  const all = [...d.epics, ...d.stories]
+  // Mirror-format epics may carry no kind; they are epics by the list they came from.
+  const all = [...d.epics.map((e) => (e.kind ? e : { ...e, kind: 'epic' })), ...d.stories]
   const byId = new Map(all.map((s) => [s.id, s]))
   // Blocked is DERIVED, same rule as lanes(): an unfinished dependency the space
   // knows about. Unknown ids are not blockers — no guessing.

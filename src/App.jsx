@@ -55,11 +55,12 @@ const WIDGETS = [
   { i: 'packs', title: 'Packs mounted', render: (d) => <Packs data={d.packs} /> },
   { i: 'harness', title: 'Harness', render: (d) => <Harness data={d.harness} /> },
   { i: 'skills', title: 'Skills by discipline', render: (d) => <Skills data={d.packs} engines={d.engines} /> },
-  { i: 'report', title: 'Scrum Report', render: (d) => <Report data={d.report} /> },
+  // Its count tiles hand a preset to Work Items (ctx.focusItems) — see focusItems below.
+  { i: 'report', title: 'Scrum Report', render: (d, ctx) => <Report data={d.report} onFocus={ctx?.focusItems} /> },
   // Fetches on demand (whole-space list + per-item detail), not from the polled feeds.
   // Driven by the global project filter bar, not its own picker — ctx.selectedProjects
   // is the same Set every space-scoped widget reads.
-  { i: 'work-items', title: 'Work Items', render: (d, ctx) => <WorkItems spaces={projectOptions(d)} selected={ctx?.selectedProjects} /> },
+  { i: 'work-items', title: 'Work Items', render: (d, ctx) => <WorkItems spaces={projectOptions(d)} selected={ctx?.selectedProjects} focus={ctx?.itemsFocus} /> },
 ]
 
 const DEFAULT_LAYOUT = [
@@ -256,6 +257,7 @@ export default function App() {
   const [apiHashMismatch, setApiHashMismatch] = useState(null)
   const [{ boards, activeId }, setState] = useState(loadBoards)
   const [selectedProjects, setSelectedProjects] = useState(loadProjectFilter)
+  const [itemsFocus, setItemsFocus] = useState(null)
   const [editingId, setEditingId] = useState(null)
   const [prefs, setPrefs] = useState(loadPrefs)
   const [onboarding, setOnboarding] = useState(loadOnboarding)
@@ -417,6 +419,21 @@ export default function App() {
     const y = active.layout.reduce((m, l) => Math.max(m, l.y + l.h), 0)
     patchActive((b) => ({ ...b, layout: withFloors([...b.layout, { ...def, i: id, x: 0, y }]) }))
   }
+
+  // A report tile was clicked: hand Work Items the preset and bring it into view —
+  // on this board if it is here, else on the first board that has it, else added here.
+  const focusItems = (preset) => {
+    setItemsFocus({ ...preset, n: Date.now() })
+    if (active.layout.some((l) => l.i === 'work-items')) return
+    const other = boards.find((b) => b.layout.some((l) => l.i === 'work-items'))
+    if (other) setState((s) => ({ ...s, activeId: other.id }))
+    else addWidget('work-items')
+  }
+  useEffect(() => {
+    if (!itemsFocus) return
+    const t = setTimeout(() => document.querySelector('[data-wid="work-items"]')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80)
+    return () => clearTimeout(t)
+  }, [itemsFocus])
 
   // project filter
   const toggleProject = (name) => setSelectedProjects((prev) => {
@@ -582,7 +599,7 @@ export default function App() {
         compactType="vertical"
       >
         {visible.map((w) => (
-          <div key={w.i} className="wgt">
+          <div key={w.i} className="wgt" data-wid={w.i}>
             <div className="wgt-head">
               <span className="wgt-grip" aria-hidden="true">⠿</span>
               <span className="wgt-title">{w.title}</span>
@@ -597,7 +614,7 @@ export default function App() {
                 ×
               </button>
             </div>
-            <div className="wgt-body">{w.render(scopeToProject(data, w.i, selectedProjects), { selectedProjects })}</div>
+            <div className="wgt-body">{w.render(scopeToProject(data, w.i, selectedProjects), { selectedProjects, itemsFocus, focusItems })}</div>
           </div>
         ))}
       </Grid>
