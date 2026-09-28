@@ -3,13 +3,16 @@ import { PieChart } from '../charts/Charts.jsx'
 
 const pct = (n, d) => (d ? Math.round((n / d) * 100) : 0)
 
-function Tile({ label, value, sub, tone }) {
+// A tile with onClick is a count Work Items can reproduce: it renders as a button.
+function Tile({ label, value, sub, tone, onClick }) {
+  const Tag = onClick ? 'button' : 'div'
   return (
-    <div className={'tile' + (tone ? ' ' + tone : '')}>
+    <Tag className={'tile' + (tone ? ' ' + tone : '') + (onClick ? ' tile-btn' : '')} onClick={onClick}
+         title={onClick ? `Show these in Work Items` : undefined}>
       <div className="tile-v">{value}</div>
       <div className="tile-l">{label}</div>
       {sub != null && <div className="tile-s dim">{sub}</div>}
-    </div>
+    </Tag>
   )
 }
 
@@ -40,21 +43,26 @@ function combine(spaces) {
   }
 }
 
-export default function Report({ data }) {
+export default function Report({ data, onFocus }) {
   const spaces = (data?.spaces ?? []).filter((s) => s.scorecard)
   if (!spaces.length) return <div className="degraded">no backlog data to report</div>
   const { sc, statusMix } = combine(spaces)
   const single = spaces.length === 1
+  // Presets use the report's own rules — stories only (no epics), exact status —
+  // so Work Items lists exactly the items the tile counted.
+  const show = (label, rule) => onFocus && (() =>
+    onFocus({ label, ...rule, stories: true, spaces: spaces.map((s) => s.space) }))
 
   return (
     <div className="report">
       <div className="dim small">{spaces.map((s) => s.space.toUpperCase()).join(' · ')}</div>
 
       <div className="tiles">
-        <Tile label="Stories done" value={`${sc.done}/${sc.total}`} sub={`${pct(sc.done, sc.total)}%`} tone="ok" />
+        <Tile label="Stories done" value={`${sc.done}/${sc.total}`} sub={`${pct(sc.done, sc.total)}%`} tone="ok"
+              onClick={show('stories done', { status: 'DONE' })} />
         <Tile label="Points done" value={`${sc.pointsDone}/${sc.pointsTotal}`} sub={`${pct(sc.pointsDone, sc.pointsTotal)}%`} />
-        <Tile label="In progress" value={sc.wip} tone="wip" />
-        <Tile label="Blocked" value={sc.blocked} tone={sc.blocked ? 'down' : undefined} />
+        <Tile label="In progress" value={sc.wip} tone="wip" onClick={show('in progress', { status: 'IN PROGRESS' })} />
+        <Tile label="Blocked" value={sc.blocked} tone={sc.blocked ? 'down' : undefined} onClick={show('blocked', { blocked: true })} />
         <Tile label="Velocity" value={sc.velocityPerWeek ?? '—'} sub={single ? 'pts / week' : 'pts / week, combined'} />
         {single
           ? <Tile label="Active sprint" value={sc.activeSprint ? `${Math.round((sc.elapsed ?? 0) * 100)}%` : '—'} sub={sc.activeSprint ?? 'none'} />

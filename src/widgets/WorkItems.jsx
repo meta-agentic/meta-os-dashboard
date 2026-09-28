@@ -230,11 +230,17 @@ function Detail({ view, onOpen }) {
   )
 }
 
-export default function WorkItems({ spaces, selected }) {
+export default function WorkItems({ spaces, selected, focus }) {
   // Driven entirely by the global project filter bar (App.jsx), not an internal
   // picker. Any number of projects can be selected — their items are fetched in
   // parallel and merged into one table, each row tagged with its origin space.
-  const selectedList = useMemo(() => [...(selected ?? [])].sort(), [selected])
+  // A preset from a Scrum Report tile (`focus`) narrows the rows to what the tile
+  // counted; with no project selected it brings the report's projects with it.
+  const [preset, setPreset] = useState(null)
+  const selectedList = useMemo(
+    () => [...(selected?.size ? selected : preset?.spaces ?? [])].sort(),
+    [selected, preset],
+  )
   const selectedKey = selectedList.join(',')
   const [list, setList] = useState({ status: 'idle' })
   const [q, setQ] = useState('')
@@ -245,6 +251,22 @@ export default function WorkItems({ spaces, selected }) {
   const cache = useRef(new Map()) // id -> { space, item, reason } — ids are globally unique
   const scrollPos = useRef(0)
   const seq = useRef(0)
+  // Changing the header filter asks a new question: drop the report preset. Declared
+  // before the focus effect so a preset arriving with a fresh mount still wins.
+  const headerKey = [...(selected ?? [])].sort().join(',')
+  const firstHeader = useRef(true)
+  useEffect(() => {
+    if (firstHeader.current) { firstHeader.current = false; return }
+    setPreset(null)
+  }, [headerKey])
+  useEffect(() => {
+    if (!focus) return
+    setPreset(focus)
+    setQ('')
+    setState('')
+    setView(null)
+    setTrail([])
+  }, [focus?.n])
 
   const loadList = () => {
     if (!selectedList.length) return setList({ status: 'idle' })
@@ -307,12 +329,17 @@ export default function WorkItems({ spaces, selected }) {
     const col = COLS.find((c) => c.k === sort.k) ?? COLS[0]
     return list.items
       .filter((r) => {
+        if (preset) {
+          if (preset.stories && String(r.kind).toLowerCase() === 'epic') return false
+          if (preset.status && r.status !== preset.status) return false
+          if (preset.blocked && !r.blockedBy) return false
+        }
         if (state === 'other' ? r.flowState : state && r.flowState !== state) return false
         if (!needle) return true
         return [r.space, r.id, r.title, r.epic, r.project, ...(r.labels ?? [])].some((v) => String(v ?? '').toLowerCase().includes(needle))
       })
       .sort((a, b) => col.cmp(a, b) * sort.dir || cmpText(idKey(a.id), idKey(b.id)))
-  }, [list, q, state, sort])
+  }, [list, q, state, sort, preset])
 
   const total = list.status === 'ok' ? list.items.length : 0
   const blocked = list.status === 'ok' ? list.items.filter((r) => r.blockedBy).length : 0
@@ -342,6 +369,11 @@ export default function WorkItems({ spaces, selected }) {
           </>
         ) : (
           <>
+            {preset && (
+              <button className="wi-preset" onClick={() => setPreset(null)} title="Clear the Scrum Report filter">
+                {preset.label} ×
+              </button>
+            )}
             <input
               className="wi-search"
               type="search"
@@ -383,7 +415,7 @@ export default function WorkItems({ spaces, selected }) {
       ) : !total ? (
         <div className="degraded">no work items in {selectedList.map((s) => s.toUpperCase()).join(', ')}</div>
       ) : !rows.length ? (
-        <div className="degraded">no items match{q ? ` “${q}”` : ''}{state ? ` in ${STATES.find(([v]) => v === state)?.[1]}` : ''}</div>
+        <div className="degraded">no items match{preset ? ` ${preset.label}` : ''}{q ? ` “${q}”` : ''}{state ? ` in ${STATES.find(([v]) => v === state)?.[1]}` : ''}</div>
       ) : (
         <Table rows={rows} sort={sort} onSort={onSort} onOpen={open} scrollPos={scrollPos} />
       )}

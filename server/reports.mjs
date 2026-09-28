@@ -47,7 +47,9 @@ export function reportFromData(space, doc, daily = null) {
   const d = normalizeBacklog(doc)
   const stories = d.stories
   const sprints = d.sprints
-  const statusById = new Map(stories.map((s) => [s.id, s.status]))
+  // Epics included: a story waiting on an unfinished epic is blocked, the same rule
+  // Sprint Lanes and Work Items apply, so the Blocked tile and its item list agree.
+  const statusById = new Map([...d.epics, ...stories].map((s) => [s.id, s.status]))
   const isBlocked = (s) =>
     s.status !== DONE && s.dependencies.some((id) => statusById.has(id) && statusById.get(id) !== DONE)
 
