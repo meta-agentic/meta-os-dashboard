@@ -60,6 +60,34 @@ export function expandVars(value, vars = {}, depth = 0) {
   return value
 }
 
+// The registry is hand-written notes, so it drifts when a repo is renamed or a clone
+// moves. Each node is checked against its clone on disk — the clone's own origin is
+// the ground truth — and clones sitting beside registered ones with no node are listed,
+// so the widget shows the drift instead of quietly rendering stale names.
+const repoKey = (r) => String(r ?? '')
+  .replace(/^(git@[^:]+:|ssh:\/\/git@[^/]+\/|https?:\/\/[^/]+\/)/, '')
+  .replace(/\.git$/, '').toLowerCase()
+
+// Origin URL of a clone, read from its git config (a linked worktree's .git is a
+// file pointing at the shared repository). null: not a clone; '': a clone with no origin.
+async function cloneOrigin(dir) {
+  let gitDir = path.join(dir, '.git')
+  try {
+    const st = await fs.stat(gitDir)
+    if (st.isFile()) {
+      const target = (await fs.readFile(gitDir, 'utf8')).match(/^gitdir:\s*(.+)$/m)?.[1]?.trim()
+      if (!target) return null
+      gitDir = path.resolve(dir, target)
+      const common = await fs.readFile(path.join(gitDir, 'commondir'), 'utf8').catch(() => null)
+      if (common) gitDir = path.resolve(gitDir, common.trim())
+    }
+    const cfg = await fs.readFile(path.join(gitDir, 'config'), 'utf8')
+    return cfg.match(/\[remote "origin"\][^[]*?url\s*=\s*(\S+)/)?.[1] ?? ''
+  } catch {
+    return null
+  }
+}
+
 export async function registry(instanceRoot, vars = {}) {
   const dir = path.join(instanceRoot, 'projects')
   try {
@@ -68,10 +96,34 @@ export async function registry(instanceRoot, vars = {}) {
       files.map(async (f) => {
         const { data, content } = matter(await fs.readFile(path.join(dir, f), 'utf8'))
         const purpose = content.match(/\*\*(.+?)\*\*/)?.[1] ?? ''
-        return { note: f, purpose: plain(purpose), ...data, path: expandVars(data.path, vars) }
+        const p = expandVars(data.path, vars)
+        const origin = typeof p === 'string' ? await cloneOrigin(p) : null
+        const clone = data.status === 'archived' ? { state: 'archived' }
+          : origin === null
+          ? { state: 'missing' }
+          : !origin ? { state: 'no-remote' }
+            : data.repo && repoKey(origin) !== repoKey(data.repo) ? { state: 'mismatch', origin: repoKey(origin) }
+              : { state: 'ok' }
+        return { note: f, purpose: plain(purpose), ...data, path: p, clone }
       }),
     )
-    return { available: true, projects }
+    // Clones in the same parent folders as registered ones, with no node of their own.
+    const known = new Set(projects.flatMap((p) => [repoKey(p.repo), path.resolve(String(p.path ?? ''))]))
+    const roots = [...new Set(projects.map((p) => (typeof p.path === 'string' ? path.dirname(p.path) : null)).filter(Boolean))]
+    const unregistered = []
+    for (const root of roots) {
+      const entries = await fs.readdir(root, { withFileTypes: true }).catch(() => [])
+      for (const e of entries) {
+        if (!e.isDirectory() || e.name.startsWith('.')) continue
+        const full = path.join(root, e.name)
+        if (known.has(path.resolve(full))) continue
+        const origin = await cloneOrigin(full)
+        if (origin === null || (origin && known.has(repoKey(origin)))) continue
+        unregistered.push({ dir: e.name, repo: origin ? repoKey(origin) : null })
+      }
+    }
+    unregistered.sort((a, b) => a.dir.localeCompare(b.dir))
+    return { available: true, projects, unregistered }
   } catch (e) {
     return unavailable(`projects/ unreadable: ${e.message}`)
   }
