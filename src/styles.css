@@ -1618,8 +1618,6 @@ th.num .wi-sort { justify-content: flex-end; }
   padding: 0.35rem 0.6rem;
 }
 .filter:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-.skill-list { margin: 0.25rem 0 0.6rem 0.9rem; border-left: 1px solid var(--border); padding-left: 0.7rem; }
-.skill-list > li { margin-bottom: 0.45rem; }
 
 /* meta-cli enhancement point inside a host widget (MetaCliHint, MOS-148) */
 .metacli-hint {
@@ -1638,4 +1636,33 @@ th.num .wi-sort { justify-content: flex-end; }
 .reg-unregistered ul { list-style: none; margin: 0.4rem 0 0; padding: 0; columns: 16rem; column-gap: 1.2rem; font-size: 0.75rem; }
 .reg-unregistered li { break-inside: avoid; padding: 0.1rem 0; }
 .cadence { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 0.2rem; }
+
+/* Skills by discipline (Skills.jsx): a discipline grid, then skill cards */
+.sk-bar { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.6rem; }
+.sk-crumb { font-weight: 600; }
+.sk-search { flex: 1; min-width: 8rem; margin: 0; }
+.sk-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr)); gap: 0.6rem; }
+.sk-tile { display: flex; flex-direction: column; align-items: flex-start; gap: 0.15rem; text-align: left; font: inherit; color: inherit;
+  background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 0.7rem 0.8rem; cursor: pointer; min-width: 0; }
+.sk-tile:hover, .sk-tile:focus-visible { border-color: var(--accent); }
+.sk-tile.bad { border-color: var(--warn); }
+.sk-tile-n { font-size: 1.6rem; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.sk-tile-name { font-weight: 600; }
+.sk-tile-meta { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sk-ok { color: var(--ok); }
+.sk-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.3rem 0.8rem; margin-bottom: 0.6rem; }
+.sk-head-n { font-size: 1.4rem; font-weight: 600; }
+.sk-head-l { color: var(--dim); margin-left: -0.5rem; }
+.sk-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: 0.55rem; align-items: start; }
+.sk-card { display: flex; flex-direction: column; gap: 0.25rem; text-align: left; font: inherit; color: inherit; min-width: 0;
+  background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 0.55rem 0.7rem; cursor: pointer; }
+.sk-card:hover, .sk-card:focus-visible { border-color: var(--accent); }
+.sk-card.open { border-color: var(--accent); grid-column: 1 / -1; }
+.sk-card.bad { border-color: var(--warn); }
+.sk-card-head { display: flex; align-items: center; gap: 0.4rem; }
+.sk-card-title { font-weight: 600; font-size: 0.85rem; }
+.sk-card-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sk-card-desc { line-height: 1.4; }
+.sk-card-desc.clamp { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.sk-card-foot { word-break: break-all; }
 
