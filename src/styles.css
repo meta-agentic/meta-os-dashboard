@@ -1384,7 +1384,7 @@ line.zap { stroke: var(--accent); stroke-opacity: 0.9; }
 
 /* table — fixed 30px rows so the virtual window can be computed, not measured */
 .wi-scroll { flex: 1; min-height: 0; overflow: auto; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); }
-.wi-table { table-layout: fixed; min-width: 54rem; border-collapse: separate; border-spacing: 0; }
+.wi-table { table-layout: fixed; width: 100%; min-width: 54rem; border-collapse: separate; border-spacing: 0; }
 .wi-table th { position: sticky; top: 0; z-index: 1; background: var(--card); border-bottom: 1px solid var(--border); padding: 0; }
 .wi-sort { display: flex; align-items: center; gap: 0.3em; width: 100%; font: inherit; text-transform: inherit; letter-spacing: inherit; color: inherit; background: none; border: none; padding: 0.35rem 0.5rem; cursor: pointer; text-align: left; }
 th.num .wi-sort { justify-content: flex-end; }
@@ -1420,7 +1420,7 @@ th.num .wi-sort { justify-content: flex-end; }
   content: ''; position: absolute; inset: -3px -3px 3px 3px;
   border: 1px solid var(--border); border-radius: 999px; background: var(--card); z-index: -1;
 }
-.wi-linkgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr)); gap: 0.6rem 1.2rem; }
+.wi-linkgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); gap: 0.6rem 1.2rem; }
 .wi-links h4 { margin: 0 0 0.3rem; font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--dim); font-weight: 600; }
 .wi-links ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.2rem; }
 .wi-links li { display: flex; align-items: center; gap: 0.45rem; min-width: 0; font-size: 0.76rem; }
