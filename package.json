@@ -11,7 +11,8 @@
     "build": "vite build",
     "build:pages": "npm run snapshot && VITE_STATIC=true vite build",
     "preview": "vite preview",
-    "preview:pages": "npm run build:pages && vite preview"
+    "preview:pages": "npm run build:pages && vite preview",
+    "test": "node --test \"server/**/*.test.mjs\" \"scripts/**/*.test.mjs\""
   },
   "dependencies": {
     "d3-force": "^3.0.0",
