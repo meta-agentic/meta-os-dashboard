@@ -170,7 +170,7 @@ function loadPrefs() {
 // the global project filter can act on. Registry uses a different, unlinked project
 // vocabulary (repo entries, no `space` field), and most other widgets (Graph, Packs,
 // Files, Usage, ...) have no project axis at all, so the filter leaves them alone.
-const SPACE_SCOPED = new Set(['lanes', 'sprint-summary', 'distribution', 'activity'])
+const SPACE_SCOPED = new Set(['lanes', 'sprint-summary', 'distribution', 'activity', 'report'])
 
 // Every backlog space currently known to the lanes feed — the option list for the
 // project filter bar. Derived live so a newly-onboarded space shows up without a
@@ -181,9 +181,15 @@ const projectOptions = (data) =>
 // Narrows the shared feed data down to the selected projects, for one space-scoped
 // widget. An empty selection means no filter. `lanes`/`sprint-summary`/
 // `distribution` all read `d.lanes.spaces`; `activity` reads `d.events.events`,
-// whose rows carry the space as `actor`.
+// whose rows carry the space as `actor`; `report` reads `d.report.spaces`.
 function scopeToProject(data, widgetId, selected) {
   if (!selected.size || !SPACE_SCOPED.has(widgetId)) return data
+  if (widgetId === 'report') {
+    return {
+      ...data,
+      report: data.report && { ...data.report, spaces: (data.report.spaces ?? []).filter((s) => selected.has(s.space)) },
+    }
+  }
   if (widgetId === 'activity') {
     return {
       ...data,
@@ -496,7 +502,7 @@ export default function App() {
                 onClick={() => toggleProject(p)}
                 aria-pressed={on}
                 title={(on ? 'Remove ' : 'Filter to ') + p.toUpperCase()
-                  + ' \u2014 narrows Sprint Lanes, Sprint Summary, Distribution & Activity'}
+                  + ' \u2014 narrows Sprint Lanes, Sprint Summary, Distribution, Activity & Scrum Report'}
               >
                 {p.toUpperCase()}
               </button>
