@@ -16,7 +16,7 @@ import PromotionFlow from './widgets/PromotionFlow.jsx'
 import Ingestion from './widgets/Ingestion.jsx'
 import SessionSpend from './widgets/SessionSpend.jsx'
 import SessionScatter from './widgets/SessionScatter.jsx'
-import { LAYOUT_VERSION, migrateBoard } from './boardMigrations.js'
+import { tabsFor, reconcile, withFloors, loadTabs, storeTabs, toServerDoc, fromServerDoc } from './tabs.js'
 import Automations from './widgets/Automations.jsx'
 import Registry from './widgets/Registry.jsx'
 import Activity from './widgets/Activity.jsx'
@@ -39,42 +39,46 @@ import { deriveOnboarding } from './onboarding.js'
 
 const FEEDS = ['meta', 'ontology', 'registry', 'automations', 'memory', 'events', 'lanes', 'lint', 'outputs', 'usage', 'report', 'packs', 'engines', 'harness']
 
+// Every widget belongs to one group; the tabs are generated from the groups (tabs.js),
+// so a widget's tab is decided here, next to the widget, and nowhere else.
 const WIDGETS = [
-  { i: 'lanes', title: 'Sprint Lanes', render: (d) => <Lanes data={d.lanes} engines={d.engines} /> },
-  { i: 'sprint-summary', title: 'Sprint Summary', render: (d) => <SprintSummary data={d.lanes} /> },
-  { i: 'graph', title: 'Knowledge Graph', render: (d) => <GraphView ontology={d.ontology} /> },
-  { i: 'graph-table', title: 'Graph Hubs', render: (d) => <GraphTable ontology={d.ontology} /> },
-  { i: 'memory', title: 'Memory', render: (d) => <Memory data={d.memory} /> },
-  { i: 'federated-vaults', title: 'Federated Vaults', render: (d) => <FederatedVaults data={d.memory} /> },
-  { i: 'promotion-pipeline', title: 'Promotion Pipeline', render: (d) => <PromotionPipeline data={d.memory} ontology={d.ontology} /> },
-  { i: 'promotion-flow', title: 'Promotion Flow', render: (d) => <PromotionFlow data={d.memory} ontology={d.ontology} /> },
-  { i: 'ingestion', title: 'Ingestion', render: (d) => <Ingestion events={d.events} /> },
-  { i: 'outputs', title: 'Outputs', render: (d) => <Outputs data={d.outputs} /> },
-  { i: 'automations', title: 'Automations', render: (d) => <Automations data={d.automations} /> },
-  { i: 'usage', title: 'Engine Usage', render: (d) => <Usage data={d.usage} engines={d.engines} /> },
-  { i: 'session-spend', title: 'Per-session spend', render: (d) => <SessionSpend data={d.usage} /> },
-  { i: 'session-scatter', title: 'Cost × Throughput', render: (d) => <SessionScatter data={d.usage} /> },
-  { i: 'engines', title: 'meta-cli engines', render: (d) => <Engines data={d.engines} /> },
-  { i: 'registry', title: 'Registry', render: (d) => <Registry data={d.registry} /> },
-  { i: 'lint', title: 'Lint', render: (d) => <Lint data={d.lint} /> },
-  { i: 'activity', title: 'Activity', render: (d) => <Activity data={d.events} /> },
-  { i: 'distribution', title: 'Distribution', render: (d) => <Distribution data={d.lanes} /> },
-  { i: 'files', title: 'File Preview', render: (d) => <FilePreview roots={d.meta?.roots} /> },
-  { i: 'gantt', title: 'Roadmap', render: (d) => <Gantt data={d.report} /> },
-  { i: 'burndown', title: 'Burndown', render: (d) => <Burndown data={d.report} /> },
-  { i: 'velocity', title: 'Velocity', render: (d) => <Velocity data={d.report} /> },
-  { i: 'packs', title: 'Packs mounted', render: (d) => <Packs data={d.packs} /> },
-  { i: 'harness', title: 'Harness', render: (d) => <Harness data={d.harness} /> },
-  { i: 'skills', title: 'Skills by discipline', render: (d) => <Skills data={d.packs} engines={d.engines} /> },
+  { i: 'lanes', group: 'sprint', title: 'Sprint Lanes', render: (d) => <Lanes data={d.lanes} engines={d.engines} /> },
+  { i: 'sprint-summary', group: 'sprint', title: 'Sprint Summary', render: (d) => <SprintSummary data={d.lanes} /> },
+  { i: 'graph', group: 'knowledge', title: 'Knowledge Graph', render: (d) => <GraphView ontology={d.ontology} /> },
+  { i: 'graph-table', group: 'knowledge', title: 'Graph Hubs', render: (d) => <GraphTable ontology={d.ontology} /> },
+  { i: 'memory', group: 'memory', title: 'Memory', render: (d) => <Memory data={d.memory} /> },
+  { i: 'federated-vaults', group: 'memory', title: 'Federated Vaults', render: (d) => <FederatedVaults data={d.memory} /> },
+  { i: 'promotion-pipeline', group: 'memory', title: 'Promotion Pipeline', render: (d) => <PromotionPipeline data={d.memory} ontology={d.ontology} /> },
+  { i: 'promotion-flow', group: 'memory', title: 'Promotion Flow', render: (d) => <PromotionFlow data={d.memory} ontology={d.ontology} /> },
+  { i: 'ingestion', group: 'memory', title: 'Ingestion', render: (d) => <Ingestion events={d.events} /> },
+  { i: 'outputs', group: 'memory', title: 'Outputs', render: (d) => <Outputs data={d.outputs} /> },
+  { i: 'automations', group: 'operations', title: 'Automations', render: (d) => <Automations data={d.automations} /> },
+  { i: 'usage', group: 'usage', title: 'Engine Usage', render: (d) => <Usage data={d.usage} engines={d.engines} /> },
+  { i: 'session-spend', group: 'usage', title: 'Per-session spend', render: (d) => <SessionSpend data={d.usage} /> },
+  { i: 'session-scatter', group: 'usage', title: 'Cost × Throughput', render: (d) => <SessionScatter data={d.usage} /> },
+  { i: 'engines', group: 'usage', title: 'meta-cli engines', render: (d) => <Engines data={d.engines} /> },
+  { i: 'registry', group: 'operations', title: 'Registry', render: (d) => <Registry data={d.registry} /> },
+  { i: 'lint', group: 'operations', title: 'Lint', render: (d) => <Lint data={d.lint} /> },
+  { i: 'activity', group: 'operations', title: 'Activity', render: (d) => <Activity data={d.events} /> },
+  { i: 'distribution', group: 'backlog', title: 'Distribution', render: (d) => <Distribution data={d.lanes} /> },
+  { i: 'files', group: 'knowledge', title: 'File Preview', render: (d) => <FilePreview roots={d.meta?.roots} /> },
+  { i: 'gantt', group: 'backlog', title: 'Roadmap', render: (d) => <Gantt data={d.report} /> },
+  { i: 'burndown', group: 'sprint', title: 'Burndown', render: (d) => <Burndown data={d.report} /> },
+  { i: 'velocity', group: 'sprint', title: 'Velocity', render: (d) => <Velocity data={d.report} /> },
+  { i: 'packs', group: 'skills', title: 'Packs mounted', render: (d) => <Packs data={d.packs} /> },
+  { i: 'harness', group: 'operations', title: 'Harness', render: (d) => <Harness data={d.harness} /> },
+  { i: 'skills', group: 'skills', title: 'Skills by discipline', render: (d) => <Skills data={d.packs} engines={d.engines} /> },
   // Its count tiles hand a preset to Work Items (ctx.focusItems) — see focusItems below.
-  { i: 'report', title: 'Scrum Report', render: (d, ctx) => <Report data={d.report} onFocus={ctx?.focusItems} /> },
+  { i: 'report', group: 'sprint', title: 'Scrum Report', render: (d, ctx) => <Report data={d.report} onFocus={ctx?.focusItems} /> },
   // Fetches on demand (whole-space list + per-item detail), not from the polled feeds.
   // Driven by the global project filter bar, not its own picker — ctx.selectedProjects
   // is the same Set every space-scoped widget reads.
-  { i: 'work-items', title: 'Work Items', render: (d, ctx) => <WorkItems spaces={projectOptions(d)} selected={ctx?.selectedProjects} focus={ctx?.itemsFocus} /> },
+  { i: 'work-items', group: 'backlog', title: 'Work Items', render: (d, ctx) => <WorkItems spaces={projectOptions(d)} selected={ctx?.selectedProjects} focus={ctx?.itemsFocus} /> },
 ]
 
-const DEFAULT_LAYOUT = [
+// Default size and size floor per widget: the auto-arranged tabs place each widget at
+// this size, and a resize can never go below the floor.
+const SIZES = Object.fromEntries([
   { i: 'sprint-summary', x: 0, y: 0, w: 12, h: 9, minW: 4, minH: 5 },
   { i: 'lanes', x: 0, y: 9, w: 7, h: 11, minW: 4, minH: 6 },
   { i: 'graph', x: 7, y: 9, w: 5, h: 11, minW: 3, minH: 6 },
@@ -103,78 +107,8 @@ const DEFAULT_LAYOUT = [
   { i: 'work-items', x: 0, y: 85, w: 12, h: 16, minW: 6, minH: 8 },
   { i: 'engines', x: 0, y: 101, w: 6, h: 9, minW: 4, minH: 6 },
   { i: 'harness', x: 6, y: 101, w: 6, h: 9, minW: 4, minH: 6 },
-]
-// DEFAULT_LAYOUT above is the widget catalogue: the source of per-widget size floors
-// and the template for a freshly-added board. FLOORS is derived from it, so every id
-// used on any preset board below must exist in it (withFloors drops unknown ids).
-const FLOORS = Object.fromEntries(DEFAULT_LAYOUT.map((d) => [d.i, { minW: d.minW, minH: d.minH }]))
-const withFloors = (layout) => (layout || []).filter((l) => FLOORS[l.i]).map((l) => ({ ...l, ...FLOORS[l.i] }))
+].map(({ i, ...size }) => [i, size]))
 
-// Preset tabs — a fresh instance opens organised by question, not as one wall of
-// widgets. Each board groups the widgets that answer one question; a widget may
-// appear on more than one board (e.g. Sprint Lanes on both Overview and Delivery).
-// Sizes here are overridden by FLOORS at load, so they only set the arrangement.
-const DEFAULT_BOARDS = [
-  {
-    id: 'overview', name: 'Overview',
-    layout: [
-      { i: 'sprint-summary', x: 0, y: 0, w: 12, h: 9 },
-      { i: 'lanes', x: 0, y: 9, w: 7, h: 11 },
-      { i: 'usage', x: 7, y: 9, w: 5, h: 11 },
-      { i: 'memory', x: 0, y: 20, w: 4, h: 6 },
-      { i: 'outputs', x: 4, y: 20, w: 4, h: 8 },
-      { i: 'activity', x: 8, y: 20, w: 4, h: 8 },
-    ],
-  },
-  {
-    id: 'knowledge', name: 'Knowledge',
-    layout: [
-      { i: 'graph', x: 0, y: 0, w: 8, h: 11 },
-      { i: 'graph-table', x: 8, y: 0, w: 4, h: 11 },
-      { i: 'memory', x: 0, y: 11, w: 4, h: 6 },
-      { i: 'promotion-pipeline', x: 4, y: 11, w: 4, h: 6 },
-      { i: 'files', x: 8, y: 11, w: 4, h: 12 },
-      { i: 'federated-vaults', x: 0, y: 17, w: 4, h: 9 },
-      { i: 'promotion-flow', x: 4, y: 17, w: 4, h: 7 },
-      { i: 'ingestion', x: 0, y: 24, w: 8, h: 7 },
-    ],
-  },
-  {
-    id: 'delivery', name: 'Delivery',
-    layout: [
-      { i: 'sprint-summary', x: 0, y: 0, w: 12, h: 9 },
-      { i: 'lanes', x: 0, y: 9, w: 7, h: 11 },
-      { i: 'distribution', x: 7, y: 9, w: 5, h: 11 },
-      { i: 'gantt', x: 0, y: 20, w: 12, h: 11 },
-      { i: 'burndown', x: 0, y: 31, w: 6, h: 9 },
-      { i: 'velocity', x: 6, y: 31, w: 6, h: 9 },
-      { i: 'report', x: 0, y: 40, w: 12, h: 12 },
-    ],
-  },
-  {
-    id: 'items', name: 'Work Items',
-    layout: [{ i: 'work-items', x: 0, y: 0, w: 12, h: 22 }],
-  },
-  {
-    id: 'operations', name: 'Operations',
-    layout: [
-      { i: 'usage', x: 0, y: 0, w: 6, h: 9 },
-      { i: 'automations', x: 6, y: 0, w: 6, h: 9 },
-      { i: 'session-spend', x: 0, y: 9, w: 6, h: 6 },
-      { i: 'session-scatter', x: 6, y: 9, w: 6, h: 9 },
-      { i: 'activity', x: 0, y: 13, w: 8, h: 7 },
-      { i: 'lint', x: 8, y: 13, w: 4, h: 7 },
-      { i: 'registry', x: 0, y: 20, w: 12, h: 8 },
-      { i: 'packs', x: 0, y: 28, w: 6, h: 9 },
-      { i: 'skills', x: 6, y: 28, w: 6, h: 9 },
-      { i: 'engines', x: 0, y: 37, w: 6, h: 9 },
-      { i: 'harness', x: 6, y: 37, w: 6, h: 9 },
-    ],
-  },
-]
-
-const BOARDS_KEY = 'meta-os.boards.v1'
-const LEGACY_LAYOUT_KEY = 'meta-os.layout.v1'
 const PREFS_KEY = 'meta-os.prefs.v1'
 const DEFAULT_PREFS = { theme: 'system', palette: 'graphite', density: 'comfortable', refreshSec: 30 }
 const DENSITY = {
@@ -226,7 +160,7 @@ function scopeToProject(data, widgetId, selected) {
 
 // Project filter is GLOBAL and persisted, like the group filter it replaces:
 // zero or more selected projects, applying to every space-scoped widget on every
-// board — not a per-board layout concern, so it's stored apart from the boards doc.
+// tab — not a layout concern, so it's stored apart from the tab arrangements.
 // Empty selection = no filter (show every project), same as the old "no groups
 // hidden" state.
 const PROJECTFILTER_KEY = 'meta-os.projectfilter.v1'
@@ -247,42 +181,13 @@ function loadOnboarding() {
   }
 }
 const Grid = WidthProvider(GridLayout)
-const newId = (p = 'b') => p + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36)
-const normBoard = (b) => {
-  const m = migrateBoard(b)
-  return { ...m, layout: withFloors(m.layout) }
-}
-
-function loadBoards() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(BOARDS_KEY) || 'null')
-    if (saved && Array.isArray(saved.boards) && saved.boards.length) {
-      const boards = saved.boards.map(normBoard)
-      const activeId = boards.some((b) => b.id === saved.activeId) ? saved.activeId : boards[0].id
-      return { boards, activeId }
-    }
-  } catch {
-    /* migrate */
-  }
-  const boards = DEFAULT_BOARDS.map((b) => ({ ...b, v: LAYOUT_VERSION, layout: b.layout.map((l) => ({ ...l })) }))
-  try {
-    // Legacy single-layout users keep their arrangement on the Overview tab.
-    const legacy = JSON.parse(localStorage.getItem(LEGACY_LAYOUT_KEY) || 'null')
-    if (Array.isArray(legacy) && legacy.length) boards[0] = { ...boards[0], v: 1, layout: legacy }
-  } catch {
-    /* ignore */
-  }
-  return { boards: boards.map(normBoard), activeId: 'overview' }
-}
-
 export default function App() {
   const [data, setData] = useState({})
   const [error, setError] = useState(null)
   const [apiHashMismatch, setApiHashMismatch] = useState(null)
-  const [{ boards, activeId }, setState] = useState(loadBoards)
+  const [{ layouts, activeId }, setState] = useState(loadTabs)
   const [selectedProjects, setSelectedProjects] = useState(loadProjectFilter)
   const [itemsFocus, setItemsFocus] = useState(null)
-  const [editingId, setEditingId] = useState(null)
   const [prefs, setPrefs] = useState(loadPrefs)
   const [onboarding, setOnboarding] = useState(loadOnboarding)
   const [showGridAnyway, setShowGridAnyway] = useState(false)
@@ -345,7 +250,7 @@ export default function App() {
     }
   }, [onboarding])
 
-  // Load this user's boards from the server (source of truth when reachable). Falls
+  // Load this user's tab arrangements from the server (source of truth when reachable). Falls
   // back to the localStorage-seeded state on empty/unreachable. Re-runs per user.
   useEffect(() => {
     let cancelled = false
@@ -354,12 +259,8 @@ export default function App() {
       .then((r) => (r.ok ? r.json() : null))
       .then((res) => {
         if (cancelled) return
-        const doc = res?.doc
-        if (doc && Array.isArray(doc.boards) && doc.boards.length) {
-          const bs = doc.boards.map(normBoard)
-          const activeId = bs.some((b) => b.id === doc.activeId) ? doc.activeId : bs[0].id
-          setState({ boards: bs, activeId })
-        }
+        const saved = fromServerDoc(res?.doc)
+        if (saved) setState(saved)
         serverReady.current = true
       })
       .catch(() => { serverReady.current = true })
@@ -368,90 +269,37 @@ export default function App() {
 
   // Persist: localStorage always (offline cache), server debounced once it's ready.
   useEffect(() => {
-    try {
-      localStorage.setItem(BOARDS_KEY, JSON.stringify({ boards, activeId }))
-    } catch {
-      /* storage disabled */
-    }
+    storeTabs({ layouts, activeId })
     if (!serverReady.current || isStatic) return
     const t = setTimeout(() => {
       fetch(`/api/boards?user=${encodeURIComponent(userKey)}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ boards, activeId }),
+        body: JSON.stringify(toServerDoc({ layouts, activeId })),
       }).catch(() => {})
     }, 600)
     return () => clearTimeout(t)
-  }, [boards, activeId, userKey])
+  }, [layouts, activeId, userKey])
 
-  const active = boards.find((b) => b.id === activeId) || boards[0]
-  const patchBoards = (fn) => setState((s) => ({ ...s, boards: fn(s.boards) }))
-  const patchActive = (fn) => patchBoards((bs) => bs.map((b) => (b.id === active.id ? fn(b) : b)))
+  const tabs = tabsFor(WIDGETS)
+  const active = tabs.find((t) => t.id === activeId) ?? tabs[0]
+  const activeLayout = reconcile(layouts[active.id], active.ids, SIZES)
+  const showTab = (id) => setState((s) => ({ ...s, activeId: id }))
 
-  const pendingRemove = useRef(null)
   const onLayoutChange = (next) =>
-    patchActive((b) => {
-      const rm = pendingRemove.current
-      pendingRemove.current = null
-      let layout = withFloors(next)
-      if (rm) layout = layout.filter((l) => l.i !== rm)
-      return { ...b, layout }
-    })
-
-  const titleOf = (id) => WIDGETS.find((w) => w.i === id)?.title ?? id
-  const removeWidget = (id) => {
-    if (!window.confirm(`Remove "${titleOf(id)}" from this board?`)) return
-    patchActive((b) => ({ ...b, layout: b.layout.filter((l) => l.i !== id) }))
-  }
-  // Drag a widget clear out of the grid to remove it (confirmed). onDragStop fires
-  // before onLayoutChange, which then drops the flagged item from the layout.
-  const onDragStop = (layout, oldItem, newItem, ph, e, element) => {
-    const grid = element?.closest('.react-grid-layout')
-    const r = grid?.getBoundingClientRect()
-    if (!r || !e) return
-    const out = e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom
-    if (out && window.confirm(`Remove "${titleOf(newItem.i)}" from this board?`)) pendingRemove.current = newItem.i
-  }
-
-  // boards
-  const addBoard = () => {
-    const id = newId()
-    setState((s) => ({
-      boards: [...s.boards, normBoard({ id, v: LAYOUT_VERSION, name: `Board ${s.boards.length + 1}`, layout: DEFAULT_LAYOUT })],
-      activeId: id,
-    }))
-    setEditingId(id)
-  }
-  const closeBoard = (id) => {
-    if (boards.length <= 1) return
-    const b = boards.find((x) => x.id === id)
-    if (!window.confirm(`Delete board "${b?.name ?? id}"? This can't be undone.`)) return
+    setState((s) => ({ ...s, layouts: { ...s.layouts, [active.id]: withFloors(next, SIZES) } }))
+  // Forget this tab's arrangement: it is re-flowed from the catalogue sizes.
+  const resetActive = () =>
     setState((s) => {
-      if (s.boards.length <= 1) return s
-      const bs = s.boards.filter((x) => x.id !== id)
-      return { boards: bs, activeId: s.activeId === id ? bs[0].id : s.activeId }
+      const { [active.id]: _dropped, ...rest } = s.layouts
+      return { ...s, layouts: rest }
     })
-  }
-  const renameBoard = (id, name) => patchBoards((bs) => bs.map((b) => (b.id === id ? { ...b, name: name.trim() || b.name } : b)))
-  const resetActive = () => {
-    const preset = DEFAULT_BOARDS.find((p) => p.id === active.id)
-    patchActive((b) => ({ ...b, layout: withFloors(preset?.layout ?? DEFAULT_LAYOUT) }))
-  }
-  const addWidget = (id) => {
-    if (!id) return
-    const def = DEFAULT_LAYOUT.find((d) => d.i === id) || { w: 6, h: 8, minW: 3, minH: 5 }
-    const y = active.layout.reduce((m, l) => Math.max(m, l.y + l.h), 0)
-    patchActive((b) => ({ ...b, layout: withFloors([...b.layout, { ...def, i: id, x: 0, y }]) }))
-  }
 
-  // A report tile was clicked: hand Work Items the preset and bring it into view —
-  // on this board if it is here, else on the first board that has it, else added here.
+  // A report tile was clicked: hand Work Items the preset and switch to its tab.
   const focusItems = (preset) => {
     setItemsFocus({ ...preset, n: Date.now() })
-    if (active.layout.some((l) => l.i === 'work-items')) return
-    const other = boards.find((b) => b.layout.some((l) => l.i === 'work-items'))
-    if (other) setState((s) => ({ ...s, activeId: other.id }))
-    else addWidget('work-items')
+    const home = tabs.find((t) => t.ids.includes('work-items'))
+    if (home && home.id !== active.id) showTab(home.id)
   }
   useEffect(() => {
     if (!itemsFocus) return
@@ -481,11 +329,7 @@ export default function App() {
   const showOnboarding = onb.steps.length > 0 && !onboarding.dismissed
   const suppressGrid = onb.fresh && !onboarding.dismissed && !showGridAnyway
 
-  const inLayout = new Set(active.layout.map((l) => l.i))
-  const visible = WIDGETS.filter((w) => inLayout.has(w.i))
-  const visibleIds = new Set(visible.map((w) => w.i))
-  const gridLayout = active.layout.filter((l) => visibleIds.has(l.i))
-  const missing = WIDGETS.filter((w) => !inLayout.has(w.i))
+  const visible = WIDGETS.filter((w) => w.group === active.id)
   const projects = projectOptions(data)
 
   const dens = DENSITY[prefs.density] || DENSITY.comfortable
@@ -513,20 +357,7 @@ export default function App() {
         )}
         <span className="spacer" />
         <span className="dim hint">drag the header · resize from the edges</span>
-        {missing.length > 0 && (
-          <select
-            className="ghostbtn addwgt"
-            value=""
-            onChange={(e) => { addWidget(e.target.value); e.target.value = '' }}
-            title="Add a widget to this board"
-          >
-            <option value="">＋ Add widget</option>
-            {missing.map((w) => (
-              <option key={w.i} value={w.i}>{w.title}</option>
-            ))}
-          </select>
-        )}
-        <button className="ghostbtn" onClick={resetActive} title="Restore the default layout on this board">
+        <button className="ghostbtn" onClick={resetActive} title="Re-arrange this tab's widgets at their default sizes">
           Reset layout
         </button>
       </header>
@@ -555,44 +386,19 @@ export default function App() {
         </div>
       )}
       <nav className="tabbar" role="tablist">
-        {boards.map((b) => (
-          <div key={b.id} className={'tab' + (b.id === active.id ? ' active' : '')}>
-            {editingId === b.id ? (
-              <input
-                className="tab-edit"
-                autoFocus
-                defaultValue={b.name}
-                onBlur={(e) => {
-                  renameBoard(b.id, e.target.value)
-                  setEditingId(null)
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') e.target.blur()
-                  if (e.key === 'Escape') setEditingId(null)
-                }}
-              />
-            ) : (
-              <button
-                className="tab-name"
-                role="tab"
-                aria-selected={b.id === active.id}
-                onClick={() => setState((s) => ({ ...s, activeId: b.id }))}
-                onDoubleClick={() => setEditingId(b.id)}
-                title="Click to switch · double-click to rename"
-              >
-                {b.name}
-              </button>
-            )}
-            {boards.length > 1 && (
-              <button className="tab-x" onClick={() => closeBoard(b.id)} title="Close board" aria-label={`Close ${b.name}`}>
-                ×
-              </button>
-            )}
+        {tabs.map((t) => (
+          <div key={t.id} className={'tab' + (t.id === active.id ? ' active' : '')}>
+            <button
+              className="tab-name"
+              role="tab"
+              aria-selected={t.id === active.id}
+              onClick={() => showTab(t.id)}
+              title={t.ids.map((i) => WIDGETS.find((w) => w.i === i)?.title ?? i).join(' · ')}
+            >
+              {t.name} <span className="tab-n">{t.ids.length}</span>
+            </button>
           </div>
         ))}
-        <button className="tab-add" onClick={addBoard} title="New board" aria-label="New board">
-          +
-        </button>
       </nav>
 
 
@@ -611,7 +417,7 @@ export default function App() {
       <Grid
         key={active.id}
         className="wgrid"
-        layout={gridLayout}
+        layout={activeLayout}
         cols={12}
         rowHeight={dens.rowHeight}
         margin={dens.margin}
@@ -619,7 +425,6 @@ export default function App() {
         draggableHandle=".wgt-head"
         resizeHandles={['se', 'e', 's']}
         onLayoutChange={onLayoutChange}
-        onDragStop={onDragStop}
         compactType="vertical"
       >
         {visible.map((w) => (
@@ -627,16 +432,6 @@ export default function App() {
             <div className="wgt-head">
               <span className="wgt-grip" aria-hidden="true">⠿</span>
               <span className="wgt-title">{w.title}</span>
-              <span className="spacer" />
-              <button
-                className="wgt-x"
-                title="Remove from board"
-                aria-label={`Remove ${w.title}`}
-                onMouseDown={(e) => e.stopPropagation()}
-                onClick={() => removeWidget(w.i)}
-              >
-                ×
-              </button>
             </div>
             <div className="wgt-body">{w.render(scopeToProject(data, w.i, selectedProjects), { selectedProjects, itemsFocus, focusItems })}</div>
           </div>
