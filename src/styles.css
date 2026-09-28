@@ -1628,3 +1628,14 @@ th.num .wi-sort { justify-content: flex-end; }
   border-top: 1px dashed var(--border);
   overflow-wrap: anywhere;
 }
+
+/* Registry drift (Registry.jsx) */
+.reg-summary { margin-bottom: 0.4rem; }
+.reg-chip { margin-left: 0.4rem; font-size: 0.66rem; }
+.reg-archived td { opacity: 0.55; }
+.reg-unregistered { margin-top: 0.6rem; }
+.reg-unregistered summary { cursor: pointer; }
+.reg-unregistered ul { list-style: none; margin: 0.4rem 0 0; padding: 0; columns: 16rem; column-gap: 1.2rem; font-size: 0.75rem; }
+.reg-unregistered li { break-inside: avoid; padding: 0.1rem 0; }
+.cadence { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 0.2rem; }
+
