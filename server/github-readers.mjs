@@ -234,7 +234,7 @@ async function legacyMemory(ctx) {
 // arbitrary absolute FS path, since a deployed server can only reach repos it was
 // given owner/repo/ref for. `path` is repo-relative. Broken paths and unknown repo
 // labels skip-and-report via the additive `topology` diagnostics; existing keys keep
-// their shape, so the Memory / Memory Flux widgets need zero changes.
+// their shape, so the memory widgets need zero changes.
 async function configuredMemory(ctx, memoryConfig, vars, knownSpaces) {
   const roots = (memoryConfig.roots ?? []).map((r) => ({ ...r, path: expandVars(r.path ?? '', vars) }))
   const mounts = (memoryConfig.federated ?? []).map((f) => ({ ...f, path: expandVars(f.path ?? '', vars) }))

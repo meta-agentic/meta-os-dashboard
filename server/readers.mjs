@@ -275,7 +275,7 @@ async function legacyMemory(instanceRoot) {
 // Configured topology: canon `roots[]` (each {label, path, layout}) feed the
 // pipeline stages; `federated[]` mounts are navigation context. Per-project rows from
 // partitioned roots and the federated mounts share the existing federated.vaults shape,
-// so the Memory / Memory Flux widgets need zero changes. Broken paths skip-and-report
+// so the memory widgets need zero changes. Broken paths skip-and-report
 // via the additive `topology` diagnostics; existing keys keep their shape.
 async function configuredMemory(memoryConfig, vars, instanceRoot, knownSpaces) {
   const roots = (memoryConfig.roots ?? []).map((r) => ({ ...r, path: expandVars(r.path, vars) }))

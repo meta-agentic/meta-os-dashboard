@@ -10,7 +10,11 @@ import Packs from './widgets/Packs.jsx'
 import Harness from './widgets/Harness.jsx'
 import Skills from './widgets/Skills.jsx'
 import Memory from './widgets/Memory.jsx'
-import MemoryFlux from './widgets/MemoryFlux.jsx'
+import FederatedVaults from './widgets/FederatedVaults.jsx'
+import PromotionPipeline from './widgets/PromotionPipeline.jsx'
+import PromotionFlow from './widgets/PromotionFlow.jsx'
+import Ingestion from './widgets/Ingestion.jsx'
+import { LAYOUT_VERSION, migrateBoard } from './boardMigrations.js'
 import Automations from './widgets/Automations.jsx'
 import Registry from './widgets/Registry.jsx'
 import Activity from './widgets/Activity.jsx'
@@ -38,8 +42,11 @@ const WIDGETS = [
   { i: 'sprint-summary', title: 'Sprint Summary', render: (d) => <SprintSummary data={d.lanes} /> },
   { i: 'graph', title: 'Knowledge Graph', render: (d) => <GraphView ontology={d.ontology} /> },
   { i: 'graph-table', title: 'Graph Hubs', render: (d) => <GraphTable ontology={d.ontology} /> },
-  { i: 'memory', title: 'Memory', render: (d) => <Memory data={d.memory} ontology={d.ontology} /> },
-  { i: 'memory-flux', title: 'Memory Flux', render: (d) => <MemoryFlux memory={d.memory} events={d.events} ontology={d.ontology} /> },
+  { i: 'memory', title: 'Memory', render: (d) => <Memory data={d.memory} /> },
+  { i: 'federated-vaults', title: 'Federated Vaults', render: (d) => <FederatedVaults data={d.memory} /> },
+  { i: 'promotion-pipeline', title: 'Promotion Pipeline', render: (d) => <PromotionPipeline data={d.memory} ontology={d.ontology} /> },
+  { i: 'promotion-flow', title: 'Promotion Flow', render: (d) => <PromotionFlow data={d.memory} ontology={d.ontology} /> },
+  { i: 'ingestion', title: 'Ingestion', render: (d) => <Ingestion events={d.events} /> },
   { i: 'outputs', title: 'Outputs', render: (d) => <Outputs data={d.outputs} /> },
   { i: 'automations', title: 'Automations', render: (d) => <Automations data={d.automations} /> },
   { i: 'usage', title: 'Usage', render: (d) => <Usage data={d.usage} engines={d.engines} /> },
@@ -67,8 +74,11 @@ const DEFAULT_LAYOUT = [
   { i: 'sprint-summary', x: 0, y: 0, w: 12, h: 9, minW: 4, minH: 5 },
   { i: 'lanes', x: 0, y: 9, w: 7, h: 11, minW: 4, minH: 6 },
   { i: 'graph', x: 7, y: 9, w: 5, h: 11, minW: 3, minH: 6 },
-  { i: 'memory', x: 0, y: 20, w: 4, h: 8, minW: 3, minH: 5 },
-  { i: 'memory-flux', x: 4, y: 20, w: 4, h: 9, minW: 3, minH: 7 },
+  { i: 'memory', x: 0, y: 20, w: 4, h: 6, minW: 3, minH: 5 },
+  { i: 'federated-vaults', x: 0, y: 26, w: 4, h: 9, minW: 3, minH: 4 },
+  { i: 'promotion-pipeline', x: 4, y: 20, w: 4, h: 5, minW: 3, minH: 4 },
+  { i: 'promotion-flow', x: 4, y: 25, w: 4, h: 7, minW: 3, minH: 5 },
+  { i: 'ingestion', x: 8, y: 25, w: 4, h: 7, minW: 3, minH: 5 },
   { i: 'outputs', x: 8, y: 20, w: 4, h: 8, minW: 3, minH: 5 },
   { i: 'automations', x: 0, y: 29, w: 4, h: 8, minW: 3, minH: 5 },
   { i: 'usage', x: 0, y: 28, w: 6, h: 8, minW: 3, minH: 5 },
@@ -105,7 +115,7 @@ const DEFAULT_BOARDS = [
       { i: 'sprint-summary', x: 0, y: 0, w: 12, h: 9 },
       { i: 'lanes', x: 0, y: 9, w: 7, h: 11 },
       { i: 'usage', x: 7, y: 9, w: 5, h: 11 },
-      { i: 'memory', x: 0, y: 20, w: 4, h: 8 },
+      { i: 'memory', x: 0, y: 20, w: 4, h: 6 },
       { i: 'outputs', x: 4, y: 20, w: 4, h: 8 },
       { i: 'activity', x: 8, y: 20, w: 4, h: 8 },
     ],
@@ -115,9 +125,12 @@ const DEFAULT_BOARDS = [
     layout: [
       { i: 'graph', x: 0, y: 0, w: 8, h: 11 },
       { i: 'graph-table', x: 8, y: 0, w: 4, h: 11 },
-      { i: 'memory', x: 0, y: 15, w: 4, h: 8 },
-      { i: 'memory-flux', x: 4, y: 15, w: 4, h: 9 },
-      { i: 'files', x: 8, y: 15, w: 4, h: 11 },
+      { i: 'memory', x: 0, y: 11, w: 4, h: 6 },
+      { i: 'promotion-pipeline', x: 4, y: 11, w: 4, h: 6 },
+      { i: 'files', x: 8, y: 11, w: 4, h: 12 },
+      { i: 'federated-vaults', x: 0, y: 17, w: 4, h: 9 },
+      { i: 'promotion-flow', x: 4, y: 17, w: 4, h: 7 },
+      { i: 'ingestion', x: 0, y: 24, w: 8, h: 7 },
     ],
   },
   {
@@ -227,7 +240,10 @@ function loadOnboarding() {
 }
 const Grid = WidthProvider(GridLayout)
 const newId = (p = 'b') => p + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36)
-const normBoard = (b) => ({ ...b, layout: withFloors(b.layout) })
+const normBoard = (b) => {
+  const m = migrateBoard(b)
+  return { ...m, layout: withFloors(m.layout) }
+}
 
 function loadBoards() {
   try {
@@ -240,11 +256,11 @@ function loadBoards() {
   } catch {
     /* migrate */
   }
-  const boards = DEFAULT_BOARDS.map((b) => ({ ...b, layout: b.layout.map((l) => ({ ...l })) }))
+  const boards = DEFAULT_BOARDS.map((b) => ({ ...b, v: LAYOUT_VERSION, layout: b.layout.map((l) => ({ ...l })) }))
   try {
     // Legacy single-layout users keep their arrangement on the Overview tab.
     const legacy = JSON.parse(localStorage.getItem(LEGACY_LAYOUT_KEY) || 'null')
-    if (Array.isArray(legacy) && legacy.length) boards[0] = { ...boards[0], layout: legacy }
+    if (Array.isArray(legacy) && legacy.length) boards[0] = { ...boards[0], v: 1, layout: legacy }
   } catch {
     /* ignore */
   }
@@ -393,7 +409,7 @@ export default function App() {
   const addBoard = () => {
     const id = newId()
     setState((s) => ({
-      boards: [...s.boards, normBoard({ id, name: `Board ${s.boards.length + 1}`, layout: DEFAULT_LAYOUT })],
+      boards: [...s.boards, normBoard({ id, v: LAYOUT_VERSION, name: `Board ${s.boards.length + 1}`, layout: DEFAULT_LAYOUT })],
       activeId: id,
     }))
     setEditingId(id)
