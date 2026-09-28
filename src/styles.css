@@ -1531,8 +1531,6 @@ th.num .wi-sort { justify-content: flex-end; }
 .vault-n { font-size: 0.75rem; min-width: 2ch; text-align: right; }
 .vault-age { min-width: 4.5rem; text-align: right; }
 .pipeline-label { margin-bottom: 0.25rem; }
-.pipeline.compact .stage { padding: 0.2rem 0.4rem; }
-.pipeline.compact .count { font-size: 1rem; }
 
 /* chart axis labels */
 .chart-unit { margin-bottom: 0.3rem; }
@@ -1562,6 +1560,13 @@ th.num .wi-sort { justify-content: flex-end; }
 /* ── memory widgets: summary row + chart captions ──────────────────────── */
 .mem-kpis { display: flex; flex-wrap: wrap; gap: 0.35rem 0.9rem; font-size: 0.78rem; color: var(--dim); margin-bottom: 0.6rem; }
 .mem-kpis b { color: var(--fg); font-weight: 600; }
+.mem-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.mem-tiles .tile { padding: 0.4rem 0.5rem; min-width: 0; }
+.mem-tiles .tile-s { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mem-split { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--bg); margin: 0.5rem 0 0.35rem; }
+.mem-split i { display: block; height: 100%; }
+.mem-split-v { background: var(--accent); }
+.mem-split-p { background: var(--wip); }
 .chart-cap { text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.68rem; margin: 0.55rem 0 0.15rem; }
 
 /* remove-widget affordance */
