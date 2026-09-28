@@ -1,11 +1,7 @@
 import React from 'react'
 import Card from './Card.jsx'
 import MetaCliHint from './MetaCliHint.jsx'
-import { StripPlot, ScatterChart } from '../charts/Charts.jsx'
-
-const fmt = (n) =>
-  n >= 1e9 ? `${(n / 1e9).toFixed(1)}B` : n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(0)}k` : String(n)
-const pct = (n) => `${Math.round(n * 100)}%`
+import { fmt, pct } from './usageShared.js'
 
 // Session logs carry tokens/turns/cache but no task-outcome, so "effectiveness" is
 // proxied honestly by *context reuse*: cache-read ÷ all read input. High reuse = the
@@ -15,12 +11,6 @@ const cacheReuse = (t) => {
   const read = (t?.in ?? 0) + (t?.cacheRead ?? 0)
   return read ? (t.cacheRead ?? 0) / read : 0
 }
-const median = (xs) => {
-  if (!xs.length) return 0
-  const s = [...xs].sort((a, b) => a - b)
-  return s[Math.floor(s.length / 2)]
-}
-
 // Last-14-days output tokens per day. One series, one hue (the app accent) —
 // output tokens are the spend proxy; the per-model split lives in the table below
 // where text, not color, carries identity.
@@ -39,25 +29,11 @@ function DayBars({ days }) {
   )
 }
 
+// Totals, the daily output bars and the per-model table. The two per-session charts
+// are their own widgets: Per-session spend and Cost × Throughput.
 export default function Usage({ data, engines }) {
   const models = Object.entries(data?.models ?? {})
   const reuse = cacheReuse(data?.totals)
-  const sessionList = data?.sessionList ?? []
-  // Distribution of spend across sessions (one dot each) — surfaces the handful of
-  // heavy sessions that dominate the window versus the long light tail.
-  const outs = sessionList.map((s) => s.out)
-  const stripPts = sessionList.map((s) => ({
-    v: s.out, label: `${s.project} · ${s.turns} turns`,
-  }))
-  // Cost (out tokens) × throughput (output per turn), one dot per session, size = turns.
-  // Reuse would compress to a flat band near 100%, so per-turn output is the y that
-  // actually varies: high-spend + low-per-turn (bottom-right) = long grinding sessions.
-  const perTurn = (s) => (s.turns ? s.out / s.turns : 0)
-  const scatterPts = sessionList.map((s) => ({
-    x: s.out, y: perTurn(s), size: s.turns, label: `${s.project} · ${s.day}`,
-  }))
-  const outMax = Math.max(1, ...outs)
-  const ptMax = Math.max(1, ...sessionList.map(perTurn))
   return (
     <Card title={`Engine usage — last ${data?.windowDays ?? 30}d`} data={data}>
       <div className="usagetotals">
@@ -68,18 +44,6 @@ export default function Usage({ data, engines }) {
         <span className="chip">{data?.sessions ?? 0} sessions</span>
       </div>
       <DayBars days={data?.days ?? []} />
-      {sessionList.length > 1 && (
-        <>
-          {/* Session spend spans three orders of magnitude (a few thousand output
-              tokens to a few million), so the axis is logarithmic — on a linear one
-              the bulk of sessions collapses into the leftmost few pixels. */}
-          <div className="dim small chart-cap">Per-session spend · {sessionList.length} sessions</div>
-          <StripPlot points={stripPts} unit="out tokens" max={outMax} median={median(outs)} fmt={fmt} scale="log" />
-          <div className="dim small chart-cap">Cost × throughput · size = turns</div>
-          <ScatterChart points={scatterPts} xLabel="out tokens" yLabel="out/turn" xMax={outMax} yMax={ptMax}
-            xFmt={fmt} yFmt={fmt} />
-        </>
-      )}
       <table>
         <thead>
           <tr><th>model</th><th className="num">turns</th><th className="num">in</th><th className="num">out</th><th className="num">cache r/w</th></tr>
