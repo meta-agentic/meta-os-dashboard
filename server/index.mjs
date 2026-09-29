@@ -14,6 +14,7 @@ import * as files from './files.mjs'
 import * as boards from './boards.mjs'
 import { reports } from './reports.mjs'
 import { items, itemDetail } from './items.mjs'
+import { createFlow } from './flow.mjs'
 import { createGithubContext } from './github.mjs'
 import * as gh from './github-readers.mjs'
 import * as ghGraph from './github-graph.mjs'
@@ -59,7 +60,7 @@ let instanceRoot, frameworkRoot, fileRoots, dataDir
 // different checkout layout overrides paths without touching estate config.
 // Back-compat: if the instance has no meta-os.config.json, nothing changes and an
 // existing all-in-one instance.config.json keeps working untouched.
-const ESTATE_KEYS = ['vars', 'backlogs', 'memory', 'metaCli', 'harness']
+const ESTATE_KEYS = ['vars', 'backlogs', 'memory', 'metaCli', 'harness', 'flow']
 
 function mergeEstate(estate, deployment) {
   if (!estate) return deployment
@@ -205,6 +206,8 @@ if (isGithub) {
   app.get('/api/engines', api(async () => ({ available: false, reason: 'meta-cli engines are local-only — not observable from a GitHub source' })))
   // Declarations are instance files; the GitHub reader does not fetch them (yet), so say so.
   app.get('/api/harness', api(async () => ({ available: false, reason: 'harness declarations are read from a local instance only' })))
+  // Worktrees, local branches and uncommitted files are properties of the machine.
+  app.get('/api/flow', api(async () => ({ available: false, reason: 'flow reads local git worktrees — not observable from a GitHub source' })))
   app.get('/api/graphs', api(() => ghGraph.graphSources(ghCtx)))
   app.get('/api/graph', api(async (req) => {
     const { name, ...opts } = req.query
@@ -246,6 +249,10 @@ if (isGithub) {
   app.get('/api/engines', guard(() => engines(config.metaCli, config.claudeHome, instanceRoot)))
   // Instance data: <instanceRoot>/harness/*.yaml, or harness.dir. Nothing is bundled.
   app.get('/api/harness', guard(() => harness(harnessDir(config, instanceRoot))))
+  // vault × git × GitHub (flow.* in the config). Fetched on demand by the Flow widget,
+  // not in the polled feed set: a cold scan runs git across every repository.
+  const flowView = createFlow({ flow: config.flow, backlogs: config.backlogs, instanceRoot })
+  app.get('/api/flow', guard(() => flowView()))
   app.get('/api/graphs', api(async () => {
     const reg = await read.registry(instanceRoot, config.vars ?? {})
     return graphSources(instanceRoot, reg.projects ?? [])

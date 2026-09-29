@@ -32,6 +32,7 @@ import FilePreview from './widgets/FilePreview.jsx'
 import Gantt from './widgets/Gantt.jsx'
 import Report from './widgets/Report.jsx'
 import WorkItems from './widgets/WorkItems.jsx'
+import Flow from './widgets/Flow.jsx'
 import { apiFetch, isStatic } from './api.js'
 import { useAuth } from './auth/AuthProvider.jsx'
 import Onboarding from './Onboarding.jsx'
@@ -42,6 +43,9 @@ const FEEDS = ['meta', 'ontology', 'registry', 'automations', 'memory', 'events'
 // Every widget belongs to one group; the tabs are generated from the groups (tabs.js),
 // so a widget's tab is decided here, next to the widget, and nowhere else.
 const WIDGETS = [
+  // vault × git × GitHub. Fetches /api/flow itself (cached server-side), not a polled
+  // feed; an item id hands Work Items a preset that opens that item.
+  { i: 'flow', group: 'flow', title: 'Flow — waiting · drift · lanes', render: (d, ctx) => <Flow onOpenItem={ctx?.focusItems} /> },
   { i: 'lanes', group: 'sprint', title: 'Sprint Lanes', render: (d) => <Lanes data={d.lanes} engines={d.engines} /> },
   { i: 'sprint-summary', group: 'sprint', title: 'Sprint Summary', render: (d) => <SprintSummary data={d.lanes} /> },
   { i: 'graph', group: 'knowledge', title: 'Knowledge Graph', render: (d) => <GraphView ontology={d.ontology} /> },
@@ -107,6 +111,7 @@ const SIZES = Object.fromEntries([
   { i: 'work-items', x: 0, y: 85, w: 12, h: 16, minW: 6, minH: 8 },
   { i: 'engines', x: 0, y: 101, w: 6, h: 9, minW: 4, minH: 6 },
   { i: 'harness', x: 6, y: 101, w: 6, h: 9, minW: 4, minH: 6 },
+  { i: 'flow', x: 0, y: 0, w: 12, h: 22, minW: 6, minH: 10 },
 ].map(({ i, ...size }) => [i, size]))
 
 const PREFS_KEY = 'meta-os.prefs.v1'
