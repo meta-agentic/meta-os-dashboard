@@ -15,6 +15,7 @@ in the framework repo for the full contract this app implements.
 
 ## What it shows
 
+- **Flow** *(opt-in, `flow` config)*: vault × git × GitHub joined. Open pull requests you authored with review and check state; drift alarms with their evidence (branches that exist only on disk, PRs merged while their item is not DONE, items in review with no open PR, pushed branches with no PR, worktrees left on merged branches, uncommitted work older than `staleDays`); and every git worktree as a lane with its item, dirty/ahead/behind and PR state. Read-only and local-only; needs the `gh` CLI for the GitHub half and degrades without it.
 - **Lanes** — active sprint flow per swarm lane: todo/wip/done as filled slots (not just
   counts), a sprint burn line, story points, blocked stories (derived from unfinished
   dependency edges in the mirror), and forecasts (velocity, median-baseline

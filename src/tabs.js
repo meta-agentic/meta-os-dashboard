@@ -6,6 +6,7 @@
 
 // Tab order. A group missing here still gets a tab, after these.
 export const GROUPS = [
+  { id: 'flow', name: 'Flow' },
   { id: 'sprint', name: 'Sprint' },
   { id: 'backlog', name: 'Backlog' },
   { id: 'memory', name: 'Memory' },

@@ -23,6 +23,22 @@
       "ollama": { "plan": "local models" }
     }
   },
+  "flow": {
+    "_comment": "Optional. Feeds the Flow tab (/api/flow): open PRs waiting for you, drift between vault, git and GitHub, and every git worktree as a lane. Read-only: git runs without taking locks and never fetches; gh only reads. scanRoots are parent directories searched scanDepth levels deep for repositories (a directory holding a .git directory); repos adds explicit repository paths; exclude drops a path prefix or a directory name. github.user defaults to the gh-authenticated login; github.orgs limits the PR search and the repositories read to these owners (plus the user), empty means every GitHub remote found. Items are linked through the backlogs below, by branch names of the form <space>/<KEY>-slug. mergedWindowDays: how far back a merged PR whose item is not DONE is reported. staleDays: uncommitted files older than this are drift. prLimit: PRs read per repository (all states, newest first). Caches: githubCacheSec and scanCacheSec, served stale while refreshing. timeoutMs applies to each git/gh call. laneLedger: optional JSON file (relative to instanceRoot) of lane entries naming a worktree path, or a repo + branch, with a session field; null shows no session. May also live in the instance's meta-os.config.json.",
+    "scanRoots": ["${code}"],
+    "scanDepth": 2,
+    "repos": [],
+    "exclude": [],
+    "github": { "user": null, "orgs": ["your-org"] },
+    "mergedWindowDays": 14,
+    "staleDays": 7,
+    "prLimit": 200,
+    "githubCacheSec": 300,
+    "scanCacheSec": 60,
+    "timeoutMs": 15000,
+    "concurrency": 8,
+    "laneLedger": null
+  },
   "_backlogsComment": "Vault-native: `path` is the space directory in your vault; the server reads <space>/{raw,wiki,output}/*.md and <space>/sprints/*.md directly, so there is no derived backlog.json to regenerate. A `path` ending in .json still reads a pre-built backlog document. One entry per space — add as many as you have.",
   "backlogs": [
     {

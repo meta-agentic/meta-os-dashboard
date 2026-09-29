@@ -259,6 +259,10 @@ export default function WorkItems({ spaces, selected, focus }) {
     if (firstHeader.current) { firstHeader.current = false; return }
     setPreset(null)
   }, [headerKey])
+  // A preset may also name one item to open (`focus.open`, from the Flow view). When
+  // the preset changes the project set, the list reload below resets the view, so the
+  // open is deferred until that reload has run; otherwise it happens at once.
+  const pendingOpen = useRef(null)
   useEffect(() => {
     if (!focus) return
     setPreset(focus)
@@ -266,6 +270,10 @@ export default function WorkItems({ spaces, selected, focus }) {
     setState('')
     setView(null)
     setTrail([])
+    if (!focus.open) return
+    const nextKey = [...(selected?.size ? selected : focus.spaces ?? [])].sort().join(',')
+    if (nextKey !== selectedKey) pendingOpen.current = { ...focus.open, key: nextKey }
+    else open(focus.open.id, focus.open.space, false)
   }, [focus?.n])
 
   const loadList = () => {
@@ -293,6 +301,11 @@ export default function WorkItems({ spaces, selected, focus }) {
     setView(null)
     setTrail([])
     loadList()
+    if (pendingOpen.current?.key === selectedKey) {
+      const { id, space } = pendingOpen.current
+      pendingOpen.current = null
+      open(id, space, false)
+    }
   }, [selectedKey])
 
   const open = (id, itemSpace, push = true) => {
