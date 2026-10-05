@@ -6,6 +6,7 @@ import Lanes from './widgets/Lanes.jsx'
 import SprintSummary from './widgets/SprintSummary.jsx'
 import Burndown from './widgets/Burndown.jsx'
 import Velocity from './widgets/Velocity.jsx'
+import SprintStats from './widgets/SprintStats.jsx'
 import Packs from './widgets/Packs.jsx'
 import Harness from './widgets/Harness.jsx'
 import Skills from './widgets/Skills.jsx'
@@ -69,6 +70,7 @@ const WIDGETS = [
   { i: 'gantt', group: 'backlog', title: 'Roadmap', render: (d) => <Gantt data={d.report} /> },
   { i: 'burndown', group: 'sprint', title: 'Burndown', render: (d) => <Burndown data={d.report} /> },
   { i: 'velocity', group: 'sprint', title: 'Velocity', render: (d) => <Velocity data={d.report} /> },
+  { i: 'sprint-stats', group: 'sprint', title: 'Sprint Stats', render: (d) => <SprintStats data={d.report} /> },
   { i: 'packs', group: 'skills', title: 'Packs mounted', render: (d) => <Packs data={d.packs} /> },
   { i: 'harness', group: 'operations', title: 'Harness', render: (d) => <Harness data={d.harness} /> },
   { i: 'skills', group: 'skills', title: 'Skills by discipline', render: (d) => <Skills data={d.packs} engines={d.engines} /> },
@@ -104,6 +106,7 @@ const SIZES = Object.fromEntries([
   { i: 'gantt', x: 6, y: 45, w: 6, h: 11, minW: 4, minH: 7 },
   { i: 'burndown', x: 0, y: 56, w: 6, h: 9, minW: 4, minH: 6 },
   { i: 'velocity', x: 6, y: 56, w: 6, h: 9, minW: 4, minH: 6 },
+  { i: 'sprint-stats', x: 0, y: 77, w: 12, h: 16, minW: 6, minH: 8 },
   { i: 'packs', x: 0, y: 65, w: 6, h: 9, minW: 4, minH: 6 },
   { i: 'skills', x: 6, y: 65, w: 6, h: 9, minW: 4, minH: 6 },
   { i: 'report', x: 0, y: 65, w: 12, h: 12, minW: 5, minH: 9 },
@@ -131,7 +134,7 @@ function loadPrefs() {
 // the global project filter can act on. Registry uses a different, unlinked project
 // vocabulary (repo entries, no `space` field), and most other widgets (Graph, Packs,
 // Files, Usage, ...) have no project axis at all, so the filter leaves them alone.
-const SPACE_SCOPED = new Set(['lanes', 'sprint-summary', 'distribution', 'activity', 'report'])
+const SPACE_SCOPED = new Set(['lanes', 'sprint-summary', 'distribution', 'activity', 'report', 'sprint-stats'])
 
 // Every backlog space currently known to the lanes feed — the option list for the
 // project filter bar. Derived live so a newly-onboarded space shows up without a
@@ -145,7 +148,7 @@ const projectOptions = (data) =>
 // whose rows carry the space as `actor`; `report` reads `d.report.spaces`.
 function scopeToProject(data, widgetId, selected) {
   if (!selected.size || !SPACE_SCOPED.has(widgetId)) return data
-  if (widgetId === 'report') {
+  if (widgetId === 'report' || widgetId === 'sprint-stats') {
     return {
       ...data,
       report: data.report && { ...data.report, spaces: (data.report.spaces ?? []).filter((s) => selected.has(s.space)) },

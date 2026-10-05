@@ -20,6 +20,11 @@ in the framework repo for the full contract this app implements.
   counts), a sprint burn line, story points, blocked stories (derived from unfinished
   dependency edges in the mirror), and forecasts (velocity, median-baseline
   acceleration, Little's-Law ETA).
+- **Sprint Stats** — every sprint of every project since the beginning, one table per
+  project: committed items and points (the snapshot taken at open), delivered items and
+  points, velocity in points per week, and carry-over items and points. Delivered work is
+  credited once, to the sprint that finishes it, and a sprint whose close record no longer
+  matches its live work is flagged. Follows the global project filter.
 - **Knowledge graph** — a live, pannable/zoomable view over
   [graphify](https://github.com/meta-agentic/meta-os/tree/main/skills/graphify) output.
   Type-stratified so rare categories (docs, decisions, spikes) aren't drowned out by

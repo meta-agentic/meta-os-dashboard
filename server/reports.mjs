@@ -9,6 +9,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { normalizeBacklog, sprintMembers } from './backlog-schema.mjs'
 import { loadBacklog } from './vault-backlog.mjs'
+import { sprintStats } from './sprint-stats.mjs'
 
 const WEEK = 6048e5
 const DONE = 'DONE'
@@ -140,7 +141,11 @@ export function reportFromData(space, doc, daily = null) {
     }))
     : []
 
-  return { space, scorecard, velocity, statusMix, burndown, history, sprints: sprintRows }
+  return {
+    space, scorecard, velocity, statusMix, burndown, history, sprints: sprintRows,
+    // Committed / delivered / carry-over per sprint, for the Sprint Stats widget.
+    sprintStats: sprintStats(stories, d.epics, sprints),
+  }
 }
 
 async function reportSpace(entry) {
