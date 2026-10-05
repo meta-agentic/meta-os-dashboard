@@ -13,7 +13,8 @@
 // Canonical story/epic: { id, title, status, storyPoints, priority, epic, project,
 //                         sprint, dependencies[], relates[], labels[], kind }
 // Canonical sprint:     { id, name, status: 'IN PROGRESS'|'CLOSED'|'PLANNED',
-//                         start, end, goal, issues[], deliveredSP, deliveredItems }
+//                         start, end, goal, issues[], committed[], deliveredSP,
+//                         deliveredItems }
 // Item `status` stays the vault's own vocabulary (TO DO / IN PROGRESS / DONE / …) —
 // that one never diverged, so there is nothing to translate.
 
@@ -65,6 +66,10 @@ export function normalizeSprint(s) {
     end,
     goal: s.goal ?? null,
     issues: arr(s.issues ?? s.committed),
+    // The open-time commitment, kept apart from `issues` (which becomes commitment ∪
+    // live membership). Empty when the source never recorded one, e.g. a backlog.py
+    // export, whose `issues` is already the union.
+    committed: arr(s.committed).map(String),
     deliveredSP: num(s.deliveredSP),
     deliveredItems: num(s.deliveredItems),
   }

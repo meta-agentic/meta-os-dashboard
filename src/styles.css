@@ -1676,3 +1676,18 @@ th.num .wi-sort { justify-content: flex-end; }
 .flow-toggle { display: inline-flex; align-items: center; gap: 0.3rem; margin-bottom: 0.3rem; }
 .flow .nowrap { white-space: nowrap; }
 
+
+/* ── Sprint Stats ──────────────────────────────────────────────────────── */
+.ss-project { margin-top: 1rem; }
+.ss-head { display: flex; align-items: baseline; gap: 0.7rem; flex-wrap: wrap; margin-bottom: 0.25rem; }
+.ss-name { font-weight: 600; color: var(--accent); letter-spacing: 0.06em; }
+.ss-table { min-width: 44rem; }
+.ss-table th { vertical-align: bottom; line-height: 1.25; }
+.ss-sub { text-transform: none; letter-spacing: 0; opacity: 0.8; }
+.ss-table td { padding: 0.25rem 0.5rem; white-space: nowrap; vertical-align: middle; }
+.ss-live td { opacity: 0.7; }
+.ss-carry { color: var(--wip); }
+.ss-v { display: inline-flex; align-items: center; justify-content: flex-end; gap: 0.4rem; }
+.ss-bar { display: inline-block; width: 3.5rem; height: 6px; background: var(--bg); border-radius: 3px; overflow: hidden; }
+.ss-bar i { display: block; height: 100%; background: var(--accent); }
+.ss-total td { border-top: 2px solid var(--border); font-weight: 600; }
