@@ -21,10 +21,13 @@ function Points({ n }) {
   return n > 0 ? <div className="dim small">{n}pt</div> : null
 }
 
-// One slot per story, done → wip → todo (progress reads left to right), filling the
-// whole rectangle. Blocked stories (unfinished dependencies in the mirror) get a
-// warn outline on their slot.
-function QueueBar({ queues }) {
+const STATE_LABEL = { done: 'done', wip: 'in progress', todo: 'to do' }
+
+// One chip per story, done → wip → todo (progress reads left to right), labelled with
+// the item id. Blocked stories (unfinished dependencies in the mirror) get a warn
+// outline. Clicking a chip opens that item in Work Items and moves the project filter to
+// the item's project, so the table and the item both belong to what was clicked.
+function QueueBar({ space, queues, onOpenItem }) {
   const slots = [
     ...queues.done.map((i) => ({ cls: 'done', item: i })),
     ...queues['in-progress'].map((i) => ({ cls: 'wip', item: i })),
@@ -36,19 +39,33 @@ function QueueBar({ queues }) {
     `${queues.todo.length} todo · ${queues['in-progress'].length} wip · ${queues.done.length} done` +
     (blocked ? ` · ${blocked} blocked` : '')
   return (
-    <div className="queueslots" title={title}>
-      {slots.map((s, i) => (
-        <span
-          key={i}
-          className={`slot ${s.cls}${s.item.blockedBy ? ' blocked' : ''}`}
-          title={s.item.blockedBy ? `${s.item.id} blocked by ${s.item.blockedBy.join(', ')}` : undefined}
-        />
-      ))}
+    <div className="queuechips" title={title}>
+      {slots.map((s) => {
+        const it = s.item
+        const tip = [
+          it.title ? `${it.id} · ${it.title}` : it.id,
+          STATE_LABEL[s.cls],
+          it.points != null ? `${it.points} pt` : null,
+          it.blockedBy ? `blocked by ${it.blockedBy.join(', ')}` : null,
+        ].filter(Boolean).join(' · ')
+        return (
+          <button
+            key={it.id}
+            type="button"
+            className={`qchip ${s.cls}${it.blockedBy ? ' blocked' : ''}`}
+            title={tip}
+            disabled={!onOpenItem}
+            onClick={() => onOpenItem?.({ label: it.id, spaces: [space], selectProject: true, open: { id: it.id, space } })}
+          >
+            {it.id}
+          </button>
+        )
+      })}
     </div>
   )
 }
 
-export default function Lanes({ data, engines }) {
+export default function Lanes({ data, engines, onOpenItem }) {
   // Spaces with no sprint data at all (never closed one either) collapse into one
   // summary line instead of an empty section each — they carry no flow to show.
   // A space with lanes but no LIVE sprint is showing its last closed one (server
@@ -99,7 +116,7 @@ export default function Lanes({ data, engines }) {
                       {l.lane}
                       {l.blocked > 0 && <div className="warn small">{l.blocked} blocked</div>}
                     </td>
-                    <td><QueueBar queues={l.queues} /></td>
+                    <td><QueueBar space={s.space} queues={l.queues} onOpenItem={onOpenItem} /></td>
                     <td className="num">{l.depth}<Points n={l.points?.todo} /></td>
                     <td className="num">{l.wip}<Points n={l.points?.wip} /></td>
                     <td className="num">{l.done}<Points n={l.points?.done} /></td>

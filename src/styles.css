@@ -1151,11 +1151,17 @@ td { padding: 0.35rem 0.5rem; border-top: 1px solid var(--border); vertical-alig
 /* commit hash → forge. Underlined on hover only, so the feed stays a feed. */
 .commitlink { color: var(--dim); text-decoration: none; border-bottom: 1px dotted var(--border); }
 .commitlink:hover { color: var(--accent); border-bottom-color: var(--accent); }
-.queueslots { display: flex; gap: 2px; height: 14px; min-width: 120px; }
-.queueslots .slot { flex: 1; border-radius: 2px; }
-.slot.todo { background: var(--track); }
-.slot.wip { background: var(--wip); }
-.slot.done { background: var(--ok); }
+/* Sprint Lanes queue: one labelled, clickable chip per story. The coloured left edge is the
+   state (to do / in progress / done); finished work is dimmed so open work reads first. */
+.queuechips { display: flex; flex-wrap: wrap; gap: 3px; min-width: 120px; }
+.qchip { font: inherit; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 0.68rem; line-height: 1.5;
+  color: var(--fg); background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--track);
+  border-radius: 3px; padding: 0 0.4em; cursor: pointer; white-space: nowrap; }
+.qchip.wip { border-left-color: var(--wip); }
+.qchip.done { border-left-color: var(--ok); color: var(--dim); }
+.qchip.blocked { box-shadow: inset 0 0 0 1.5px var(--warn); }
+.qchip:hover:not(:disabled), .qchip:focus-visible { border-color: var(--accent); color: var(--accent); outline: none; }
+.qchip:disabled { cursor: default; }
 .memslots { display: flex; gap: 2px; height: 10px; margin-top: 0.5rem; }
 .memslots .slot { flex: 1; border-radius: 2px; border: 1px solid var(--border); }
 .memslots .slot.filled { background: var(--accent); border-color: var(--accent); }
@@ -1220,7 +1226,6 @@ line.zap { stroke: var(--accent); stroke-opacity: 0.9; }
 .chips .chip { cursor: pointer; background: none; font: inherit; }
 .chips .chip .dot { width: 6px; height: 6px; }
 .chip.on { color: var(--fg); border-color: var(--accent); }
-.slot.blocked { box-shadow: inset 0 0 0 1.5px var(--warn); }
 .nextstrip { margin-top: 0.75rem; }
 .striprail {
   position: relative;
