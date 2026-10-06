@@ -47,7 +47,8 @@ const WIDGETS = [
   // vault × git × GitHub. Fetches /api/flow itself (cached server-side), not a polled
   // feed; an item id hands Work Items a preset that opens that item.
   { i: 'flow', group: 'flow', title: 'Flow — waiting · drift · lanes', render: (d, ctx) => <Flow onOpenItem={ctx?.focusItems} /> },
-  { i: 'lanes', group: 'sprint', title: 'Sprint Lanes', render: (d) => <Lanes data={d.lanes} engines={d.engines} /> },
+  // Its queue chips open an item in Work Items and move the project filter to its project.
+  { i: 'lanes', group: 'sprint', title: 'Sprint Lanes', render: (d, ctx) => <Lanes data={d.lanes} engines={d.engines} onOpenItem={ctx?.focusItems} /> },
   { i: 'sprint-summary', group: 'sprint', title: 'Sprint Summary', render: (d) => <SprintSummary data={d.lanes} /> },
   { i: 'graph', group: 'knowledge', title: 'Knowledge Graph', render: (d) => <GraphView ontology={d.ontology} /> },
   { i: 'graph-table', group: 'knowledge', title: 'Graph Hubs', render: (d) => <GraphTable ontology={d.ontology} /> },
@@ -303,9 +304,26 @@ export default function App() {
       return { ...s, layouts: rest }
     })
 
-  // A report tile was clicked: hand Work Items the preset and switch to its tab.
+  // A report tile was clicked: hand Work Items the preset and switch to its tab. A preset
+  // with `selectProject` also moves the global project filter to its `spaces` (and stores
+  // it, like a click on the filter bar), so the table behind the opened item is that
+  // project's, not whatever was selected before. When the selection really changes, the
+  // preset is handed over one tick later: Work Items reloads its table (and closes any
+  // open item) when the filter changes, so an item opened in the same render would be
+  // wiped by that reload.
   const focusItems = (preset) => {
-    setItemsFocus({ ...preset, n: Date.now() })
+    const handOver = () => setItemsFocus({ ...preset, n: Date.now() })
+    const wanted = preset.selectProject ? preset.spaces ?? [] : []
+    const changes = wanted.length > 0
+      && (wanted.length !== selectedProjects.size || wanted.some((s) => !selectedProjects.has(s)))
+    if (changes) {
+      const next = new Set(wanted)
+      setSelectedProjects(next)
+      try { localStorage.setItem(PROJECTFILTER_KEY, JSON.stringify({ selected: [...next] })) } catch { /* private mode */ }
+      setTimeout(handOver, 0)
+    } else {
+      handOver()
+    }
     const home = tabs.find((t) => t.ids.includes('work-items'))
     if (home && home.id !== active.id) showTab(home.id)
   }
