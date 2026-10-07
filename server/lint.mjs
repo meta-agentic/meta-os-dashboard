@@ -14,7 +14,10 @@ const SKIP_FILES = new Set(['CLAUDE.md', 'README.md'])
 // real notes/items once a PO picks a branch and the dispatcher applies them). Found by
 // the ontology lint 2026-09-24 flagging automations/swarm/speculation|speculative/*.md;
 // a per-file frontmatter fix would misrepresent what these files are.
-const SKIP_DIRS = new Set(['speculation', 'speculative'])
+// planner-out/ is the same category, found 2026-10-07: machine-generated solver output
+// (e.g. automations/swarm/plans/<timestamp>/planner-out/sprint-schedule.md), regenerated
+// on every planning run — not hand-authored knowledge.
+const SKIP_DIRS = new Set(['speculation', 'speculative', 'planner-out'])
 
 async function loadOntology(frameworkRoot, instanceRoot) {
   const read = async (p) => {
