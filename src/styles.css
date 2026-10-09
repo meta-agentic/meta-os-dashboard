@@ -1696,3 +1696,24 @@ th.num .wi-sort { justify-content: flex-end; }
 .ss-bar { display: inline-block; width: 3.5rem; height: 6px; background: var(--bg); border-radius: 3px; overflow: hidden; }
 .ss-bar i { display: block; height: 100%; background: var(--accent); }
 .ss-total td { border-top: 2px solid var(--border); font-weight: 600; }
+
+
+/* ── ADR Register ──────────────────────────────────────────────────────── */
+.adr-scroll { padding: 0.2rem 0.5rem 0.6rem; }
+.adr-group { margin-top: 0.6rem; }
+.adr-ghead { display: flex; align-items: baseline; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 0.2rem; }
+.adr-counts { margin: 0; }
+.adr-table { min-width: 36rem; }
+.wi-pill.old { color: var(--dim); text-decoration: line-through; }
+.wi-pill.bad { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 55%, transparent); background: color-mix(in srgb, var(--warn) 10%, transparent); }
+.adr-fm { display: grid; grid-template-columns: max-content 1fr; gap: 0.2rem 0.9rem; margin: 0; font-size: 0.76rem; }
+.adr-fm dt { color: var(--dim); }
+.adr-fm dd { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; }
+.adr-problems { margin: 0; padding-left: 1.1rem; }
+.adr-decisions { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.25rem; }
+.adr-decisions li { display: flex; align-items: center; gap: 0.5rem; min-width: 0; font-size: 0.78rem; }
+.adr-ref { flex: none; width: 2.6rem; color: var(--accent); }
+.adr-dtitle { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.adr-dstatus { display: inline-flex; align-items: center; gap: 0.35rem; flex: none; }
+.adr-preview { height: 26rem; flex: none; }
+.cl.mark { background: color-mix(in srgb, var(--accent) 16%, transparent); }

@@ -20,6 +20,10 @@ function snapshotName(path) {
     return `graph-${name}`
   }
   if (route === 'api/auth/config') return 'auth-config'
+  if (route === 'api/adr') {
+    const q = new URLSearchParams(query)
+    return `adr-${q.get('space')}-${q.get('id')}`
+  }
   if (route === 'api/boards') return null // localStorage only in static mode
   return route.replace(/^api\//, '').replace(/\//g, '-')
 }

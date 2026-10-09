@@ -33,6 +33,7 @@ import FilePreview from './widgets/FilePreview.jsx'
 import Gantt from './widgets/Gantt.jsx'
 import Report from './widgets/Report.jsx'
 import WorkItems from './widgets/WorkItems.jsx'
+import AdrRegister from './widgets/AdrRegister.jsx'
 import Flow from './widgets/Flow.jsx'
 import { apiFetch, isStatic } from './api.js'
 import { useAuth } from './auth/AuthProvider.jsx'
@@ -81,6 +82,9 @@ const WIDGETS = [
   // Driven by the global project filter bar, not its own picker — ctx.selectedProjects
   // is the same Set every space-scoped widget reads.
   { i: 'work-items', group: 'backlog', title: 'Work Items', render: (d, ctx) => <WorkItems spaces={projectOptions(d)} selected={ctx?.selectedProjects} focus={ctx?.itemsFocus} /> },
+  // Read-only, on demand (/api/adrs, /api/adr) like Work Items, and narrowed by the
+  // same project filter. Its home is the backlog tab: the vault's read-only views.
+  { i: 'adr-register', group: 'backlog', title: 'ADR Register', render: (d, ctx) => <AdrRegister selected={ctx?.selectedProjects} roots={d.meta?.roots} /> },
 ]
 
 // Default size and size floor per widget: the auto-arranged tabs place each widget at
@@ -113,6 +117,7 @@ const SIZES = Object.fromEntries([
   { i: 'report', x: 0, y: 65, w: 12, h: 12, minW: 5, minH: 9 },
   { i: 'graph-table', x: 0, y: 77, w: 6, h: 8, minW: 3, minH: 5 },
   { i: 'work-items', x: 0, y: 85, w: 12, h: 16, minW: 6, minH: 8 },
+  { i: 'adr-register', x: 0, y: 101, w: 12, h: 16, minW: 6, minH: 8 },
   { i: 'engines', x: 0, y: 101, w: 6, h: 9, minW: 4, minH: 6 },
   { i: 'harness', x: 6, y: 101, w: 6, h: 9, minW: 4, minH: 6 },
   { i: 'flow', x: 0, y: 0, w: 12, h: 22, minW: 6, minH: 10 },

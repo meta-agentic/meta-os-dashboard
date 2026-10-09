@@ -14,6 +14,8 @@ import * as files from './files.mjs'
 import * as boards from './boards.mjs'
 import { reports } from './reports.mjs'
 import { items, itemDetail } from './items.mjs'
+import * as adrReg from './adrs.mjs'
+import * as ghAdrs from './github-adrs.mjs'
 import { createFlow } from './flow.mjs'
 import { createGithubContext } from './github.mjs'
 import * as gh from './github-readers.mjs'
@@ -194,6 +196,9 @@ if (isGithub) {
   app.get('/api/lanes', api(() => gh.lanes(ghCtx)))
   app.get('/api/items', api((req) => gh.items(ghCtx, String(req.query.space ?? ''))))
   app.get('/api/item', api((req) => gh.itemDetail(ghCtx, String(req.query.space ?? ''), String(req.query.id ?? ''))))
+  // ADR register: on demand like /api/items, not a polled feed. GET only — read-only.
+  app.get('/api/adrs', guard(() => ghAdrs.adrs(ghCtx)))
+  app.get('/api/adr', guard((req) => ghAdrs.adrDetail(ghCtx, String(req.query.space ?? ''), String(req.query.id ?? ''))))
   app.get('/api/report', api(() => gh.reports(ghCtx)))
   app.get('/api/events', api(() => gh.events(ghCtx)))
   app.get('/api/outputs', api(() => gh.outputs(ghCtx)))
@@ -231,6 +236,9 @@ if (isGithub) {
   // On-demand, not part of the client's polled feed set: the list is the whole space.
   app.get('/api/items', api((req) => items(config.backlogs, String(req.query.space ?? ''))))
   app.get('/api/item', api((req) => itemDetail(config.backlogs, String(req.query.space ?? ''), String(req.query.id ?? ''))))
+  // ADR register: on demand like /api/items, not a polled feed. GET only — read-only.
+  app.get('/api/adrs', guard(() => adrReg.adrs(config.backlogs)))
+  app.get('/api/adr', guard((req) => adrReg.adrDetail(config.backlogs, fileRoots, String(req.query.space ?? ''), String(req.query.id ?? ''))))
   app.get('/api/report', api(() => reports(config.backlogs)))
   app.get('/api/events', api(() => read.events(instanceRoot, config.backlogs)))
   // Live delta stream over the same normalized timeline (local source only — SSE relies
