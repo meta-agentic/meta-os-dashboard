@@ -10,7 +10,7 @@ import { lint } from '../server/lint.mjs'
 import { packs } from '../server/packs.mjs'
 import { harness, harnessDir } from '../server/harness.mjs'
 import { reports } from '../server/reports.mjs'
-import { adrs, adrDetail } from '../server/adrs.mjs'
+import { snapshotAdrs } from './snapshot-adrs.mjs'
 
 const root = path.dirname(fileURLToPath(import.meta.url))
 const outDir = path.join(root, '../public/snapshots')
@@ -64,16 +64,8 @@ await write('usage', { available: false, reason: 'engine usage is local-only —
 await write('engines', { available: false, reason: 'meta-cli engines are local-only — not included in static snapshots' })
 await write('harness', await harness(harnessDir(config, instanceRoot)))
 
-// ADR register: the list, plus one detail document per ADR (api.js maps /api/adr to
-// adr-<space>-<id>). A static page has no live file root, so the preview is absent.
-const register = await adrs(config.backlogs)
-await write('adrs', register)
-for (const s of register.spaces ?? []) {
-  for (const a of s.adrs) {
-    const d = await adrDetail(config.backlogs, {}, s.space, a.id)
-    await write(`adr-${s.space}-${a.id}`, { ...d, preview: null, previewReason: d.available ? 'File Preview needs the live API — not available on a static snapshot' : null })
-  }
-}
+// ADR register: the list plus one detail document per ADR (see snapshot-adrs.mjs).
+await snapshotAdrs(config.backlogs, outDir)
 
 const { sources, ...graphsMeta } = await graphSources(instanceRoot, projects)
 await write('graphs', { ...graphsMeta, sources })
