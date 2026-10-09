@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { isStatic } from '../api.js'
 
 const join = (dir, name) => (dir ? `${dir}/${name}` : name)
@@ -20,10 +20,15 @@ function hexRows(base64) {
   return rows
 }
 
-export default function FilePreview({ roots }) {
+// `target` ({ root, path, line? }) opens straight onto one file, scrolled to and
+// marking `line` — how the ADR register shows a whole ADR or one of its sections. A
+// new target needs a new mount (key it on the path); `line` may change in place.
+export default function FilePreview({ roots, target }) {
   const rootKeys = roots?.length ? roots : ['instance']
-  const [root, setRoot] = useState(rootKeys[0])
-  const [cwd, setCwd] = useState('')
+  const [root, setRoot] = useState(target?.root ?? rootKeys[0])
+  const [cwd, setCwd] = useState(target ? parent(target.path) : '')
+  const pending = useRef(target?.path ?? null)
+  const codeRef = useRef(null)
   const [listing, setListing] = useState(null)
   const [file, setFile] = useState(null)
   const [hex, setHex] = useState(false)
@@ -37,10 +42,21 @@ export default function FilePreview({ roots }) {
       .then((r) => r.json())
       .then((d) => (d.error ? setErr(d.error) : setListing(d)))
       .catch((e) => setErr(String(e)))
+    if (pending.current) {
+      openPath(pending.current)
+      pending.current = null
+    }
   }, [root, cwd])
 
-  const open = (name, forceHex = false) => {
-    const p = join(cwd, name)
+  const mark = file && target && file.path === target.path ? target.line : null
+  useEffect(() => {
+    if (!mark || !codeRef.current) return
+    const row = codeRef.current.children[mark - 1]
+    if (row) codeRef.current.scrollTop = row.offsetTop - codeRef.current.offsetTop
+  }, [file, mark])
+
+  const open = (name, forceHex = false) => openPath(join(cwd, name), forceHex)
+  const openPath = (p, forceHex = false) => {
     setErr(null)
     fetch(`/api/file?root=${root}&path=${encodeURIComponent(p)}${forceHex ? '&mode=hex' : ''}`)
       .then((r) => r.json())
@@ -118,9 +134,9 @@ export default function FilePreview({ roots }) {
               ))}
             </div>
           ) : (
-            <div className="code">
+            <div className="code" ref={codeRef}>
               {file.text.split('\n').map((ln, i) => (
-                <div className="cl" key={i}>
+                <div className={'cl' + (i + 1 === mark ? ' mark' : '')} key={i}>
                   <span className="ln">{i + 1}</span>
                   <span className="lc">{ln || ' '}</span>
                 </div>
