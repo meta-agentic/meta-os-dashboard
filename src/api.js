@@ -21,8 +21,11 @@ function snapshotName(path) {
   }
   if (route === 'api/auth/config') return 'auth-config'
   if (route === 'api/adr') {
+    // Same plain-token rule as server/adr-parse.validId: the snapshot build writes no
+    // detail file for any other id, so there is nothing to fetch (and no path to build).
     const q = new URLSearchParams(query)
-    return `adr-${q.get('space')}-${q.get('id')}`
+    const plain = (v) => /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(v ?? '')
+    return plain(q.get('space')) && plain(q.get('id')) ? `adr-${q.get('space')}-${q.get('id')}` : null
   }
   if (route === 'api/boards') return null // localStorage only in static mode
   return route.replace(/^api\//, '').replace(/\//g, '-')
