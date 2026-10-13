@@ -1686,7 +1686,7 @@ th.num .wi-sort { justify-content: flex-end; }
 .ss-project { margin-top: 1rem; }
 .ss-head { display: flex; align-items: baseline; gap: 0.7rem; flex-wrap: wrap; margin-bottom: 0.25rem; }
 .ss-name { font-weight: 600; color: var(--accent); letter-spacing: 0.06em; }
-.ss-table { min-width: 44rem; }
+.ss-table { min-width: 52rem; }
 .ss-table th { vertical-align: bottom; line-height: 1.25; }
 .ss-sub { text-transform: none; letter-spacing: 0; opacity: 0.8; }
 .ss-table td { padding: 0.25rem 0.5rem; white-space: nowrap; vertical-align: middle; }

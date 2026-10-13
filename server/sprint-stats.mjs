@@ -3,17 +3,23 @@
 // one row per sprint, so every number here can be recomputed from the vault by hand.
 //
 // Rules, all from how the vault counts (not invented here):
-//   · COMMITTED is the sprint file's `committed:` snapshot taken at open. Live membership
-//     (an item's own `sprint` field) grows after open, so it is never the commitment.
+//   · COMMITTED is `committedAtStart` once the sprint file has that list (MOS-251),
+//     and `committed` when it does not. An unmigrated file's `committed` is still the
+//     snapshot taken at open, so those rows read as they did before the list existed.
+//     Live membership (an item's own `sprint` field) is never the commitment.
 //     No snapshot recorded reads as null, not 0 — "nothing was committed" and "nobody
 //     wrote it down" are different facts.
+//   · SCOPE ADDED is `committed` minus `committedAtStart`: work committed after the
+//     sprint started. Null until the file is migrated, because an old file cannot
+//     say what was added later. An empty difference is 0.
 //   · DELIVERED is live members that are DONE, credited once, to the LAST sprint the item
 //     names. An item that carries over keeps naming both sprints; the origin delivers
 //     nothing for it and the sprint that finishes it is credited (carry-over rule).
 //     Work finished after a sprint's end date counts in the sprint that held it.
-//   · CARRY-OVER is the roster (committed snapshot ∪ live members) minus what the sprint
-//     delivered: unfinished work, or work finished in a later sprint. NO GO is aborted,
-//     not carried. Epics are containers and never part of a roster.
+//   · CARRY-OVER is the roster (the file's full `committed` list ∪ live members) minus
+//     what the sprint delivered: unfinished work, or work finished in a later sprint.
+//     The full list, not the opening snapshot, so a mid-sprint commitment stays on the
+//     roster. NO GO is aborted, not carried. Epics are containers and never part of a roster.
 //   · VELOCITY is delivered points per week, so a sprint a day longer than its siblings
 //     does not read as faster.
 import { sprintMembers } from './backlog-schema.mjs'
@@ -37,14 +43,20 @@ export function sprintStats(stories = [], epics = [], sprints = []) {
   return sprints
     .map((sp) => {
       const live = stories.filter((s) => sprintMembers(s).includes(sp.id))
-      const snapshot = (sp.committed ?? []).map(String)
-      const committedRows = snapshot.map((id) => byId.get(id)).filter(Boolean)
+      const migrated = Array.isArray(sp.committedAtStart)
+      const opening = (migrated ? sp.committedAtStart : sp.committed ?? []).map(String)
+      const full = (sp.committed ?? []).map(String)
+      const openingSet = new Set(opening)
+      const added = migrated ? full.filter((id) => !openingSet.has(id)) : null
+      const rowsOf = (ids) => ids.map((id) => byId.get(id)).filter(Boolean)
+      const openingRows = rowsOf(opening)
+      const fullRows = rowsOf(full)
 
       const delivered = live.filter((s) => s.status === DONE && finishedIn(s) === sp.id)
       const deliveredIds = new Set(delivered.map((s) => s.id))
 
       const roster = new Map(live.map((s) => [s.id, s]))
-      for (const s of committedRows) if (!s.kind || s.kind.toLowerCase() !== 'epic') roster.set(s.id, s)
+      for (const s of fullRows) if (!s.kind || s.kind.toLowerCase() !== 'epic') roster.set(s.id, s)
       const carried = [...roster.values()].filter((s) => {
         if (deliveredIds.has(s.id) || s.status === NO_GO) return false
         if (s.status !== DONE) return true
@@ -70,8 +82,10 @@ export function sprintStats(stories = [], epics = [], sprints = []) {
         status: sp.status,
         start: sp.start ?? null,
         end: sp.end ?? null,
-        committedItems: snapshot.length ? snapshot.length : null,
-        committedPts: snapshot.length ? sum(committedRows, (s) => s.storyPoints) : null,
+        committedItems: opening.length ? opening.length : null,
+        committedPts: opening.length ? sum(openingRows, (s) => s.storyPoints) : null,
+        scopeAddedItems: added == null ? null : added.length,
+        scopeAddedPts: added == null ? null : sum(rowsOf(added), (s) => s.storyPoints),
         deliveredItems: delivered.length,
         deliveredPts,
         perWeek: weeks ? +(deliveredPts / weeks).toFixed(1) : null,

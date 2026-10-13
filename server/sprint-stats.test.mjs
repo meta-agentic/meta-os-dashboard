@@ -22,8 +22,31 @@ test('commitment is the open-time snapshot, not live membership', () => {
   )
   assert.equal(s.S1.committedItems, 2)
   assert.equal(s.S1.committedPts, 8)
+  assert.equal(s.S1.scopeAddedItems, null, 'an unmigrated file cannot say what was added later')
+  assert.equal(s.S1.scopeAddedPts, null)
   assert.equal(s.S1.deliveredItems, 2, 'A-3 was added mid-sprint and still counts as delivered')
   assert.equal(s.S1.deliveredPts, 5)
+})
+
+test('a migrated sprint keeps the opening commitment and reports later commitments as scope added', () => {
+  const s = statsOf(
+    [item('A-1', 'DONE', 3, 'S1'), item('A-2', 'TO DO', 5, 'S1'), item('A-3', 'IN PROGRESS', 2, 'S1')],
+    [sprint('S1', 'active', '2026-09-01', '2026-09-14', ['A-1', 'A-2', 'A-3'], { committedAtStart: ['A-1', 'A-2'] })],
+  )
+  assert.equal(s.S1.committedItems, 2)
+  assert.equal(s.S1.committedPts, 8)
+  assert.equal(s.S1.scopeAddedItems, 1)
+  assert.equal(s.S1.scopeAddedPts, 2)
+  assert.equal(s.S1.carryItems, 2, 'the opening plan and the mid-sprint item both stay on the roster')
+})
+
+test('a migrated sprint that added nothing reports zero scope, not an unknown', () => {
+  const s = statsOf(
+    [item('A-1', 'DONE', 3, 'S1')],
+    [sprint('S1', 'closed', '2026-09-01', '2026-09-14', ['A-1'], { committedAtStart: ['A-1'] })],
+  )
+  assert.equal(s.S1.scopeAddedItems, 0)
+  assert.equal(s.S1.scopeAddedPts, 0)
 })
 
 test('a sprint with no recorded commitment reports null, not zero', () => {
@@ -102,6 +125,19 @@ test('normalising an already-normalised backlog keeps the commitment snapshot', 
   const once = backlogFromVault({ items: [item('A-1', 'TO DO', 1, 'S1')], sprintDocs: [sprint('S1', 'closed', '2026-09-01', '2026-09-14', ['A-1'])] })
   const twice = normalizeBacklog(once)
   assert.deepEqual(twice.sprints[0].committed, ['A-1'])
+  assert.equal(twice.sprints[0].committedAtStart, null)
+  assert.equal(twice.sprints[0].delivered, null)
+})
+
+test('a migrated sprint file keeps both new lists through a second normalise', () => {
+  const once = backlogFromVault({
+    items: [item('A-1', 'DONE', 1, 'S1')],
+    sprintDocs: [sprint('S1', 'closed', '2026-09-01', '2026-09-14', ['A-1', 'A-2'], { committedAtStart: ['A-1'], delivered: ['A-1'] })],
+  })
+  const twice = normalizeBacklog(once)
+  assert.deepEqual(twice.sprints[0].committedAtStart, ['A-1'])
+  assert.deepEqual(twice.sprints[0].committed, ['A-1', 'A-2'])
+  assert.deepEqual(twice.sprints[0].delivered, ['A-1'])
 })
 
 test('rows come out in chronological order', () => {
