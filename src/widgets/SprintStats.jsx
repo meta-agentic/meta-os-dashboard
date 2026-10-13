@@ -12,8 +12,10 @@ import Card from './Card.jsx'
 // finishes it), carry-over is not.
 
 const COLS = [
-  { k: 'cItems', label: 'Committed', sub: 'items', tip: 'Items on the sprint\'s commitment snapshot taken at open. — means no snapshot was recorded.' },
-  { k: 'cPts', label: 'Committed', sub: 'SP', tip: 'Story points of the committed items, at their current estimate.' },
+  { k: 'cItems', label: 'Committed', sub: 'items', tip: 'Items committed at the start of the sprint. On a file that has not been migrated, this is its committed list. — means no snapshot was recorded.' },
+  { k: 'cPts', label: 'Committed', sub: 'SP', tip: 'Story points of the items committed at the start, at their current estimate.' },
+  { k: 'aItems', label: 'Scope added', sub: 'items', tip: 'Items committed after the sprint started: committed minus committedAtStart. — means the sprint file has not been migrated, so this is unknown.' },
+  { k: 'aPts', label: 'Scope added', sub: 'SP', tip: 'Story points of the items committed after the start, at their current estimate.' },
   { k: 'dItems', label: 'Delivered', sub: 'items', tip: 'DONE items, credited once to the last sprint they name. Work finished after the end date counts here.' },
   { k: 'dPts', label: 'Delivered', sub: 'SP', tip: 'Story points of the delivered items.' },
   { k: 'v', label: 'Velocity', sub: 'SP / week', tip: 'Delivered points per week of the sprint\'s length, so a longer sprint does not read as faster.' },
@@ -36,6 +38,8 @@ function totals(rows) {
     noCommit: closed.length - withCommit.length,
     cItems: withCommit.reduce((a, r) => a + r.committedItems, 0),
     cPts: withCommit.reduce((a, r) => a + (r.committedPts ?? 0), 0),
+    aItems: closed.length && closed.every((r) => r.scopeAddedItems != null) ? closed.reduce((a, r) => a + r.scopeAddedItems, 0) : null,
+    aPts: closed.length && closed.every((r) => r.scopeAddedItems != null) ? closed.reduce((a, r) => a + (r.scopeAddedPts ?? 0), 0) : null,
     dItems: closed.reduce((a, r) => a + r.deliveredItems, 0),
     dPts,
     v: weeks ? +(dPts / weeks).toFixed(1) : null,
@@ -55,7 +59,7 @@ export default function SprintStats({ data }) {
   const total = spaces.reduce((a, s) => a + s.sprintStats.filter((r) => !closedOnly || r.status === 'CLOSED').length, 0)
 
   return (
-    <Card title="Sprint Stats — committed · delivered · velocity · carry-over" data={data}>
+    <Card title="Sprint Stats — committed · scope added · delivered · velocity · carry-over" data={data}>
       <div className="burn-head">
         <span className="dim small">
           {spaces.length} project{spaces.length === 1 ? '' : 's'} · {total} sprint{total === 1 ? '' : 's'} since the beginning
@@ -98,6 +102,8 @@ export default function SprintStats({ data }) {
                       <td className="dim small">{r.start ?? '—'} → {r.end ?? '—'}</td>
                       <td className="num" title={r.committedItems == null ? 'no commitment snapshot was recorded' : undefined}><N v={r.committedItems} /></td>
                       <td className="num"><N v={r.committedPts} /></td>
+                      <td className="num" title={r.scopeAddedItems == null ? 'sprint file has no committedAtStart yet' : undefined}><N v={r.scopeAddedItems} /></td>
+                      <td className="num"><N v={r.scopeAddedPts} /></td>
                       <td className="num"><N v={r.deliveredItems} /></td>
                       <td className="num">
                         <N v={r.deliveredPts} />
@@ -122,6 +128,8 @@ export default function SprintStats({ data }) {
                   <td colSpan={2} className="dim small">closed sprints{t.noCommit ? ` · ${t.noCommit} with no commitment recorded` : ''}</td>
                   <td className="num">{t.cItems}</td>
                   <td className="num">{t.cPts}</td>
+                  <td className="num"><N v={t.aItems} /></td>
+                  <td className="num"><N v={t.aPts} /></td>
                   <td className="num">{t.dItems}</td>
                   <td className="num">{t.dPts}</td>
                   <td className="num"><N v={t.v} /></td>

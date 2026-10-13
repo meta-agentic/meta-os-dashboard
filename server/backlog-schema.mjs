@@ -13,8 +13,11 @@
 // Canonical story/epic: { id, title, status, storyPoints, priority, epic, project,
 //                         sprint, dependencies[], relates[], labels[], kind }
 // Canonical sprint:     { id, name, status: 'IN PROGRESS'|'CLOSED'|'PLANNED',
-//                         start, end, goal, issues[], committed[], deliveredSP,
-//                         deliveredItems }
+//                         start, end, goal, issues[], committed[],
+//                         committedAtStart: string[]|null, delivered: string[]|null,
+//                         deliveredSP, deliveredItems }
+// `committedAtStart` and `delivered` are null when the sprint file has not been
+// migrated (MOS-251). A present list, including an empty one, is the file's own.
 // Item `status` stays the vault's own vocabulary (TO DO / IN PROGRESS / DONE / …) —
 // that one never diverged, so there is nothing to translate.
 
@@ -66,10 +69,12 @@ export function normalizeSprint(s) {
     end,
     goal: s.goal ?? null,
     issues: arr(s.issues ?? s.committed),
-    // The open-time commitment, kept apart from `issues` (which becomes commitment ∪
-    // live membership). Empty when the source never recorded one, e.g. a backlog.py
-    // export, whose `issues` is already the union.
+    // `committed` is the list on the sprint file. Before MOS-251 that list is the
+    // open-time snapshot. After it, the list also holds mid-sprint commitments, and
+    // `committedAtStart` is the snapshot. Null means the file has not been migrated.
     committed: arr(s.committed).map(String),
+    committedAtStart: s.committedAtStart == null ? null : arr(s.committedAtStart).map(String),
+    delivered: s.delivered == null ? null : arr(s.delivered).map(String),
     deliveredSP: num(s.deliveredSP),
     deliveredItems: num(s.deliveredItems),
   }
