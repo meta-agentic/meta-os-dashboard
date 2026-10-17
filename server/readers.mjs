@@ -8,7 +8,7 @@ import path from 'node:path'
 import matter from 'gray-matter'
 import YAML from 'yaml'
 import { annotateSchedule } from './cron.mjs'
-import { sprintMembers } from './backlog-schema.mjs'
+import { laneEstimate, sprintMembers } from './backlog-schema.mjs'
 import { loadBacklog } from './vault-backlog.mjs'
 
 const run = promisify(execFile)
@@ -673,7 +673,7 @@ export async function lanes(backlogs) {
         const blockers = state === 'done' ? [] : blockedBy(s)
         lane.queues[state].push({
           id: s.id, title: s.title, points: s.storyPoints ?? null, epic: s.epic ?? null,
-          estimate: s.estimate ?? null,
+          estimate: laneEstimate(s.estimate),
           blockedBy: blockers.length ? blockers : null,
         })
         byLane.set(key, lane)
