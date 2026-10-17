@@ -67,6 +67,8 @@ export function itemDetailRow(d, file) {
     all.filter((s) => s.id !== item.id && pick(s)).map((s) => link(s.id)).sort((a, b) => idKey(a.id).localeCompare(idKey(b.id)))
   return {
     ...row(item, blockedBy(item)),
+    // The detail view's quadrant plot reads it; the bulk list stays front-matter only.
+    estimate: item.estimate,
     parents,
     dependencies: links(item.dependencies),
     relates: links(item.relates),

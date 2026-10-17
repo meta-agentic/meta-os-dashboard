@@ -11,7 +11,12 @@
 // is translated on the way in.
 //
 // Canonical story/epic: { id, title, status, storyPoints, priority, epic, project,
-//                         sprint, dependencies[], relates[], labels[], kind }
+//                         sprint, dependencies[], relates[], labels[], kind, estimate }
+// `estimate` is the item's placement on the extension/intension plane, or null when the
+//   item carries none: { extension, intension, quadrant, basis, dated, note }. An axis
+//   that is missing, not a number or outside [-1, 1] is null, so a reader can tell
+//   "not placed" apart from a placement at 0. `storyPoints` stays the authority for the
+//   size; the placement only explains it.
 // Canonical sprint:     { id, name, status: 'IN PROGRESS'|'CLOSED'|'PLANNED',
 //                         start, end, goal, issues[], committed[],
 //                         committedAtStart: string[]|null, delivered: string[]|null,
@@ -38,6 +43,26 @@ function sprintStatus(raw) {
 
 const num = (v) => (v == null || v === '' || Number.isNaN(Number(v)) ? null : Number(v))
 
+// One estimate axis: a finite number in [-1, 1], else null.
+const axis = (v) => {
+  const n = typeof v === 'number' ? v : typeof v === 'string' && v.trim() !== '' ? Number(v) : NaN
+  return Number.isFinite(n) && n >= -1 && n <= 1 ? n : null
+}
+const text = (v) => (v == null || v === '' ? null : String(v))
+
+export function normalizeEstimate(e) {
+  if (e == null || typeof e !== 'object' || Array.isArray(e)) return null
+  return {
+    extension: axis(e.extension),
+    intension: axis(e.intension),
+    quadrant: text(e.quadrant),
+    basis: text(e.basis),
+    // YAML reads an unquoted date as a Date; keep the calendar day either way.
+    dated: e.dated instanceof Date ? e.dated.toISOString().slice(0, 10) : text(e.dated),
+    note: text(e.note),
+  }
+}
+
 export function normalizeStory(s) {
   return {
     // `jiraId` is the pre-ADR-MOS-07 spelling; accepted on the way in, never emitted.
@@ -53,6 +78,7 @@ export function normalizeStory(s) {
     relates: arr(s.relates),
     labels: arr(s.labels),
     kind: (s.kind ?? s.type ?? null) || null,
+    estimate: normalizeEstimate(s.estimate),
   }
 }
 
