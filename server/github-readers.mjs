@@ -3,7 +3,7 @@ import path from 'node:path'
 import matter from 'gray-matter'
 import YAML from 'yaml'
 import { annotateSchedule } from './cron.mjs'
-import { normalizeBacklog, sprintMembers } from './backlog-schema.mjs'
+import { laneEstimate, normalizeBacklog, sprintMembers } from './backlog-schema.mjs'
 import { vaultBacklog, vaultItem } from './github-vault-backlog.mjs'
 import { itemRows, itemDetailRow } from './items.mjs'
 import { expandVars } from './readers.mjs'
@@ -523,7 +523,7 @@ export async function lanes(ctx) {
           title: s.title,
           points: s.storyPoints ?? null,
           epic: s.epic ?? null,
-          estimate: s.estimate ?? null,
+          estimate: laneEstimate(s.estimate),
           blockedBy: blockers.length ? blockers : null,
         })
         byLane.set(key, lane)

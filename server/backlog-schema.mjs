@@ -43,12 +43,20 @@ function sprintStatus(raw) {
 
 const num = (v) => (v == null || v === '' || Number.isNaN(Number(v)) ? null : Number(v))
 
-// One estimate axis: a finite number in [-1, 1], else null.
-const axis = (v) => {
-  const n = typeof v === 'number' ? v : typeof v === 'string' && v.trim() !== '' ? Number(v) : NaN
-  return Number.isFinite(n) && n >= -1 && n <= 1 ? n : null
-}
+// One estimate axis: a finite number in [-1, 1], else null. Only a number counts: the
+// CLI writes numbers, and a string ("0.5", "1e-1", "0x1") is a hand edit that is not a
+// placement, so it reads as not placed rather than being coerced.
+const axis = (v) => (typeof v === 'number' && Number.isFinite(v) && v >= -1 && v <= 1 ? v : null)
 const text = (v) => (v == null || v === '' ? null : String(v))
+
+// What a lane slot carries of an estimate: the placement and its provenance, not the
+// free-text note, which only the item detail view shows. Shared by both lane readers so
+// their slots stay field-for-field identical.
+export function laneEstimate(e) {
+  if (!e) return null
+  const { extension, intension, quadrant, basis, dated } = e
+  return { extension, intension, quadrant, basis, dated }
+}
 
 export function normalizeEstimate(e) {
   if (e == null || typeof e !== 'object' || Array.isArray(e)) return null
