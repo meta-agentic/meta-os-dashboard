@@ -1453,6 +1453,31 @@ th.num .wi-sort { justify-content: flex-end; }
 .wi-prose th, .wi-prose td { border: 1px solid var(--border); padding: 0.25rem 0.55rem; text-align: left; }
 .wi-prose th { background: var(--card); font-weight: 600; }
 .wi-foot { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* story-point quadrant (item detail). Read-only; colours only from the theme tokens. */
+.wi-quad h4 { margin: 0 0 0.3rem; font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--dim); font-weight: 600; }
+.wi-quad h4 .dim { text-transform: none; letter-spacing: 0; font-weight: 400; }
+.wi-quad-body { display: flex; gap: 0.9rem; align-items: flex-start; flex-wrap: wrap; }
+.wi-quad-plot { flex: none; width: 11rem; height: 11rem; }
+.wi-quad-frame { fill: none; stroke: var(--border); stroke-width: 1; }
+.wi-quad-axis { stroke: var(--dim); stroke-width: 1; }
+.wi-quad-axislabel { fill: var(--dim); font-size: 8px; }
+.wi-quad-name { fill: var(--dim); font-size: 9px; }
+.wi-quad-bandlabel { fill: var(--dim); font-size: 10px; font-family: ui-monospace, SFMono-Regular, monospace; }
+.wi-quad-tile.on .wi-quad-name, .wi-quad-tile.on .wi-quad-bandlabel { fill: var(--fg); font-weight: 700; }
+.wi-quad-halo { fill: var(--card); stroke: var(--fg); stroke-width: 1.5; }
+.wi-quad-dot { fill: var(--fg); }
+.wi-quad-empty rect { fill: var(--card); stroke: var(--dim); stroke-dasharray: 3 2; }
+.wi-quad-empty text { fill: var(--fg); font-size: 10px; font-weight: 600; }
+.wi-quad-readout { flex: 1; min-width: 14rem; display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.78rem; color: var(--fg); }
+.wi-quad-state strong { font-size: 0.85rem; }
+.wi-quad-sizes { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; }
+/* The band is advisory: dashed and italic, never the solid chip the recorded points use. */
+.wi-quad-band { border: 1px dashed var(--dim); border-radius: 999px; padding: 0.05rem 0.5rem; color: var(--dim); font-size: 0.72rem; }
+.wi-quad-band em { font-style: italic; }
+.wi-quad-recorded strong { color: var(--fg); }
+.wi-quad-anchor { margin-left: 0.5rem; border: 1px solid var(--wip); color: var(--wip); border-radius: 999px; padding: 0.02rem 0.45rem; font-size: 0.68rem; }
+.wi-quad-note { font-style: italic; }
 .code { flex: 1; min-height: 0; overflow: auto; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 0.72rem; line-height: 1.5; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 0.3rem 0; }
 .cl { display: flex; }
 .cl:hover { background: rgba(127, 127, 127, 0.08); }
