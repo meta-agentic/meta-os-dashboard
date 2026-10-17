@@ -673,6 +673,7 @@ export async function lanes(backlogs) {
         const blockers = state === 'done' ? [] : blockedBy(s)
         lane.queues[state].push({
           id: s.id, title: s.title, points: s.storyPoints ?? null, epic: s.epic ?? null,
+          estimate: s.estimate ?? null,
           blockedBy: blockers.length ? blockers : null,
         })
         byLane.set(key, lane)

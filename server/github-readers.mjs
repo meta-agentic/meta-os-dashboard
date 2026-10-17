@@ -523,6 +523,7 @@ export async function lanes(ctx) {
           title: s.title,
           points: s.storyPoints ?? null,
           epic: s.epic ?? null,
+          estimate: s.estimate ?? null,
           blockedBy: blockers.length ? blockers : null,
         })
         byLane.set(key, lane)
