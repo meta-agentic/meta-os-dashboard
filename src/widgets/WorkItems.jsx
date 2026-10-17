@@ -1,6 +1,7 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import Markdown from 'markdown-to-jsx'
 import { apiGet, isStatic } from '../api.js'
+import QuadrantPlot from './QuadrantPlot.jsx'
 
 // Fixed row height is what makes the window arithmetic exact — keep in step with
 // .wi-row in styles.css.
@@ -211,6 +212,7 @@ function Detail({ view, onOpen }) {
           </div>
         ))}
       </div>
+      <QuadrantPlot item={it} />
       <div className="wi-linkgrid">
         <Links title="Blocked by" links={blocked} tone="down" onOpen={onOpen} />
         <Links title="Dependencies" links={it.dependencies} onOpen={onOpen} />
