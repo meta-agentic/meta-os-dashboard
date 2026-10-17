@@ -2,21 +2,53 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { QUADRANTS, placementOf, quadrantOf } from './estimate.js'
 
-// The backlog CLI's classification, transcribed: intension > 0 is complex, extension > 0
-// is broad, so an axis value of exactly 0 is on the low side. The widget must name the
-// same quadrant for every combination of signs, the boundary included.
-function cli(extension, intension) {
-  if (intension > 0) return extension > 0 ? 'complex + broad' : 'complex'
-  return extension > 0 ? 'complicated' : 'simple'
-}
+// Expected quadrants, generated once by calling the backlog CLI's own classification
+// function over every pair of axis values below (including -0 and exact 0 on each axis)
+// and kept here as data, so this test checks the widget against the CLI's answers rather
+// than against a second copy of the rule.
+const CLI_TABLE = [
+  [-1, -1, 'simple'],
+  [-1, -0.5, 'simple'],
+  [-1, -0, 'simple'],
+  [-1, 0, 'simple'],
+  [-1, 0.5, 'complex'],
+  [-1, 1, 'complex'],
+  [-0.5, -1, 'simple'],
+  [-0.5, -0.5, 'simple'],
+  [-0.5, -0, 'simple'],
+  [-0.5, 0, 'simple'],
+  [-0.5, 0.5, 'complex'],
+  [-0.5, 1, 'complex'],
+  [-0, -1, 'simple'],
+  [-0, -0.5, 'simple'],
+  [-0, -0, 'simple'],
+  [-0, 0, 'simple'],
+  [-0, 0.5, 'complex'],
+  [-0, 1, 'complex'],
+  [0, -1, 'simple'],
+  [0, -0.5, 'simple'],
+  [0, -0, 'simple'],
+  [0, 0, 'simple'],
+  [0, 0.5, 'complex'],
+  [0, 1, 'complex'],
+  [0.5, -1, 'complicated'],
+  [0.5, -0.5, 'complicated'],
+  [0.5, -0, 'complicated'],
+  [0.5, 0, 'complicated'],
+  [0.5, 0.5, 'complex + broad'],
+  [0.5, 1, 'complex + broad'],
+  [1, -1, 'complicated'],
+  [1, -0.5, 'complicated'],
+  [1, -0, 'complicated'],
+  [1, 0, 'complicated'],
+  [1, 0.5, 'complex + broad'],
+  [1, 1, 'complex + broad'],
+]
 
-const VALUES = [-1, -0.45, -0.01, 0, 0.01, 0.25, 1]
-
-test('every sign combination, 0 included, agrees with the CLI', () => {
-  for (const x of VALUES) {
-    for (const y of VALUES) {
-      assert.equal(quadrantOf(x, y), cli(x, y), `extension ${x}, intension ${y}`)
-    }
+test('every sign combination, 0 and -0 included, agrees with the CLI', () => {
+  assert.equal(CLI_TABLE.length, 36)
+  for (const [x, y, expected] of CLI_TABLE) {
+    assert.equal(quadrantOf(x, y), expected, `extension ${Object.is(x, -0) ? '-0' : x}, intension ${Object.is(y, -0) ? '-0' : y}`)
   }
 })
 
