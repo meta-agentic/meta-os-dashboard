@@ -19,7 +19,7 @@ const toY = (y) => C - y * R
 // placements land, so a point rarely covers the name).
 const TILES = [
   { q: QUADRANTS.complex, x: PAD, y: PAD, tint: 'var(--cat-5)', anchor: 'start', top: true },
-  { q: QUADRANTS['complex + broad'], x: C, y: PAD, tint: 'var(--cat-7)', anchor: 'end', top: true },
+  { q: QUADRANTS['complex + broad'], x: C, y: PAD, tint: 'var(--cat-4)', anchor: 'end', top: true },
   { q: QUADRANTS.simple, x: PAD, y: C, tint: 'var(--cat-3)', anchor: 'start', top: false },
   { q: QUADRANTS.complicated, x: C, y: C, tint: 'var(--cat-2)', anchor: 'end', top: false },
 ]
@@ -56,9 +56,10 @@ function Plot({ placement }) {
           <circle cx={toX(placement.extension)} cy={toY(placement.intension)} r={4} className="wi-quad-dot" />
         </g>
       ) : (
+        // Off the origin on purpose: a box centred on (0, 0) could read as a point there.
         <g className="wi-quad-empty">
-          <rect x={C - 42} y={C - 11} width={84} height={22} rx={4} />
-          <text x={C} y={C + 4} textAnchor="middle">not placed</text>
+          <rect x={C - 42} y={C + R / 2 - 11} width={84} height={22} rx={4} />
+          <text x={C} y={C + R / 2 + 4} textAnchor="middle">not placed</text>
         </g>
       )}
     </svg>
@@ -113,8 +114,9 @@ function Readout({ item, placement }) {
       )}
       {e.note && <div className="small dim wi-quad-note">“{e.note}”</div>}
       {differs && (
-        <div className="small dim">
-          recorded quadrant “{e.quadrant}” differs from the axes; shown as placed by the axes
+        <div className="wi-quad-mismatch" role="note">
+          <strong>mismatch:</strong> the recorded quadrant is “{e.quadrant}”, but the axes place it in {q.name}.
+          The plot follows the axes.
         </div>
       )}
     </div>

@@ -1478,6 +1478,8 @@ th.num .wi-sort { justify-content: flex-end; }
 .wi-quad-recorded strong { color: var(--fg); }
 .wi-quad-anchor { margin-left: 0.5rem; border: 1px solid var(--wip); color: var(--wip); border-radius: 999px; padding: 0.02rem 0.45rem; font-size: 0.68rem; }
 .wi-quad-note { font-style: italic; }
+.wi-quad-mismatch { font-size: 0.74rem; color: var(--fg); border-left: 3px solid var(--wip); background: color-mix(in srgb, var(--wip) 10%, transparent); padding: 0.25rem 0.5rem; border-radius: 0 4px 4px 0; }
+.wi-quad-mismatch strong { color: var(--wip); }
 .code { flex: 1; min-height: 0; overflow: auto; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 0.72rem; line-height: 1.5; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 0.3rem 0; }
 .cl { display: flex; }
 .cl:hover { background: rgba(127, 127, 127, 0.08); }
