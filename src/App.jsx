@@ -70,7 +70,7 @@ const WIDGETS = [
   { i: 'distribution', group: 'backlog', title: 'Distribution', render: (d) => <Distribution data={d.lanes} /> },
   { i: 'files', group: 'knowledge', title: 'File Preview', render: (d) => <FilePreview roots={d.meta?.roots} /> },
   { i: 'gantt', group: 'backlog', title: 'Roadmap', render: (d) => <Gantt data={d.report} /> },
-  { i: 'burndown', group: 'sprint', title: 'Burndown', render: (d) => <Burndown data={d.report} /> },
+  { i: 'burndown', group: 'sprint', title: 'Burndown', render: (d, ctx) => <Burndown data={d.report} filtered={ctx?.selectedProjects?.size > 0} /> },
   { i: 'velocity', group: 'sprint', title: 'Velocity', render: (d) => <Velocity data={d.report} /> },
   { i: 'sprint-stats', group: 'sprint', title: 'Sprint Stats', render: (d) => <SprintStats data={d.report} /> },
   { i: 'packs', group: 'skills', title: 'Packs mounted', render: (d) => <Packs data={d.packs} /> },
@@ -140,7 +140,7 @@ function loadPrefs() {
 // the global project filter can act on. Registry uses a different, unlinked project
 // vocabulary (repo entries, no `space` field), and most other widgets (Graph, Packs,
 // Files, Usage, ...) have no project axis at all, so the filter leaves them alone.
-const SPACE_SCOPED = new Set(['lanes', 'sprint-summary', 'distribution', 'activity', 'report', 'sprint-stats'])
+const SPACE_SCOPED = new Set(['lanes', 'sprint-summary', 'distribution', 'activity', 'report', 'sprint-stats', 'burndown', 'velocity'])
 
 // Every backlog space currently known to the lanes feed — the option list for the
 // project filter bar. Derived live so a newly-onboarded space shows up without a
@@ -154,7 +154,7 @@ const projectOptions = (data) =>
 // whose rows carry the space as `actor`; `report` reads `d.report.spaces`.
 function scopeToProject(data, widgetId, selected) {
   if (!selected.size || !SPACE_SCOPED.has(widgetId)) return data
-  if (widgetId === 'report' || widgetId === 'sprint-stats') {
+  if (widgetId === 'report' || widgetId === 'sprint-stats' || widgetId === 'burndown' || widgetId === 'velocity') {
     return {
       ...data,
       report: data.report && { ...data.report, spaces: (data.report.spaces ?? []).filter((s) => selected.has(s.space)) },
@@ -196,8 +196,13 @@ function loadOnboarding() {
 }
 const Grid = WidthProvider(GridLayout)
 
-// Below this width the grid collapses to one column (stackLayout) and stops taking
-// drags: twelve columns on a phone leave each widget about a hundred pixels wide.
+// Widgets that lay themselves out against the height they are given (a graph canvas,
+// a scrolling table, a chart that fills its panel). They have no natural height, so
+// the one-column view gives them a fixed one.
+const FILL_HEIGHT = new Set(['graph', 'files', 'work-items', 'adr-register', 'distribution', 'flow'])
+
+// Below this width the grid gives way to one column of widgets in the saved order
+// (stackLayout), each as tall as its content, with nothing to drag: twelve columns on a phone leave each widget about a hundred pixels wide.
 const NARROW_QUERY = '(max-width: 768px)'
 function useNarrow() {
   const mq = () => (typeof window !== 'undefined' && window.matchMedia ? window.matchMedia(NARROW_QUERY) : null)
@@ -317,11 +322,10 @@ export default function App() {
   const activeLayout = reconcile(layouts[active.id], active.ids, SIZES)
   const showTab = (id) => setState((s) => ({ ...s, activeId: id }))
 
-  // react-grid-layout reports a layout as soon as it mounts. The stacked phone layout
-  // must never reach the saved state, or opening the dashboard on a phone would
-  // overwrite the desktop arrangement here and on the server.
+  // Only the grid reports layouts, and it is not mounted on a narrow screen, so the
+  // one-column view can never overwrite the saved desktop arrangement.
   const onLayoutChange = (next) =>
-    !narrow && setState((s) => ({ ...s, layouts: { ...s.layouts, [active.id]: withFloors(next, SIZES) } }))
+    setState((s) => ({ ...s, layouts: { ...s.layouts, [active.id]: withFloors(next, SIZES) } }))
   // Forget this tab's arrangement: it is re-flowed from the catalogue sizes.
   const resetActive = () =>
     setState((s) => {
@@ -384,6 +388,7 @@ export default function App() {
   const projects = projectOptions(data)
 
   const dens = DENSITY[prefs.density] || DENSITY.comfortable
+  const renderWidget = (w) => w.render(scopeToProject(data, w.i, selectedProjects), { selectedProjects, itemsFocus, focusItems })
 
   return (
     <>
@@ -407,7 +412,7 @@ export default function App() {
           </span>
         )}
         <span className="spacer" />
-        <span className="dim hint">drag the header · resize from the edges</span>
+        <span className="dim hint">drag ≡ to move · resize from the edges</span>
         <button className="ghostbtn reset-layout" onClick={resetActive} title="Re-arrange this tab's widgets at their default sizes">
           Reset layout
         </button>
@@ -425,7 +430,7 @@ export default function App() {
                 onClick={() => toggleProject(p)}
                 aria-pressed={on}
                 title={(on ? 'Remove ' : 'Filter to ') + p.toUpperCase()
-                  + ' \u2014 narrows Sprint Lanes, Sprint Summary, Distribution, Activity & Scrum Report'}
+                  + ' \u2014 narrows Sprint Lanes, Sprint Summary, Distribution, Activity, Scrum Report, Sprint Stats, Burndown & Velocity'}
               >
                 {p.toUpperCase()}
               </button>
@@ -464,18 +469,29 @@ export default function App() {
         </div>
       )}
 
-      {!suppressGrid && (
+      {!suppressGrid && narrow && (
+        <div className="wstack">
+          {stackLayout(activeLayout).map(({ i }) => visible.find((w) => w.i === i)).filter(Boolean).map((w) => (
+            <div key={w.i} className={'wgt' + (FILL_HEIGHT.has(w.i) ? ' fill' : '')} data-wid={w.i}>
+              <div className="wgt-head">
+                <span className="wgt-title">{w.title}</span>
+              </div>
+              <div className="wgt-body">{renderWidget(w)}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!suppressGrid && !narrow && (
       <Grid
-        key={`${active.id}:${narrow ? 'stack' : 'grid'}`}
+        key={active.id}
         className="wgrid"
-        layout={narrow ? stackLayout(activeLayout) : activeLayout}
+        layout={activeLayout}
         cols={12}
         rowHeight={dens.rowHeight}
-        margin={narrow ? [10, 10] : dens.margin}
-        containerPadding={narrow ? [10, 10] : [20, 18]}
-        isDraggable={!narrow}
-        isResizable={!narrow}
-        draggableHandle=".wgt-head"
+        margin={dens.margin}
+        containerPadding={[20, 18]}
+        draggableHandle=".wgt-grip"
         resizeHandles={['se', 'e', 's']}
         onLayoutChange={onLayoutChange}
         compactType="vertical"
@@ -483,10 +499,10 @@ export default function App() {
         {visible.map((w) => (
           <div key={w.i} className="wgt" data-wid={w.i}>
             <div className="wgt-head">
-              <span className="wgt-grip" aria-hidden="true">⠿</span>
+              <span className="wgt-grip" role="img" aria-label="Drag to move" title="Drag to move">≡</span>
               <span className="wgt-title">{w.title}</span>
             </div>
-            <div className="wgt-body">{w.render(scopeToProject(data, w.i, selectedProjects), { selectedProjects, itemsFocus, focusItems })}</div>
+            <div className="wgt-body">{renderWidget(w)}</div>
           </div>
         ))}
       </Grid>

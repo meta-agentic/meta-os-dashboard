@@ -1057,10 +1057,20 @@ h2 {
   display: flex; align-items: center; gap: 0.5rem;
   padding: 0.45rem 0.7rem;
   border-bottom: 1px solid var(--border);
-  cursor: move; user-select: none;
+  user-select: none;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent);
 }
-.wgt-grip { color: var(--dim); font-size: 0.85rem; line-height: 1; letter-spacing: -1px; }
+.wgt-grip {
+  /* the only drag handle: a finger-sized target, so dragging never starts from a scroll */
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 1.6rem; height: 1.6rem; margin: -0.3rem 0 -0.3rem -0.35rem;
+  color: var(--dim); font-size: 1.05rem; line-height: 1; border-radius: 5px;
+  cursor: grab; touch-action: none;
+}
+.wgt-grip:hover { color: var(--fg); background: var(--border); }
+.react-draggable-dragging .wgt-grip { cursor: grabbing; }
+.card-caption { margin: -0.2rem 0 0.6rem; }
+.burn-space + .burn-space { margin-top: 1rem; padding-top: 0.8rem; border-top: 1px solid var(--border); }
 .wgt-title { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim); font-weight: 600; }
 .wgt-body { flex: 1; min-height: 0; overflow: auto; padding: 0.9rem 1.1rem; }
 /* the frame is the panel now — flatten the inner card chrome */
@@ -1758,7 +1768,15 @@ th.num .wi-sort { justify-content: flex-end; }
   .projectbar { padding: 0 0.9rem; }
   .tabbar { padding: 0.45rem 0.6rem 0; }
   .pchip, .tab, .projectbar > .dim, .projectbar > .ghostbtn { flex: none; }
-  .wgt-grip { display: none; }
+  .wstack { display: flex; flex-direction: column; gap: 10px; padding: 10px; }
+  .wstack .wgt { height: auto; }
+  .wstack .wgt-body { flex: none; max-height: 75vh; }
+  .wstack .wgt.fill { height: 70vh; min-height: 360px; }
+  .wstack .wgt.fill .wgt-body { flex: 1; max-height: none; }
+  /* a sprint goal beside its badges would be squeezed to one word per line: wrap the badges under it */
+  .spacehead { flex-wrap: wrap; row-gap: 0.35rem; }
+  .spacehead > .dim { flex: 1 1 60%; }
+  .spacehead > .spacer { display: none; }
   .wgt-body { padding: 0.75rem 0.85rem; }
   .ob-wrap { margin-top: 0.75rem; padding: 0 10px; }
 }
