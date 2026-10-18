@@ -85,32 +85,22 @@ function NoSeries({ b }) {
   )
 }
 
-export default function Burndown({ data }) {
-  const spaces = (data?.spaces ?? []).filter((s) => s.burndown || s.history?.length)
-  const [si, setSi] = useState(0)
-  const [sprintId, setSprintId] = useState(null)
-
-  if (!spaces.length) return <Card title="Burndown" data={data}><div className="degraded">no sprint to burn down</div></Card>
-  const s = spaces[Math.min(si, spaces.length - 1)]
+// One space's burndown: its active sprint by default. When it is the only space shown,
+// its earlier sprints can be picked from the chips; with several, one row of chips per
+// space would bury the charts.
+function SpaceBurn({ s, showSpace }) {
   const b = s.burndown
+  const [sprintId, setSprintId] = useState(null)
 
   // Newest first, so the active sprint leads.
   const hist = [...(s.history ?? [])].sort((a, z) => (z.start ?? '').localeCompare(a.start ?? ''))
   const active = hist.find((h) => h.sprint && b && (h.name === b.sprint || h.sprint === b.sprint))
   const chosen = hist.find((h) => h.sprint === sprintId) ?? active ?? hist[0] ?? null
+  const label = showSpace ? `${s.space.toUpperCase()} · ` : ''
 
   return (
-    <Card title="Burndown" data={data}>
-      <div className="seg">
-        {spaces.map((sp, i) => (
-          <button key={sp.space} className={'seg-b' + (i === Math.min(si, spaces.length - 1) ? ' on' : '')}
-                  onClick={() => { setSi(i); setSprintId(null) }}>
-            {sp.space.toUpperCase()}
-          </button>
-        ))}
-      </div>
-
-      {hist.length > 1 && (
+    <div className="burn-space">
+      {!showSpace && hist.length > 1 && (
         <div className="chips">
           {hist.map((h) => (
             <button key={h.sprint}
@@ -127,7 +117,7 @@ export default function Burndown({ data }) {
       {chosen ? (
         <div className="burn">
           <div className="burn-head">
-            <span className="dim small">{chosen.name} · {chosen.start} → {chosen.end}</span>
+            <span className="dim small">{label}{chosen.name} · {chosen.start} → {chosen.end}</span>
             <span className={'chip ' + (chosen.days?.length && chosen.days[chosen.days.length - 1].remaining > 0 ? 'down' : 'ok')}>
               {chosen.days?.length ? chosen.days[chosen.days.length - 1].remaining : '—'} / {chosen.committed} pts left
             </span>
@@ -136,12 +126,30 @@ export default function Burndown({ data }) {
         </div>
       ) : b ? (
         <div className="burn">
-          <div className="burn-head"><span className="dim small">Burndown · {b.sprint}</span></div>
+          <div className="burn-head"><span className="dim small">{label}Burndown · {b.sprint}</span></div>
           <NoSeries b={b} />
         </div>
       ) : (
         <div className="dim small">no active sprint in {s.space.toUpperCase()}</div>
       )}
+    </div>
+  )
+}
+
+// The spaces come from the global project filter (App.jsx scopeToProject), not from a
+// selector of the widget's own. With no filter it shows every space that has an active
+// sprint; with one it shows each selected space, active sprint or not. Narrow the filter
+// to one space to pick among its earlier sprints.
+export default function Burndown({ data, filtered }) {
+  const all = (data?.spaces ?? []).filter((s) => s.burndown || s.history?.length)
+  const live = all.filter((s) => s.burndown)
+  const spaces = filtered || !live.length ? all : live
+
+  if (!spaces.length) return <Card title="Burndown" data={data}><div className="degraded">no sprint to burn down</div></Card>
+
+  return (
+    <Card title="Burndown" data={data}>
+      {spaces.map((s) => <SpaceBurn key={s.space} s={s} showSpace={spaces.length > 1} />)}
     </Card>
   )
 }
