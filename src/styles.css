@@ -1744,3 +1744,21 @@ th.num .wi-sort { justify-content: flex-end; }
 .adr-dstatus { display: inline-flex; align-items: center; gap: 0.35rem; flex: none; }
 .adr-preview { height: 26rem; flex: none; }
 .cl.mark { background: color-mix(in srgb, var(--accent) 16%, transparent); }
+
+/* ── Narrow screens (phones) ───────────────────────────────────────────────
+   Pairs with NARROW_QUERY in App.jsx, which stacks the grid into one column.
+   Here the chrome above it stops wrapping into several rows: the header keeps
+   only what a reader needs, and the project chips and tabs scroll sideways. */
+@media (max-width: 768px) {
+  header { flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; padding: 0.75rem 0.9rem; }
+  header h1 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 1; }
+  header .root-path, header .hint, header .reset-layout { display: none; }
+  .projectbar, .tabbar { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .projectbar::-webkit-scrollbar, .tabbar::-webkit-scrollbar { display: none; }
+  .projectbar { padding: 0 0.9rem; }
+  .tabbar { padding: 0.45rem 0.6rem 0; }
+  .pchip, .tab, .projectbar > .dim, .projectbar > .ghostbtn { flex: none; }
+  .wgt-grip { display: none; }
+  .wgt-body { padding: 0.75rem 0.85rem; }
+  .ob-wrap { margin-top: 0.75rem; padding: 0 10px; }
+}
