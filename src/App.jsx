@@ -17,7 +17,7 @@ import PromotionFlow from './widgets/PromotionFlow.jsx'
 import Ingestion from './widgets/Ingestion.jsx'
 import SessionSpend from './widgets/SessionSpend.jsx'
 import SessionScatter from './widgets/SessionScatter.jsx'
-import { tabsFor, reconcile, withFloors, loadTabs, storeTabs, toServerDoc, fromServerDoc } from './tabs.js'
+import { tabsFor, reconcile, withFloors, loadTabs, storeTabs, toServerDoc, fromServerDoc, stackLayout } from './tabs.js'
 import Automations from './widgets/Automations.jsx'
 import Registry from './widgets/Registry.jsx'
 import Activity from './widgets/Activity.jsx'
@@ -195,6 +195,22 @@ function loadOnboarding() {
   }
 }
 const Grid = WidthProvider(GridLayout)
+
+// Below this width the grid collapses to one column (stackLayout) and stops taking
+// drags: twelve columns on a phone leave each widget about a hundred pixels wide.
+const NARROW_QUERY = '(max-width: 768px)'
+function useNarrow() {
+  const mq = () => (typeof window !== 'undefined' && window.matchMedia ? window.matchMedia(NARROW_QUERY) : null)
+  const [narrow, setNarrow] = useState(() => mq()?.matches ?? false)
+  useEffect(() => {
+    const m = mq()
+    if (!m) return
+    const on = (e) => setNarrow(e.matches)
+    m.addEventListener('change', on)
+    return () => m.removeEventListener('change', on)
+  }, [])
+  return narrow
+}
 export default function App() {
   const [data, setData] = useState({})
   const [error, setError] = useState(null)
@@ -206,6 +222,7 @@ export default function App() {
   const [onboarding, setOnboarding] = useState(loadOnboarding)
   const [showGridAnyway, setShowGridAnyway] = useState(false)
   const [navOpen, setNavOpen] = useState(false)
+  const narrow = useNarrow()
   const auth = useAuth()
   const userKey = auth?.user?.sub || auth?.user?.email || 'local'
   const serverReady = useRef(false)
@@ -300,8 +317,11 @@ export default function App() {
   const activeLayout = reconcile(layouts[active.id], active.ids, SIZES)
   const showTab = (id) => setState((s) => ({ ...s, activeId: id }))
 
+  // react-grid-layout reports a layout as soon as it mounts. The stacked phone layout
+  // must never reach the saved state, or opening the dashboard on a phone would
+  // overwrite the desktop arrangement here and on the server.
   const onLayoutChange = (next) =>
-    setState((s) => ({ ...s, layouts: { ...s.layouts, [active.id]: withFloors(next, SIZES) } }))
+    !narrow && setState((s) => ({ ...s, layouts: { ...s.layouts, [active.id]: withFloors(next, SIZES) } }))
   // Forget this tab's arrangement: it is re-flowed from the catalogue sizes.
   const resetActive = () =>
     setState((s) => {
@@ -373,7 +393,7 @@ export default function App() {
         <h1>
           meta-os <span className="dim">/</span> {data.meta.instance}
         </h1>
-        <span className="dim mono">{data.meta.instanceRoot}</span>
+        <span className="dim mono root-path">{data.meta.instanceRoot}</span>
         {isStatic && <span className="static-badge" title="Read-only snapshot — rebuild CI to refresh">static snapshot</span>}
         {!isStatic && data.meta?.source === 'github' && (
           <span className="static-badge" title="Live reads via hosted API + GITHUB_TOKEN">github live</span>
@@ -388,7 +408,7 @@ export default function App() {
         )}
         <span className="spacer" />
         <span className="dim hint">drag the header · resize from the edges</span>
-        <button className="ghostbtn" onClick={resetActive} title="Re-arrange this tab's widgets at their default sizes">
+        <button className="ghostbtn reset-layout" onClick={resetActive} title="Re-arrange this tab's widgets at their default sizes">
           Reset layout
         </button>
       </header>
@@ -446,13 +466,15 @@ export default function App() {
 
       {!suppressGrid && (
       <Grid
-        key={active.id}
+        key={`${active.id}:${narrow ? 'stack' : 'grid'}`}
         className="wgrid"
-        layout={activeLayout}
+        layout={narrow ? stackLayout(activeLayout) : activeLayout}
         cols={12}
         rowHeight={dens.rowHeight}
-        margin={dens.margin}
-        containerPadding={[20, 18]}
+        margin={narrow ? [10, 10] : dens.margin}
+        containerPadding={narrow ? [10, 10] : [20, 18]}
+        isDraggable={!narrow}
+        isResizable={!narrow}
         draggableHandle=".wgt-head"
         resizeHandles={['se', 'e', 's']}
         onLayoutChange={onLayoutChange}

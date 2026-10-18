@@ -71,6 +71,20 @@ export function reconcile(saved, ids, sizes) {
   return withFloors([...keep, ...autoLayout(ids.filter((i) => !have.has(i)), sizes, bottom)], sizes)
 }
 
+// A narrow screen (a phone) shows a tab as one column: the saved arrangement read top
+// to bottom, then left to right, each widget at full width and its own height. Derived
+// on every render and never persisted, so the desktop arrangement stays the only saved one.
+export function stackLayout(layout) {
+  let y = 0
+  return [...layout]
+    .sort((a, b) => a.y - b.y || a.x - b.x)
+    .map((l) => {
+      const out = { ...l, x: 0, y, w: COLS, static: true }
+      y += l.h
+      return out
+    })
+}
+
 // Persistence. localStorage is the offline cache; the server copy (/api/boards) is
 // the source of truth when reachable and keeps its { boards: [...] } envelope, one
 // entry per tab, marked `kind: 'tabs'` so a pre-tabs board document is ignored.
