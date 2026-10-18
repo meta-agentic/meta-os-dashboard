@@ -90,6 +90,20 @@ npm run dev
 Starts the API (`server/index.mjs`, default port `3777` — override with `API_PORT`) and
 the Vite dev server (port `5173`, proxying `/api` to the API) together.
 
+### Opening it from another machine
+
+Both servers listen on every interface, so the dashboard opens from the LAN at
+`http://<this-machine>:5173` or `http://<lan-ip>:5173`. Set `VITE_HOST=localhost` to
+keep the web side loopback-only (the API's equivalent is `API_HOST=127.0.0.1`).
+
+Vite answers only the host names it knows: an IP, this machine's own name and Tailscale
+names (`*.ts.net`). Add others with `VITE_ALLOWED_HOSTS=name1,name2`.
+
+Over Tailscale, `tailscale serve --bg 5173` publishes it to your tailnet only, with HTTPS,
+at `https://<machine>.<tailnet>.ts.net`. Don't use `tailscale funnel` on the dev server:
+it publishes to the whole internet, and in local mode the API serves your instance with
+no sign-in unless `auth` is enabled in the config.
+
 ## Heartbeat automation
 
 `scripts/heartbeat.mjs` is a standalone OS self-check: it runs the ontology linter, flags
