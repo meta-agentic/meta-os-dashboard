@@ -71,6 +71,16 @@ export function normalizeEstimate(e) {
   }
 }
 
+// `deliveredPoints: {<sprint>: <points>}`, what each sprint earned of the item, in the order
+// written (the last entry is the sprint that finished it). Null when the item records none:
+// it then reads as it always did. Anything but a map (an unattributed number) is null too.
+export function deliveredMap(v) {
+  if (v == null || typeof v !== 'object' || Array.isArray(v)) return null
+  const out = {}
+  for (const [k, n] of Object.entries(v)) if (num(n) !== null) out[String(k).trim()] = num(n)
+  return Object.keys(out).length ? out : null
+}
+
 export function normalizeStory(s) {
   return {
     // `jiraId` is the pre-ADR-MOS-07 spelling; accepted on the way in, never emitted.
@@ -78,6 +88,7 @@ export function normalizeStory(s) {
     title: s.title ?? '',
     status: String(s.status ?? '').toUpperCase(),
     storyPoints: num(s.storyPoints),
+    deliveredPoints: deliveredMap(s.deliveredPoints),
     priority: s.priority ?? null,
     epic: s.epic ?? null,
     project: s.project ?? null,
