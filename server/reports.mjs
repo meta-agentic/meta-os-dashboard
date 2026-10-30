@@ -10,6 +10,7 @@ import path from 'node:path'
 import { normalizeBacklog, sprintMembers } from './backlog-schema.mjs'
 import { loadBacklog } from './vault-backlog.mjs'
 import { sprintStats } from './sprint-stats.mjs'
+import { deliveredIn } from './delivery.mjs'
 
 const WEEK = 6048e5
 const DONE = 'DONE'
@@ -57,12 +58,13 @@ export function reportFromData(space, doc, daily = null) {
   // Per-sprint rollup (committed vs delivered), used by velocity + gantt.
   const sprintRows = sprints.map((sp) => {
     const m = membersOf(sp, stories)
-    const done = m.filter((s) => s.status === DONE)
+    // Delivered is what the sprint is credited, so a carried item shows once (delivery.mjs).
+    const delivered = deliveredIn(sp, m)
     return {
       id: sp.id, name: sp.name ?? sp.id, status: sp.status,
       start: sp.start ?? null, end: sp.end ?? null,
       committed: m.length, committedPts: sum(m, (s) => s.storyPoints),
-      done: done.length, donePts: sum(done, (s) => s.storyPoints),
+      done: delivered.items, donePts: delivered.pts,
     }
   })
 
@@ -87,7 +89,7 @@ export function reportFromData(space, doc, daily = null) {
   // Scorecard + honest burndown for the active sprint.
   const active = sprints.find((sp) => sp.status === 'IN PROGRESS')
   const activeMembers = active ? membersOf(active, stories) : []
-  const activeDonePts = sum(activeMembers.filter((s) => s.status === DONE), (s) => s.storyPoints)
+  const activeDonePts = active ? deliveredIn(active, activeMembers).pts : 0
   const activeCommittedPts = sum(activeMembers, (s) => s.storyPoints)
   const closed = sprintRows.filter((r) => r.status === 'CLOSED' && r.start && r.end)
   const weeks = sum(closed, (r) => Math.max((new Date(r.end) - new Date(r.start)) / WEEK, 0.1))
