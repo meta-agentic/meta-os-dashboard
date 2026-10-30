@@ -113,3 +113,11 @@ test('the item detail view keeps the note', () => {
   const d = backlogFromVault({ items })
   assert.equal(itemDetailRow(d, { fm: items[0].fm, body: '', path: null }).estimate.note, 'n')
 })
+
+test('sprint dates parsed as Date objects (unquoted YAML) read as ISO day strings', () => {
+  const { sprints } = backlogFromVault({
+    sprintDocs: [{ stem: 'S2', fm: { sprintId: 'S2', state: 'active', start: new Date('2026-10-29'), end: new Date('2026-11-11') } }],
+  })
+  assert.equal(sprints[0].start, '2026-10-29')
+  assert.equal(sprints[0].end, '2026-11-11')
+})

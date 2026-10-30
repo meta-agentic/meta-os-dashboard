@@ -101,9 +101,13 @@ export function normalizeStory(s) {
   }
 }
 
+// An unquoted `start: 2026-10-29` in front-matter parses to a Date, not a string; every
+// consumer downstream sorts and parses these as ISO day strings.
+const isoDay = (v) => (v instanceof Date && !Number.isNaN(v.getTime()) ? v.toISOString().slice(0, 10) : v)
+
 export function normalizeSprint(s) {
-  const start = s.start ?? s.startDate ?? null
-  const end = s.end ?? s.endDate ?? null
+  const start = isoDay(s.start ?? s.startDate ?? null)
+  const end = isoDay(s.end ?? s.endDate ?? null)
   return {
     id: s.id ?? s.sprintId ?? null,
     // Sprints carry a goal, not a name. Falling back to the id keeps every label
