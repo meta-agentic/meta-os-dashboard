@@ -50,7 +50,7 @@ const WIDGETS = [
   { i: 'flow', group: 'flow', title: 'Flow — waiting · drift · lanes', render: (d, ctx) => <Flow onOpenItem={ctx?.focusItems} /> },
   // Its queue chips open an item in Work Items and move the project filter to its project.
   { i: 'lanes', group: 'sprint', title: 'Sprint Lanes', render: (d, ctx) => <Lanes data={d.lanes} engines={d.engines} onOpenItem={ctx?.focusItems} /> },
-  { i: 'sprint-summary', group: 'sprint', title: 'Sprint Summary', render: (d) => <SprintSummary data={d.lanes} /> },
+  { i: 'sprint-summary', group: 'sprint', title: 'Sprint Summary', render: (d, ctx) => <SprintSummary data={d.lanes} onOpenItem={ctx?.focusItems} /> },
   { i: 'graph', group: 'knowledge', title: 'Knowledge Graph', render: (d) => <GraphView ontology={d.ontology} /> },
   { i: 'graph-table', group: 'knowledge', title: 'Graph Hubs', render: (d) => <GraphTable ontology={d.ontology} /> },
   { i: 'memory', group: 'memory', title: 'Memory', render: (d) => <Memory data={d.memory} /> },

@@ -14,7 +14,7 @@ function blockedItems(space) {
   for (const lane of space.lanes ?? []) {
     for (const q of Object.values(lane.queues ?? {})) {
       for (const it of q ?? []) {
-        if (it.blockedBy?.length) out.push({ id: it.id, lane: lane.lane, by: it.blockedBy, title: it.title })
+        if (it.blockedBy?.length) out.push({ id: it.id, space: space.space, lane: lane.lane, by: it.blockedBy, title: it.title })
       }
     }
   }
@@ -67,7 +67,7 @@ function Tile({ label, value, sub, cls }) {
   )
 }
 
-export default function SprintSummary({ data }) {
+export default function SprintSummary({ data, onOpenItem }) {
   const spaces = data?.spaces ?? []
   const broken = spaces.filter((s) => s.available === false)
   // A space with lanes but no live sprint is showing its last CLOSED sprint
@@ -137,9 +137,17 @@ export default function SprintSummary({ data }) {
                     <td className="num">
                       {t.blocked > 0 ? <span className="warn">{t.blocked}</span> : 0}
                       {blocked.map((x) => (
-                        <div key={x.id} className="dim small mono"
-                             title={`${x.title ?? x.id}\nblocked by ${x.by.join(', ')}`}>
-                          {x.id} ← {x.by.join(', ')}
+                        <div key={x.id} className="dim small mono">
+                          <button
+                            type="button"
+                            className="qchip blocked"
+                            disabled={!onOpenItem}
+                            title={`${x.title ? `${x.id} · ${x.title}` : x.id}\nblocked by ${x.by.join(', ')}`}
+                            onClick={() => onOpenItem?.({ label: x.id, spaces: [x.space], selectProject: true, open: { id: x.id, space: x.space } })}
+                          >
+                            {x.id}
+                          </button>
+                          {' ← '}{x.by.join(', ')}
                         </div>
                       ))}
                     </td>
