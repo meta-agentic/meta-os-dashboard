@@ -68,7 +68,7 @@ function SprintChip({ sprint }) {
 
 // Windowed table: only the rows inside the viewport (plus OVERSCAN either side) are
 // mounted; two spacer rows hold the scroll height of everything else.
-function Table({ rows, sort, onSort, onOpen, scrollPos }) {
+function Table({ rows, sort, onSort, onOpen, scrollPos, selId, revealed }) {
   const ref = useRef(null)
   const headRef = useRef(null)
   const [top, setTop] = useState(0)
@@ -83,6 +83,23 @@ function Table({ rows, sort, onSort, onOpen, scrollPos }) {
     setTop(el.scrollTop)
     return () => ro.disconnect()
   }, [])
+
+  // Bring the opened item's row into view once it is among the rows (it may only get
+  // here after its project has loaded), once per item so a later sort or back-navigation
+  // keeps wherever the user scrolled to.
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!selId || revealed.current === selId || !el) return
+    const at = rows.findIndex((r) => r.id === selId)
+    if (at < 0) return
+    revealed.current = selId
+    const h = headRef.current?.offsetHeight ?? 0
+    const want = Math.max(0, h + at * ROW - Math.max(0, (el.clientHeight - ROW) / 2))
+    el.scrollTop = want
+    scrollPos.current = want
+    setTop(want)
+    el.querySelector?.('tr[aria-selected="true"]')?.scrollIntoView?.({ block: 'nearest' })
+  }, [selId, rows])
 
   const onScroll = (e) => {
     scrollPos.current = e.currentTarget.scrollTop
@@ -112,7 +129,8 @@ function Table({ rows, sort, onSort, onOpen, scrollPos }) {
           {rows.slice(first, last).map((r) => (
             <tr
               key={r.space + r.id}
-              className="wi-row"
+              className={'wi-row' + (r.id === selId ? ' sel' : '')}
+              aria-selected={r.id === selId}
               tabIndex={0}
               onClick={() => onOpen(r.id, r.space)}
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(r.id, r.space) } }}
@@ -252,6 +270,9 @@ export default function WorkItems({ spaces, selected, focus }) {
   const [trail, setTrail] = useState([]) // { id, space } steps walked through to reach `view`
   const cache = useRef(new Map()) // id -> { space, item, reason } — ids are globally unique
   const scrollPos = useRef(0)
+  const [selId, setSelId] = useState(null) // the item last opened; its row is highlighted
+  const revealed = useRef(null) // the id whose row was last scrolled into view
+  const justOpened = useRef(false) // a focus-open this tick must survive the key reset below
   const seq = useRef(0)
   // Changing the header filter asks a new question: drop the report preset. Declared
   // before the focus effect so a preset arriving with a fresh mount still wins.
@@ -268,6 +289,8 @@ export default function WorkItems({ spaces, selected, focus }) {
   useEffect(() => {
     if (!focus) return
     setPreset(focus)
+    setSelId(focus.open?.id ?? null)
+    revealed.current = null
     setQ('')
     setState('')
     setView(null)
@@ -275,7 +298,13 @@ export default function WorkItems({ spaces, selected, focus }) {
     if (!focus.open) return
     const nextKey = [...(selected?.size ? selected : focus.spaces ?? [])].sort().join(',')
     if (nextKey !== selectedKey) pendingOpen.current = { ...focus.open, key: nextKey }
-    else open(focus.open.id, focus.open.space, false)
+    else {
+      // A fresh mount runs the key effect below right after this one, which would
+      // close the item just opened; flag it so that reset is skipped this tick.
+      justOpened.current = true
+      setTimeout(() => { justOpened.current = false }, 0)
+      open(focus.open.id, focus.open.space, false)
+    }
   }, [focus?.n])
 
   const loadList = () => {
@@ -300,8 +329,10 @@ export default function WorkItems({ spaces, selected, focus }) {
   useEffect(() => {
     cache.current = new Map()
     scrollPos.current = 0
-    setView(null)
-    setTrail([])
+    if (!justOpened.current) {
+      setView(null)
+      setTrail([])
+    }
     loadList()
     if (pendingOpen.current?.key === selectedKey) {
       const { id, space } = pendingOpen.current
@@ -311,6 +342,7 @@ export default function WorkItems({ spaces, selected, focus }) {
   }, [selectedKey])
 
   const open = (id, itemSpace, push = true) => {
+    setSelId(id)
     if (push && view?.id) setTrail((t) => [...t, { id: view.id, space: view.space }])
     const hit = cache.current.get(id)
     if (hit) return setView({ id, space: hit.space, ...hit })
@@ -348,6 +380,7 @@ export default function WorkItems({ spaces, selected, focus }) {
           if (preset.stories && String(r.kind).toLowerCase() === 'epic') return false
           if (preset.status && r.status !== preset.status) return false
           if (preset.blocked && !r.blockedBy) return false
+          if (preset.open && r.id !== preset.open.id) return false
         }
         if (state === 'other' ? r.flowState : state && r.flowState !== state) return false
         if (!needle) return true
@@ -355,6 +388,11 @@ export default function WorkItems({ spaces, selected, focus }) {
       })
       .sort((a, b) => col.cmp(a, b) * sort.dir || cmpText(idKey(a.id), idKey(b.id)))
   }, [list, q, state, sort, preset])
+
+  // The opened item is in the loaded list but a typed search or the state filter hides it.
+  const hidden = preset?.open && list.status === 'ok'
+    && list.items.some((r) => r.id === preset.open.id) && !rows.some((r) => r.id === preset.open.id)
+  const clearFilters = () => { setQ(''); setState('') }
 
   const total = list.status === 'ok' ? list.items.length : 0
   const blocked = list.status === 'ok' ? list.items.filter((r) => r.blockedBy).length : 0
@@ -385,7 +423,7 @@ export default function WorkItems({ spaces, selected, focus }) {
         ) : (
           <>
             {preset && (
-              <button className="wi-preset" onClick={() => setPreset(null)} title="Clear the Scrum Report filter">
+              <button className="wi-preset" onClick={() => setPreset(null)} title={preset.open ? 'Show all items again' : 'Clear the Scrum Report filter'}>
                 {preset.label} ×
               </button>
             )}
@@ -417,6 +455,12 @@ export default function WorkItems({ spaces, selected, focus }) {
         )}
       </div>
 
+      {hidden && !view && (
+        <div className="wi-hint" role="status">
+          {preset.open.id} is hidden by your filter
+          <button className="fp-btn" onClick={clearFilters}>clear filter</button>
+        </div>
+      )}
       {view ? (
         <Detail view={view} onOpen={(id) => open(id, view.space)} />
       ) : !spaces?.length ? (
@@ -432,7 +476,7 @@ export default function WorkItems({ spaces, selected, focus }) {
       ) : !rows.length ? (
         <div className="degraded">no items match{preset ? ` ${preset.label}` : ''}{q ? ` “${q}”` : ''}{state ? ` in ${STATES.find(([v]) => v === state)?.[1]}` : ''}</div>
       ) : (
-        <Table rows={rows} sort={sort} onSort={onSort} onOpen={open} scrollPos={scrollPos} />
+        <Table rows={rows} sort={sort} onSort={onSort} onOpen={open} scrollPos={scrollPos} selId={selId} revealed={revealed} />
       )}
     </div>
   )
