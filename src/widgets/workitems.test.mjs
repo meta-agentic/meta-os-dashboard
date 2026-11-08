@@ -53,7 +53,8 @@ test('the opened item row is selected', async () => {
   const m = await mount({ spaces: ['aaa'], selected: new Set(['aaa']), focus: focus('AAA-2') }, W)
   await m.act(async () => { m.el.querySelector('.fp-btn').click(); await flush() })
   const row = m.el.querySelector('.wi-row')
-  assert.equal(row.getAttribute('aria-selected'), 'true')
+  assert.equal(row.getAttribute('aria-current'), 'true')
+  assert.equal(row.getAttribute('aria-selected'), null)
   assert.ok(row.classList.contains('sel'))
 })
 
@@ -62,7 +63,7 @@ test('the selected row is scrolled into view', async () => {
   globalThis.__scrolled = []
   const m = await mount({ spaces: ['aaa'], selected: new Set(['aaa']), focus: focus('AAA-2') }, W)
   await m.act(async () => { m.el.querySelector('.fp-btn').click(); await flush() })
-  assert.ok(globalThis.__scrolled.some((n) => n.getAttribute('aria-selected') === 'true'))
+  assert.ok(globalThis.__scrolled.some((n) => n.getAttribute('aria-current') === 'true'))
 })
 
 test('a hidden opened item shows a hint that clears the filter', async () => {
@@ -103,4 +104,32 @@ test('a blocked-item chip in the sprint summary opens that item and names its ti
   assert.match(chip.getAttribute('title'), /AAA-1 · first thing/)
   await act(async () => { chip.click() })
   assert.deepEqual(got[0].open, { id: 'AAA-1', space: 'aaa' })
+})
+
+test('following a link in the opened item and going back shows and marks the linked item', async () => {
+  globalThis.__api = async (p) => (p.startsWith('/api/items') ? { items: ITEMS }
+    : { item: { ...ITEMS.find((i) => p.includes('id=AAA-2') ? i.id === 'AAA-2' : i.id === 'AAA-1'), dependencies: [{ id: 'AAA-2', title: 'second thing' }], relates: [{ id: 'AAA-2', title: 'second thing' }], parents: [], body: '' } })
+  const m = await mount({ spaces: ['aaa'], selected: new Set(['aaa']), focus: focus('AAA-1') }, W)
+  await m.act(async () => { m.el.querySelector('button.wi-link').click(); await flush() })
+  await m.act(async () => { m.el.querySelector('.wi-crumb').click(); await flush() })
+  const ids = [...m.el.querySelectorAll('.wi-row .wi-id')].map((n) => n.textContent)
+  assert.deepEqual(ids, ['AAA-2'])
+  assert.equal(m.el.querySelector('.wi-row').getAttribute('aria-current'), 'true')
+})
+
+test('clearing the preset with its x leaves no row marked', async () => {
+  globalThis.__api = api()
+  const m = await mount({ spaces: ['aaa'], selected: new Set(['aaa']), focus: focus('AAA-2') }, W)
+  await m.act(async () => { m.el.querySelector('.fp-btn').click(); await flush() })
+  await m.act(async () => { m.el.querySelector('.wi-preset').click(); await flush() })
+  assert.equal(m.el.querySelectorAll('.wi-row').length, 3)
+  assert.equal(m.el.querySelector('[aria-current]'), null)
+})
+
+test('changing the project filter clears the marked row', async () => {
+  globalThis.__api = api()
+  const m = await mount({ spaces: ['aaa', 'bbb'], selected: new Set(['aaa']), focus: focus('AAA-2') }, W)
+  await m.act(async () => { m.el.querySelector('.fp-btn').click(); await flush() })
+  await m.rerender({ spaces: ['aaa', 'bbb'], selected: new Set(['aaa', 'bbb']), focus: focus('AAA-2') })
+  assert.equal(m.el.querySelector('[aria-current]'), null)
 })

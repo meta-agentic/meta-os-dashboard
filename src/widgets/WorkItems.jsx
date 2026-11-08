@@ -98,7 +98,7 @@ function Table({ rows, sort, onSort, onOpen, scrollPos, selId, revealed }) {
     el.scrollTop = want
     scrollPos.current = want
     setTop(want)
-    el.querySelector?.('tr[aria-selected="true"]')?.scrollIntoView?.({ block: 'nearest' })
+    el.querySelector?.('tr[aria-current="true"]')?.scrollIntoView?.({ block: 'nearest' })
   }, [selId, rows])
 
   const onScroll = (e) => {
@@ -130,7 +130,7 @@ function Table({ rows, sort, onSort, onOpen, scrollPos, selId, revealed }) {
             <tr
               key={r.space + r.id}
               className={'wi-row' + (r.id === selId ? ' sel' : '')}
-              aria-selected={r.id === selId}
+              aria-current={r.id === selId ? 'true' : undefined}
               tabIndex={0}
               onClick={() => onOpen(r.id, r.space)}
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(r.id, r.space) } }}
@@ -271,6 +271,7 @@ export default function WorkItems({ spaces, selected, focus }) {
   const cache = useRef(new Map()) // id -> { space, item, reason } — ids are globally unique
   const scrollPos = useRef(0)
   const [selId, setSelId] = useState(null) // the item last opened; its row is highlighted
+  const [pinned, setPinned] = useState(null) // the one item the table is narrowed to; follows link navigation
   const revealed = useRef(null) // the id whose row was last scrolled into view
   const justOpened = useRef(false) // a focus-open this tick must survive the key reset below
   const seq = useRef(0)
@@ -281,6 +282,8 @@ export default function WorkItems({ spaces, selected, focus }) {
   useEffect(() => {
     if (firstHeader.current) { firstHeader.current = false; return }
     setPreset(null)
+    setPinned(null)
+    setSelId(null)
   }, [headerKey])
   // A preset may also name one item to open (`focus.open`, from the Flow view). When
   // the preset changes the project set, the list reload below resets the view, so the
@@ -290,6 +293,7 @@ export default function WorkItems({ spaces, selected, focus }) {
     if (!focus) return
     setPreset(focus)
     setSelId(focus.open?.id ?? null)
+    setPinned(focus.open?.id ?? null)
     revealed.current = null
     setQ('')
     setState('')
@@ -343,6 +347,7 @@ export default function WorkItems({ spaces, selected, focus }) {
 
   const open = (id, itemSpace, push = true) => {
     setSelId(id)
+    setPinned((p) => (p ? id : p))
     if (push && view?.id) setTrail((t) => [...t, { id: view.id, space: view.space }])
     const hit = cache.current.get(id)
     if (hit) return setView({ id, space: hit.space, ...hit })
@@ -380,18 +385,18 @@ export default function WorkItems({ spaces, selected, focus }) {
           if (preset.stories && String(r.kind).toLowerCase() === 'epic') return false
           if (preset.status && r.status !== preset.status) return false
           if (preset.blocked && !r.blockedBy) return false
-          if (preset.open && r.id !== preset.open.id) return false
+          if (pinned && r.id !== pinned) return false
         }
         if (state === 'other' ? r.flowState : state && r.flowState !== state) return false
         if (!needle) return true
         return [r.space, r.id, r.title, r.epic, r.project, ...(r.labels ?? [])].some((v) => String(v ?? '').toLowerCase().includes(needle))
       })
       .sort((a, b) => col.cmp(a, b) * sort.dir || cmpText(idKey(a.id), idKey(b.id)))
-  }, [list, q, state, sort, preset])
+  }, [list, q, state, sort, preset, pinned])
 
   // The opened item is in the loaded list but a typed search or the state filter hides it.
-  const hidden = preset?.open && list.status === 'ok'
-    && list.items.some((r) => r.id === preset.open.id) && !rows.some((r) => r.id === preset.open.id)
+  const hidden = pinned && list.status === 'ok'
+    && list.items.some((r) => r.id === pinned) && !rows.some((r) => r.id === pinned)
   const clearFilters = () => { setQ(''); setState('') }
 
   const total = list.status === 'ok' ? list.items.length : 0
@@ -423,7 +428,7 @@ export default function WorkItems({ spaces, selected, focus }) {
         ) : (
           <>
             {preset && (
-              <button className="wi-preset" onClick={() => setPreset(null)} title={preset.open ? 'Show all items again' : 'Clear the Scrum Report filter'}>
+              <button className="wi-preset" onClick={() => { setPreset(null); setPinned(null); setSelId(null) }} title={preset.open ? 'Show all items again' : 'Clear the Scrum Report filter'}>
                 {preset.label} ×
               </button>
             )}
@@ -457,7 +462,7 @@ export default function WorkItems({ spaces, selected, focus }) {
 
       {hidden && !view && (
         <div className="wi-hint" role="status">
-          {preset.open.id} is hidden by your filter
+          {pinned} is hidden by your filter
           <button className="fp-btn" onClick={clearFilters}>clear filter</button>
         </div>
       )}
