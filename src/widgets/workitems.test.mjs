@@ -78,7 +78,7 @@ test('a hidden opened item shows a hint that clears the filter', async () => {
   const hint = m.el.querySelector('.wi-hint')
   assert.ok(hint, 'hint visible')
   await m.act(async () => { hint.querySelector('button').click(); await flush() })
-  assert.equal(m.el.querySelector('.wi-hint'), null)
+  assert.ok(!m.el.querySelector('.wi-hint'))
   assert.equal(m.el.querySelectorAll('.wi-row').length, 1)
 })
 
@@ -121,15 +121,17 @@ test('clearing the preset with its x leaves no row marked', async () => {
   globalThis.__api = api()
   const m = await mount({ spaces: ['aaa'], selected: new Set(['aaa']), focus: focus('AAA-2') }, W)
   await m.act(async () => { m.el.querySelector('.fp-btn').click(); await flush() })
+  assert.ok(m.el.querySelector('.wi-row[aria-current="true"]'), 'marked before the clear')
   await m.act(async () => { m.el.querySelector('.wi-preset').click(); await flush() })
   assert.equal(m.el.querySelectorAll('.wi-row').length, 3)
-  assert.equal(m.el.querySelector('[aria-current]'), null)
+  assert.ok(!m.el.querySelector('[aria-current]'), 'no row marked')
 })
 
 test('changing the project filter clears the marked row', async () => {
   globalThis.__api = api()
   const m = await mount({ spaces: ['aaa', 'bbb'], selected: new Set(['aaa']), focus: focus('AAA-2') }, W)
   await m.act(async () => { m.el.querySelector('.fp-btn').click(); await flush() })
+  assert.ok(m.el.querySelector('.wi-row[aria-current="true"]'), 'marked before the change')
   await m.rerender({ spaces: ['aaa', 'bbb'], selected: new Set(['aaa', 'bbb']), focus: focus('AAA-2') })
-  assert.equal(m.el.querySelector('[aria-current]'), null)
+  assert.ok(!m.el.querySelector('[aria-current]'), 'no row marked')
 })
