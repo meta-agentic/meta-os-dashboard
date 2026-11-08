@@ -1,4 +1,4 @@
-# ADR 0001 — One graph drawing component, interchangeable graph sources
+# ADR-MOS-18 — One graph drawing component, interchangeable graph sources
 
 - **Status:** Proposed
 - **Date:** 2026-11-08
