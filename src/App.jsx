@@ -35,6 +35,7 @@ import Report from './widgets/Report.jsx'
 import WorkItems from './widgets/WorkItems.jsx'
 import AdrRegister from './widgets/AdrRegister.jsx'
 import Flow from './widgets/Flow.jsx'
+import PoQuestions from './widgets/PoQuestions.jsx'
 import { apiFetch, isStatic } from './api.js'
 import { useAuth } from './auth/AuthProvider.jsx'
 import Onboarding from './Onboarding.jsx'
@@ -417,6 +418,8 @@ export default function App() {
           Reset layout
         </button>
       </header>
+
+      <PoQuestions refreshSec={prefs.refreshSec} />
 
       {projects.length > 0 && (
         <div className="projectbar" role="group" aria-label="Project filter">
