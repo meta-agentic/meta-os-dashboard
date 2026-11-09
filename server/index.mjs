@@ -15,6 +15,7 @@ import * as boards from './boards.mjs'
 import { reports } from './reports.mjs'
 import { items, itemDetail } from './items.mjs'
 import * as adrReg from './adrs.mjs'
+import { openDecisions } from './decisions.mjs'
 import * as ghAdrs from './github-adrs.mjs'
 import { createFlow } from './flow.mjs'
 import { createGithubContext } from './github.mjs'
@@ -197,6 +198,7 @@ if (isGithub) {
   app.get('/api/items', api((req) => gh.items(ghCtx, String(req.query.space ?? ''))))
   app.get('/api/item', api((req) => gh.itemDetail(ghCtx, String(req.query.space ?? ''), String(req.query.id ?? ''))))
   // ADR register: on demand like /api/items, not a polled feed. GET only — read-only.
+  app.get('/api/decisions', api(async () => ({ available: false, reason: 'the decision register is read from a local vault only' })))
   app.get('/api/adrs', guard(() => ghAdrs.adrs(ghCtx)))
   app.get('/api/adr', guard((req) => ghAdrs.adrDetail(ghCtx, String(req.query.space ?? ''), String(req.query.id ?? ''))))
   app.get('/api/report', api(() => gh.reports(ghCtx)))
@@ -237,6 +239,7 @@ if (isGithub) {
   app.get('/api/items', api((req) => items(config.backlogs, String(req.query.space ?? ''))))
   app.get('/api/item', api((req) => itemDetail(config.backlogs, String(req.query.space ?? ''), String(req.query.id ?? ''))))
   // ADR register: on demand like /api/items, not a polled feed. GET only — read-only.
+  app.get('/api/decisions', guard(() => openDecisions(config.backlogs)))
   app.get('/api/adrs', guard(() => adrReg.adrs(config.backlogs)))
   app.get('/api/adr', guard((req) => adrReg.adrDetail(config.backlogs, fileRoots, String(req.query.space ?? ''), String(req.query.id ?? ''))))
   app.get('/api/report', api(() => reports(config.backlogs)))

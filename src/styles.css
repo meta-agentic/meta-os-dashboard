@@ -1783,3 +1783,17 @@ th.num .wi-sort { justify-content: flex-end; }
   .wgt-body { padding: 0.75rem 0.85rem; }
   .ob-wrap { margin-top: 0.75rem; padding: 0 10px; }
 }
+
+/* PO questions: the open decisions, oldest first, above the tabs */
+.poq { margin: 0 20px 12px; padding: 10px 14px; border: 1px solid var(--line, var(--border, #8884)); border-radius: 8px; background: var(--panel, transparent); }
+.poq-head { display: flex; gap: 10px; align-items: baseline; }
+.poq-title { font-weight: 600; }
+.poq-list { list-style: none; margin: 8px 0 0; padding: 0; max-height: 34vh; overflow-y: auto; }
+.poq-row { padding: 6px 0; border-top: 1px solid var(--line, var(--border, #8883)); }
+.poq-row:first-child { border-top: none; }
+.poq-q { display: flex; gap: 8px; align-items: baseline; width: 100%; text-align: left; background: none; border: none; padding: 0; color: inherit; font: inherit; cursor: pointer; }
+.poq-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.poq-q[aria-expanded="true"] .poq-text { white-space: normal; }
+.poq-age { white-space: nowrap; }
+.poq-meta { display: flex; flex-wrap: wrap; gap: 4px 18px; margin-top: 2px; }
+.poq-options { margin: 4px 0 0 18px; padding: 0; }
