@@ -1797,3 +1797,6 @@ th.num .wi-sort { justify-content: flex-end; }
 .poq-age { white-space: nowrap; }
 .poq-meta { display: flex; flex-wrap: wrap; gap: 4px 18px; margin-top: 2px; }
 .poq-options { margin: 4px 0 0 18px; padding: 0; }
+.wi-skipped { margin: 0.25rem 0 0.4rem; }
+.wi-skipped summary { cursor: pointer; }
+.wi-skipped ul { margin: 0.25rem 0 0; padding-left: 1.1rem; }

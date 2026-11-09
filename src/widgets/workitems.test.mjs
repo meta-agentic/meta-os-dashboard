@@ -135,3 +135,38 @@ test('changing the project filter clears the marked row', async () => {
   await m.rerender({ spaces: ['aaa', 'bbb'], selected: new Set(['aaa', 'bbb']), focus: focus('AAA-2') })
   assert.ok(!m.el.querySelector('[aria-current]'), 'no row marked')
 })
+
+const apiWith = (skipped) => async (p) => (p.startsWith('/api/items') ? { items: ITEMS, ...(skipped ? { skipped } : {}) } : {})
+const loaded = { spaces: ['aaa'], selected: new Set(['aaa']), focus: null }
+
+test('the list shows a skipped-files line when the reader skipped files', async () => {
+  globalThis.__api = apiWith([{ path: 'aaa/raw/AAA-9.md', message: 'bad indentation' }])
+  const m = await mount(loaded, W)
+  assert.match(m.el.querySelector('.wi-skipped summary')?.textContent ?? '', /^1 file skipped$/)
+})
+
+test('the skipped-files line expands to each path and its message', async () => {
+  globalThis.__api = apiWith([
+    { path: 'aaa/raw/AAA-9.md', message: 'bad indentation' },
+    { path: 'aaa/wiki/AAA-8.md', message: 'unexpected end' },
+  ])
+  const m = await mount(loaded, W)
+  assert.match(m.el.querySelector('.wi-skipped summary').textContent, /^2 files skipped$/)
+  const text = m.el.querySelector('.wi-skipped ul').textContent
+  assert.match(text, /aaa\/raw\/AAA-9\.md: bad indentation/)
+  assert.match(text, /aaa\/wiki\/AAA-8\.md: unexpected end/)
+})
+
+test('the list shows no skipped-files line when nothing was skipped', async () => {
+  globalThis.__api = apiWith([])
+  const m = await mount(loaded, W)
+  assert.match(m.el.textContent, /first thing/)
+  assert.equal(m.el.querySelector('.wi-skipped'), null)
+})
+
+test('the list shows no skipped-files line when the API sends no skipped field', async () => {
+  globalThis.__api = apiWith(undefined)
+  const m = await mount(loaded, W)
+  assert.match(m.el.textContent, /first thing/)
+  assert.equal(m.el.querySelector('.wi-skipped'), null)
+})

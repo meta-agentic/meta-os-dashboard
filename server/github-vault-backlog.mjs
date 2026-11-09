@@ -12,16 +12,23 @@
 // item, which at 1000+ items would exhaust the rate limit on a single poll.
 import path from 'node:path'
 import matter from 'gray-matter'
-import { backlogFromVault } from './backlog-schema.mjs'
+import { backlogFromVault, isItemName, skippedEntry } from './backlog-schema.mjs'
 
 const TIERS = new Set(['raw', 'wiki', 'output'])
 
+// gray-matter caches by content when called without options, and a cache hit skips the
+// parse: the first read of a broken file throws, every later one returns empty data and the
+// item would pass as prose. Any options object turns the cache off.
+const CACHE_OFF = {}
+
+// { fm } when the text parses, { fm: null, error } when it does not: left out of the
+// items, as vaultlib does, but reported by the caller.
 function frontMatter(text) {
-  if (typeof text !== 'string') return null
+  if (typeof text !== 'string') return { fm: null }
   try {
-    return matter(text).data ?? null
-  } catch {
-    return null // malformed front-matter is skipped, exactly as vaultlib does
+    return { fm: matter(text, CACHE_OFF).data ?? null }
+  } catch (error) {
+    return { fm: null, error }
   }
 }
 
@@ -38,13 +45,15 @@ export async function vaultBacklog(repo, space) {
     else if (parts[1] === 'sprints') sprintPaths.push(p)
   }
   const texts = await repo.readManyText([...itemPaths, ...sprintPaths])
-  const items = itemPaths
-    .map((p) => ({ fm: frontMatter(texts.get(p)) }))
-    .filter((x) => x.fm)
+  const parsed = itemPaths.map((p) => ({ path: p, ...frontMatter(texts.get(p)) }))
+  const items = parsed.filter((x) => x.fm)
+  const skipped = parsed
+    .filter((x) => x.error && isItemName(path.posix.basename(x.path, '.md')))
+    .map((x) => skippedEntry(x.path, x.error))
   const sprintDocs = sprintPaths
-    .map((p) => ({ fm: frontMatter(texts.get(p)), stem: path.posix.basename(p, '.md') }))
+    .map((p) => ({ ...frontMatter(texts.get(p)), stem: path.posix.basename(p, '.md') }))
     .filter((x) => x.fm)
-  return backlogFromVault({ items, sprintDocs })
+  return { ...backlogFromVault({ items, sprintDocs }), skipped }
 }
 
 // One item with its body — the remote twin of vault-backlog.loadItem. The tree is

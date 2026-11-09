@@ -139,6 +139,17 @@ export function normalizeBacklog(doc) {
   }
 }
 
+// A file named like an item (M68K-1.md, FAM-SPIKE-S0-01-x.md), not a note, README or ADR:
+// the same definition as the vault's own gate, so a prose file is never reported as skipped.
+const ITEM_NAME_RE = /^(?!ADR-)[A-Z][A-Z0-9]*-(?:[A-Z0-9]+-)*\d+(?:-|$)/
+export const isItemName = (stem) => ITEM_NAME_RE.test(stem)
+
+// One skipped-file entry: the path and the parser's message on one line.
+export const skippedEntry = (path, err) => ({
+  path,
+  message: String(err?.message ?? err).split(/\s+/).filter(Boolean).join(' '),
+})
+
 const EXCLUDED_KINDS = new Set(['adr'])
 
 // Vault front-matter → canonical backlog, the JS port of backlog.py's `export`.

@@ -461,7 +461,8 @@ export async function items(ctx, space) {
   const b = findSpace(ctx, space)
   if (!b) return unavailable(space ? `no backlog configured for space "${space}"` : 'no space selected')
   try {
-    return { available: true, space, items: itemRows(await loadBacklog(b)) }
+    const d = await loadBacklog(b)
+    return { available: true, space, items: itemRows(d), skipped: d.skipped ?? [] }
   } catch (e) {
     return unavailable(`backlog unreadable: ${e.message}`)
   }
