@@ -8,7 +8,7 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import matter from 'gray-matter'
-import { backlogFromVault, normalizeBacklog } from './backlog-schema.mjs'
+import { backlogFromVault, isItemName, normalizeBacklog, skippedEntry } from './backlog-schema.mjs'
 
 const TIERS = ['raw', 'wiki', 'output']
 
@@ -23,23 +23,33 @@ async function mdIn(dir) {
   }
 }
 
+// gray-matter caches by content when called without options, and a cache hit skips the
+// parse: the first read of a broken file throws, every later one returns empty data and the
+// item would pass as prose. Any options object turns the cache off.
+const CACHE_OFF = {}
+
+// { fm } when the file parses, { fm: null, error } when it does not. A broken file is
+// still left out of the items, as vaultlib does, but the caller reports it.
 async function frontMatter(file) {
   try {
-    return matter(await fs.readFile(file, 'utf8')).data ?? null
-  } catch {
-    return null // unreadable or malformed front-matter is skipped, as vaultlib does
+    return { fm: matter(await fs.readFile(file, 'utf8'), CACHE_OFF).data ?? null }
+  } catch (error) {
+    return { fm: null, error }
   }
 }
 
 export async function vaultBacklog(spaceDir) {
   const itemFiles = (await Promise.all(TIERS.map((t) => mdIn(path.join(spaceDir, t))))).flat()
   const sprintFiles = await mdIn(path.join(spaceDir, 'sprints'))
-  const items = (await Promise.all(itemFiles.map(async (f) => ({ fm: await frontMatter(f) }))))
-    .filter((x) => x.fm)
+  const parsed = await Promise.all(itemFiles.map(async (f) => ({ file: f, ...(await frontMatter(f)) })))
+  const items = parsed.filter((x) => x.fm)
+  const skipped = parsed
+    .filter((x) => x.error && isItemName(path.basename(x.file, '.md')))
+    .map((x) => skippedEntry(path.relative(path.dirname(spaceDir), x.file), x.error))
   const sprintDocs = (await Promise.all(sprintFiles.map(async (f) => ({
-    fm: await frontMatter(f), stem: path.basename(f, '.md'),
+    ...(await frontMatter(f)), stem: path.basename(f, '.md'),
   })))).filter((x) => x.fm)
-  return backlogFromVault({ items, sprintDocs })
+  return { ...backlogFromVault({ items, sprintDocs }), skipped }
 }
 
 // One item's source file, front-matter AND body. Items are named <ID>.md on disk

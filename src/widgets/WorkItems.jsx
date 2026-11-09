@@ -250,6 +250,21 @@ function Detail({ view, onOpen }) {
   )
 }
 
+// Files the reader could not parse and left out of the list. Nothing when there are none.
+export function SkippedFiles({ skipped }) {
+  if (!skipped?.length) return null
+  return (
+    <details className="wi-skipped dim small">
+      <summary>{skipped.length} file{skipped.length === 1 ? '' : 's'} skipped</summary>
+      <ul>
+        {skipped.map((s) => (
+          <li key={s.path}><span className="mono">{s.path}</span>: {s.message}</li>
+        ))}
+      </ul>
+    </details>
+  )
+}
+
 export default function WorkItems({ spaces, selected, focus }) {
   // Driven entirely by the global project filter bar (App.jsx), not an internal
   // picker. Any number of projects can be selected — their items are fetched in
@@ -322,12 +337,16 @@ export default function WorkItems({ spaces, selected, focus }) {
       if (n !== seq.current) return
       const items = []
       const failed = []
+      const skipped = []
       for (const r of results) {
         if (r.err || r.d.available === false) failed.push({ space: r.sp, reason: r.err ?? r.d.reason })
-        else items.push(...r.d.items.map((it) => ({ ...it, space: r.sp })))
+        else {
+          items.push(...r.d.items.map((it) => ({ ...it, space: r.sp })))
+          skipped.push(...(r.d.skipped ?? []))
+        }
       }
       if (!items.length && failed.length) return setList({ status: 'error', reason: failed.map((f) => `${f.space}: ${f.reason}`).join(' · ') })
-      setList({ status: 'ok', items, failed })
+      setList({ status: 'ok', items, failed, skipped })
     })
   }
   useEffect(() => {
@@ -460,6 +479,7 @@ export default function WorkItems({ spaces, selected, focus }) {
         )}
       </div>
 
+      {!view && <SkippedFiles skipped={list.status === 'ok' ? list.skipped : null} />}
       {hidden && !view && (
         <div className="wi-hint" role="status">
           {pinned} is hidden by your filter
