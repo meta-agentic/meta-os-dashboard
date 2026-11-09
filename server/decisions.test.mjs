@@ -78,7 +78,7 @@ test('a space with no register, an unreadable one and a .json backlog are zeros,
 
 test('carries the space, recommendation, options and what it blocks', async (t) => {
   const { backlogs } = vault(t, {
-    aa: { raw: [rec('Q-01', '2026-10-01', { blocks: ['AA-1', 'AA-2'], options: ['Park', 'NO GO'], recommendation: { by: 'Claude', text: 'Park it.' } })] },
+    aa: { raw: [rec('Q-01', '2026-10-01', { blocks: ['AA-1', 'AA-2'], options: ['Park', 'NO GO'], recommendation: { by: 'agent', text: 'Park it.' } })] },
   })
   const [d] = (await openDecisions(backlogs, Date.parse('2026-10-11'))).decisions
   assert.equal(d.space, 'aa')
