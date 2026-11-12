@@ -105,14 +105,19 @@ export function normalizeStory(s) {
 // consumer downstream sorts and parses these as ISO day strings.
 const isoDay = (v) => (v instanceof Date && !Number.isNaN(v.getTime()) ? v.toISOString().slice(0, 10) : v)
 
+// A non-blank string, or null: an empty label is no label.
+const nonBlank = (v) => (typeof v === 'string' && v.trim() ? v : null)
+
 export function normalizeSprint(s) {
   const start = isoDay(s.start ?? s.startDate ?? null)
   const end = isoDay(s.end ?? s.endDate ?? null)
   return {
     id: s.id ?? s.sprintId ?? null,
     // Sprints carry a goal, not a name. Falling back to the id keeps every label
-    // non-empty without inventing a title the vault never wrote.
-    name: s.name ?? s.goal ?? s.id ?? s.sprintId ?? null,
+    // non-empty without inventing a title the vault never wrote. A sprint opened
+    // before its planning carries `goal: ''`, so an empty or blank value falls
+    // through as well (`??` would keep the empty string and print a blank label).
+    name: nonBlank(s.name) ?? nonBlank(s.goal) ?? s.id ?? s.sprintId ?? null,
     status: sprintStatus(s.state ?? s.status),
     start,
     end,
