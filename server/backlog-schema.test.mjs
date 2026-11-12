@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
-import { backlogFromVault, laneEstimate, normalizeEstimate, normalizeStory } from './backlog-schema.mjs'
+import { backlogFromVault, laneEstimate, normalizeEstimate, normalizeSprint, normalizeStory } from './backlog-schema.mjs'
 import { itemDetailRow } from './items.mjs'
 import { lanes as localLanes } from './readers.mjs'
 import { lanes as githubLanes } from './github-readers.mjs'
@@ -120,4 +120,12 @@ test('sprint dates parsed as Date objects (unquoted YAML) read as ISO day string
   })
   assert.equal(sprints[0].start, '2026-10-29')
   assert.equal(sprints[0].end, '2026-11-11')
+})
+
+test('normalizeSprint labels a sprint with no goal yet by its id, not a blank', () => {
+  const opened = { sprintId: 'ABC-S2', state: 'active', start: '2026-11-12', end: '2026-11-18', goal: '' }
+  assert.equal(normalizeSprint(opened).name, 'ABC-S2')
+  assert.equal(normalizeSprint({ ...opened, goal: '   ' }).name, 'ABC-S2')
+  assert.equal(normalizeSprint({ ...opened, goal: 'Ship it' }).name, 'Ship it')
+  assert.equal(normalizeSprint(opened).goal, '', 'the goal itself is carried unchanged')
 })
