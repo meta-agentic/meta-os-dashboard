@@ -15,6 +15,14 @@ const STATES = [
 // Natural order for ids: IOS-9 < IOS-10 < IOS-S2-01.
 const idKey = (id) => String(id ?? '').replace(/\d+/g, (n) => n.padStart(8, '0'))
 const cmpText = (a, b) => String(a ?? '').localeCompare(String(b ?? ''))
+// An item's sprints as a list (one sprint or several), and the latest of them in natural order.
+const sprintsOf = (s) => (Array.isArray(s) ? s : s ? [s] : []).map(String)
+const latestSprint = (s) => sprintsOf(s).sort((a, b) => cmpText(idKey(a), idKey(b))).at(-1)
+// Natural order on the latest sprint (S9 before S19); an item with none sorts last, like pts.
+const cmpSprint = (a, b) => {
+  const x = latestSprint(a.sprint), y = latestSprint(b.sprint)
+  return (x == null) - (y == null) || cmpText(idKey(x), idKey(y))
+}
 const cmpNum = (a, b) => (a == null) - (b == null) || (a ?? 0) - (b ?? 0)
 
 const COLS = [
@@ -22,6 +30,7 @@ const COLS = [
   { k: 'id', label: 'id', w: '7.5rem', cmp: (a, b) => cmpText(idKey(a.id), idKey(b.id)) },
   { k: 'title', label: 'title', w: 'auto', cmp: (a, b) => cmpText(a.title, b.title) },
   { k: 'status', label: 'status', w: '7.5rem', cmp: (a, b) => cmpText(a.flowState ?? 'z', b.flowState ?? 'z') || cmpText(a.status, b.status) },
+  { k: 'sprint', label: 'sprint', w: '6.5rem', cmp: cmpSprint },
   { k: 'kind', label: 'kind', w: '5.5rem', cmp: (a, b) => cmpText(a.kind, b.kind) },
   { k: 'storyPoints', label: 'pts', w: '3.5rem', num: true, cmp: (a, b) => cmpNum(a.storyPoints, b.storyPoints) },
   { k: 'epic', label: 'epic', w: '6.5rem', cmp: (a, b) => cmpText(idKey(a.epic), idKey(b.epic)) },
@@ -51,7 +60,7 @@ function Blocked({ by }) {
 // peeks out from behind to say "there's a stack here", and hovering lists all of
 // them — the same title-tooltip pattern every other chip in this widget uses.
 function SprintChip({ sprint }) {
-  const list = Array.isArray(sprint) ? sprint : sprint ? [sprint] : []
+  const list = sprintsOf(sprint)
   if (!list.length) return null
   const sorted = [...list].sort((a, b) => cmpText(idKey(a), idKey(b)))
   const last = sorted[sorted.length - 1]
@@ -139,6 +148,7 @@ function Table({ rows, sort, onSort, onOpen, scrollPos, selId, revealed }) {
               <td className="wi-id mono">{r.id}</td>
               <td className="wi-title" title={r.title}>{r.title}</td>
               <td><Pill status={r.status} flowState={r.flowState} /></td>
+              <td className="wi-sprint-cell">{sprintsOf(r.sprint).length ? <SprintChip sprint={r.sprint} /> : <span className="dim">—</span>}</td>
               <td className="dim">{r.kind ?? ''}</td>
               <td className="num">{r.storyPoints ?? <span className="dim">·</span>}</td>
               <td className="mono dim">{r.epic ?? ''}</td>
