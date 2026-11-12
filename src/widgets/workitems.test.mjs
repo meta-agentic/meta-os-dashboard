@@ -170,3 +170,30 @@ test('the list shows no skipped-files line when the API sends no skipped field',
   assert.match(m.el.textContent, /first thing/)
   assert.equal(m.el.querySelector('.wi-skipped'), null)
 })
+
+const SPRINTED = [
+  { id: 'AAA-1', title: 'nineteen', status: 'TO DO', flowState: 'todo', sprint: 'AAA-S19' },
+  { id: 'AAA-2', title: 'unsprinted', status: 'TO DO', flowState: 'todo' },
+  { id: 'AAA-3', title: 'carried', status: 'TO DO', flowState: 'todo', sprint: ['AAA-S8', 'AAA-S9'] },
+]
+const sprintedApi = () => async (p) => (p.startsWith('/api/items') ? { items: SPRINTED } : { item: null })
+const cellOf = (m, id) => [...m.el.querySelectorAll('.wi-row')].find((r) => r.querySelector('.wi-id')?.textContent === id)
+  ?.querySelector('.wi-sprint-cell')
+
+test('the table shows each item\'s latest sprint, stacked when it carries several, and a dash when it has none', async () => {
+  globalThis.__api = sprintedApi()
+  const m = await mount({ spaces: ['aaa'], selected: new Set(['aaa']), focus: null }, W)
+  assert.equal(cellOf(m, 'AAA-1').textContent, 'AAA-S19')
+  const carried = cellOf(m, 'AAA-3').querySelector('.wi-sprint')
+  assert.equal(carried.textContent, 'AAA-S9')
+  assert.ok(carried.classList.contains('stacked'))
+  assert.equal(cellOf(m, 'AAA-2').textContent, '—')
+})
+
+test('sorting by sprint orders the latest sprint naturally (S9 before S19), items with none last', async () => {
+  globalThis.__api = sprintedApi()
+  const m = await mount({ spaces: ['aaa'], selected: new Set(['aaa']), focus: null }, W)
+  await m.act(async () => { m.el.querySelector('button[title="Sort by sprint"]').click(); await flush() })
+  const ids = [...m.el.querySelectorAll('.wi-row .wi-id')].map((n) => n.textContent)
+  assert.deepEqual(ids, ['AAA-3', 'AAA-1', 'AAA-2'])
+})
