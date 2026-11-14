@@ -95,10 +95,17 @@ export default function SprintStats({ data }) {
               </thead>
               <tbody>
                 {rows.map((r) => {
-                  const live = r.status !== 'CLOSED'
+                  // Live is the sprint being worked in. A planned sprint exists only so work can be
+                  // pre-assigned before it starts: it is not live and delivers nothing yet.
+                  const live = r.status === 'IN PROGRESS'
+                  const planned = r.status === 'PLANNED'
                   return (
-                    <tr key={r.id} className={live ? 'ss-live' : ''}>
-                      <td className="mono">{r.id}{live && <span className="chip eta">live</span>}</td>
+                    <tr key={r.id} className={live || planned ? 'ss-live' : ''}>
+                      <td className="mono">
+                        {r.id}
+                        {live && <span className="chip eta">live</span>}
+                        {planned && <span className="chip" title="Planned: work can be pre-assigned; nothing is worked in it until it starts">planned</span>}
+                      </td>
                       <td className="dim small">{r.start ?? '—'} → {r.end ?? '—'}</td>
                       <td className="num" title={r.committedItems == null ? 'no commitment snapshot was recorded' : undefined}><N v={r.committedItems} /></td>
                       <td className="num"><N v={r.committedPts} /></td>
