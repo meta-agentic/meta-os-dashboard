@@ -32,6 +32,7 @@ import Distribution from './widgets/Distribution.jsx'
 import FilePreview from './widgets/FilePreview.jsx'
 import Gantt from './widgets/Gantt.jsx'
 import Report from './widgets/Report.jsx'
+import StatusMix from './widgets/StatusMix.jsx'
 import WorkItems from './widgets/WorkItems.jsx'
 import AdrRegister from './widgets/AdrRegister.jsx'
 import Flow from './widgets/Flow.jsx'
@@ -79,6 +80,7 @@ const WIDGETS = [
   { i: 'skills', group: 'skills', title: 'Skills by discipline', render: (d) => <Skills data={d.packs} engines={d.engines} /> },
   // Its count tiles hand a preset to Work Items (ctx.focusItems) — see focusItems below.
   { i: 'report', group: 'sprint', title: 'Scrum Report', render: (d, ctx) => <Report data={d.report} onFocus={ctx?.focusItems} /> },
+  { i: 'status-mix', group: 'sprint', title: 'Status Mix', render: (d) => <StatusMix data={d.report} /> },
   // Fetches on demand (whole-space list + per-item detail), not from the polled feeds.
   // Driven by the global project filter bar, not its own picker — ctx.selectedProjects
   // is the same Set every space-scoped widget reads.
@@ -115,7 +117,8 @@ const SIZES = Object.fromEntries([
   { i: 'sprint-stats', x: 0, y: 77, w: 12, h: 16, minW: 6, minH: 8 },
   { i: 'packs', x: 0, y: 65, w: 6, h: 9, minW: 4, minH: 6 },
   { i: 'skills', x: 6, y: 65, w: 6, h: 9, minW: 4, minH: 6 },
-  { i: 'report', x: 0, y: 65, w: 12, h: 12, minW: 5, minH: 9 },
+  { i: 'report', x: 0, y: 65, w: 8, h: 6, minW: 5, minH: 4 },
+  { i: 'status-mix', x: 8, y: 65, w: 4, h: 9, minW: 3, minH: 6 },
   { i: 'graph-table', x: 0, y: 77, w: 6, h: 8, minW: 3, minH: 5 },
   { i: 'work-items', x: 0, y: 85, w: 12, h: 16, minW: 6, minH: 8 },
   { i: 'adr-register', x: 0, y: 101, w: 12, h: 16, minW: 6, minH: 8 },
@@ -141,7 +144,7 @@ function loadPrefs() {
 // the global project filter can act on. Registry uses a different, unlinked project
 // vocabulary (repo entries, no `space` field), and most other widgets (Graph, Packs,
 // Files, Usage, ...) have no project axis at all, so the filter leaves them alone.
-const SPACE_SCOPED = new Set(['lanes', 'sprint-summary', 'distribution', 'activity', 'report', 'sprint-stats', 'burndown', 'velocity'])
+const SPACE_SCOPED = new Set(['lanes', 'sprint-summary', 'distribution', 'activity', 'report', 'status-mix', 'sprint-stats', 'burndown', 'velocity'])
 
 // Every backlog space currently known to the lanes feed — the option list for the
 // project filter bar. Derived live so a newly-onboarded space shows up without a
@@ -155,7 +158,7 @@ const projectOptions = (data) =>
 // whose rows carry the space as `actor`; `report` reads `d.report.spaces`.
 function scopeToProject(data, widgetId, selected) {
   if (!selected.size || !SPACE_SCOPED.has(widgetId)) return data
-  if (widgetId === 'report' || widgetId === 'sprint-stats' || widgetId === 'burndown' || widgetId === 'velocity') {
+  if (['report', 'status-mix', 'sprint-stats', 'burndown', 'velocity'].includes(widgetId)) {
     return {
       ...data,
       report: data.report && { ...data.report, spaces: (data.report.spaces ?? []).filter((s) => selected.has(s.space)) },
@@ -433,7 +436,7 @@ export default function App() {
                 onClick={() => toggleProject(p)}
                 aria-pressed={on}
                 title={(on ? 'Remove ' : 'Filter to ') + p.toUpperCase()
-                  + ' \u2014 narrows Sprint Lanes, Sprint Summary, Distribution, Activity, Scrum Report, Sprint Stats, Burndown & Velocity'}
+                  + ' \u2014 narrows Sprint Lanes, Sprint Summary, Distribution, Activity, Scrum Report, Status Mix, Sprint Stats, Burndown & Velocity'}
               >
                 {p.toUpperCase()}
               </button>

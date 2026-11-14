@@ -1550,8 +1550,6 @@ th.num .wi-sort { justify-content: flex-end; }
 .burn-svg .burn-now { stroke: var(--wip); stroke-width: 1; opacity: 0.7; }
 .burn-svg .burn-actual { stroke: var(--accent); stroke-width: 2; }
 .burn-svg .burn-dot { fill: var(--accent); }
-.report-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 0.9rem; }
-.rc-h { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--dim); margin: 0 0 0.4rem; font-weight: 600; }
 
 /* ── Auth login gate ───────────────────────────────────────────────────── */
 .authscreen { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1.5rem; }
