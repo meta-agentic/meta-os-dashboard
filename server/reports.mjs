@@ -1,16 +1,16 @@
 // Scrum reporting + roadmap, derived from the backlog mirror (scrum/<space>/backlog.json).
 // Honest by construction: nothing here is fabricated. The mirror carries no per-story
-// transition timestamps, so the daily burndown curve cannot come from it — it is read
-// from an optional `burndown.json` written beside the mirror by the scrum tooling
-// (export_burndown.py, which replays Jira's changelog). When that file is absent we
-// still report committed vs current-remaining and say why there is no curve, rather
-// than interpolating one.
+// transition timestamps, so the daily burndown curve comes from each DONE item's
+// `completed:` day (burndown-vault.mjs), or from an optional `burndown.json` beside the
+// backlog where one exists. When neither gives a series we still report committed vs
+// current-remaining and say why there is no curve, rather than interpolating one.
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { normalizeBacklog, sprintMembers } from './backlog-schema.mjs'
 import { loadBacklog } from './vault-backlog.mjs'
 import { sprintStats } from './sprint-stats.mjs'
 import { deliveredIn } from './delivery.mjs'
+import { vaultBurndown } from './burndown-vault.mjs'
 
 const WEEK = 6048e5
 const DONE = 'DONE'
@@ -114,7 +114,13 @@ export function reportFromData(space, doc, daily = null) {
     elapsed,
     velocityPerWeek,
   }
-  const hist = active && daily ? daily.bySprint.get(active.id) : null
+  // The series: a burndown.json beside the backlog wins where one exists; otherwise the
+  // vault's own completed dates (burndown-vault.mjs).
+  const today = new Date(now).toISOString().slice(0, 10)
+  const fromVault = active ? vaultBurndown(active, activeMembers, today) : null
+  const fileHist = active && daily ? daily.bySprint.get(active.id) : null
+  const hist = fileHist ?? fromVault?.series ?? null
+  const histSource = fileHist ? daily.source : hist ? 'vault: items\' completed dates' : null
   const burndown = active
     ? {
       committed: activeCommittedPts,
@@ -127,21 +133,31 @@ export function reportFromData(space, doc, daily = null) {
       // widget degrades visibly instead of drawing a straight line and implying
       // the work burned down evenly.
       days: hist?.days ?? null,
-      seriesSource: hist ? daily.source : null,
-      seriesGenerated: hist ? daily.generated : null,
+      seriesSource: histSource,
+      seriesGenerated: fileHist ? daily.generated : null,
+      // One reader for both trackers: the vault writes `completed:` on every DONE item; a
+      // Jira-backed backlog document gets the same curve once its export carries each issue's
+      // resolution date as `completed`, or by writing burndown.json beside it.
       seriesReason: hist
         ? null
-        : 'no burndown.json beside the mirror — run scrum/scripts/export_burndown.py '
-          + '(the mirror itself carries no per-story transition timestamps)',
+        : `${fromVault?.reason ?? 'no series'} — the curve needs a completed date on each delivered item `
+          + '(the vault writes it; a Jira export should map resolutiondate to completed) or a burndown.json beside the backlog',
     }
     : null
-  // Closed sprints with history too, so the widget can offer past sprints.
-  const history = daily
-    ? [...daily.bySprint.values()].map((s) => ({
+  // Past and current sprints with a series, so the widget can offer them: the file's where it
+  // has one, else the vault's for every started sprint whose delivered items are all dated.
+  const bySprint = new Map(daily ? daily.bySprint : [])
+  for (const sp of sprints) {
+    if (bySprint.has(sp.id) || !['IN PROGRESS', 'CLOSED'].includes(sp.status)) continue
+    const { series } = vaultBurndown(sp, membersOf(sp, stories), today)
+    if (series) bySprint.set(sp.id, series)
+  }
+  const history = [...bySprint.values()]
+    .map((s) => ({
       sprint: s.sprint, name: s.name, status: s.status, start: s.start, end: s.end,
       committed: s.committed, days: s.days,
     }))
-    : []
+    .sort((a, b) => (a.start ?? '').localeCompare(b.start ?? ''))
 
   return {
     space, scorecard, velocity, statusMix, burndown, history, sprints: sprintRows,

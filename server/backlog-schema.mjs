@@ -98,6 +98,8 @@ export function normalizeStory(s) {
     labels: arr(s.labels),
     kind: (s.kind ?? s.type ?? null) || null,
     estimate: normalizeEstimate(s.estimate),
+    // The day the item turned DONE (`transition` writes it); the burndown is built from it.
+    completed: isoDay(s.completed ?? null),
   }
 }
 
