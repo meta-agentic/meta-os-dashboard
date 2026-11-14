@@ -19,20 +19,28 @@ function Curve({ b, series }) {
   if (!days?.length || !committed) return null
 
   const n = days.length
-  const x = (i) => padL + (n === 1 ? 0.5 : i / (n - 1)) * (W - padL - padR)
+  // The axis spans the whole window: a sprint still running leaves its remaining days
+  // empty on the right, so the ideal reaches zero on the planned end, not today.
+  const dayIndex = (iso) => Math.round((Date.parse(iso + 'T00:00:00Z') - Date.parse(days[0].date + 'T00:00:00Z')) / 864e5)
+  const endIndex = series.end ? dayIndex(series.end) : NaN
+  const slots = Math.max(n, Number.isFinite(endIndex) ? endIndex + 1 : n)
+  const x = (i) => padL + (slots === 1 ? 0.5 : i / (slots - 1)) * (W - padL - padR)
   const y = (v) => padT + (1 - v / committed) * (H - padT - padB)
 
   // The ideal line runs to the PLANNED end, not to the last plotted day. When a
   // sprint overruns, those extra days sit to the right of the ideal's zero point,
   // which is exactly the shape that makes an overrun obvious.
-  const plannedEnd = days.findIndex((d) => d.date === series.end)
-  const idealEndX = plannedEnd >= 0 ? x(plannedEnd) : x(n - 1)
+  const plannedEnd = Number.isFinite(endIndex) && endIndex >= 0 ? endIndex : n - 1
+  const idealEndX = x(plannedEnd)
 
   const pts = days.map((d, i) => `${x(i)},${y(d.remaining)}`).join(' ')
-  const overran = plannedEnd >= 0 && plannedEnd < n - 1
+  const overran = plannedEnd < n - 1
   const last = days[n - 1]
 
-  const ticks = days.filter((_, i) => i === 0 || i === n - 1 || i === plannedEnd)
+  // First day, last observed day and the planned end; a label at the right edge anchors
+  // to its end so it is not clipped.
+  const tickAt = [...new Set([0, n - 1, plannedEnd])].sort((a, b) => a - b)
+  const dateAt = (i) => (i < n ? days[i].date : new Date(Date.parse(days[0].date + 'T00:00:00Z') + i * 864e5).toISOString().slice(0, 10))
   return (
     <>
       <svg viewBox={`0 0 ${W} ${H}`} className="burn-svg" role="img"
@@ -53,9 +61,10 @@ function Curve({ b, series }) {
         ))}
         <text x={padL - 6} y={y(committed) + 3} textAnchor="end" className="chart-unit">{committed}</text>
         <text x={padL - 6} y={y(0) + 3} textAnchor="end" className="chart-unit">0</text>
-        {ticks.map((d) => (
-          <text key={d.date} x={x(days.indexOf(d))} y={H - padB + 14} textAnchor="middle" className="chart-unit">
-            {shortDay(d.date)}
+        {tickAt.map((i) => (
+          <text key={i} x={x(i)} y={H - padB + 14} className="chart-unit"
+                textAnchor={i === slots - 1 && slots > 1 ? 'end' : i === 0 ? 'start' : 'middle'}>
+            {shortDay(dateAt(i))}
           </text>
         ))}
       </svg>

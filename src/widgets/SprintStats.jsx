@@ -23,6 +23,20 @@ const COLS = [
   { k: 'xPts', label: 'Carry-over', sub: 'SP', tip: 'Story points of the carried-over items.' },
 ]
 
+// The two-row header: one cell per label over its sub-columns (Committed over items and SP).
+const GROUPS = COLS.reduce((gs, c) => {
+  const last = gs.at(-1)
+  if (last && last.label === c.label) last.span += 1
+  else gs.push({ label: c.label, span: 1 })
+  return gs
+}, [])
+
+// Calendar days of the window, start and end included: a Thursday-to-Wednesday sprint is 7.
+const daysOf = (r) => {
+  const a = Date.parse(r.start), b = Date.parse(r.end)
+  return Number.isFinite(a) && Number.isFinite(b) && b >= a ? Math.round((b - a) / 864e5) + 1 : null
+}
+
 const weeksOf = (r) => {
   const a = Date.parse(r.start), b = Date.parse(r.end)
   return Number.isFinite(a) && Number.isFinite(b) && b > a ? (b - a) / 6048e5 : null
@@ -85,11 +99,15 @@ export default function SprintStats({ data }) {
             </div>
             <table className="ss-table">
               <thead>
+                <tr className="ss-group">
+                  <th rowSpan={2}>Sprint</th>
+                  <th rowSpan={2}>Window</th>
+                  <th rowSpan={2} className="num" title="Calendar days of the window, start and end included.">Days</th>
+                  {GROUPS.map((g) => <th key={g.label} colSpan={g.span}>{g.label}</th>)}
+                </tr>
                 <tr>
-                  <th>Sprint</th>
-                  <th>Window</th>
                   {COLS.map((c) => (
-                    <th key={c.k} className="num" title={c.tip}>{c.label}<br /><span className="ss-sub">{c.sub}</span></th>
+                    <th key={c.k} className="num ss-sub" title={c.tip}>{c.sub}</th>
                   ))}
                 </tr>
               </thead>
@@ -107,6 +125,7 @@ export default function SprintStats({ data }) {
                         {planned && <span className="chip" title="Planned: work can be pre-assigned; nothing is worked in it until it starts">planned</span>}
                       </td>
                       <td className="dim small">{r.start ?? '—'} → {r.end ?? '—'}</td>
+                      <td className="num dim"><N v={daysOf(r)} /></td>
                       <td className="num" title={r.committedItems == null ? 'no commitment snapshot was recorded' : undefined}><N v={r.committedItems} /></td>
                       <td className="num"><N v={r.committedPts} /></td>
                       <td className="num" title={r.scopeAddedItems == null ? 'sprint file has no committedAtStart yet' : undefined}><N v={r.scopeAddedItems} /></td>
@@ -132,7 +151,7 @@ export default function SprintStats({ data }) {
               </tbody>
               <tfoot>
                 <tr className="ss-total">
-                  <td colSpan={2} className="dim small">closed sprints{t.noCommit ? ` · ${t.noCommit} with no commitment recorded` : ''}</td>
+                  <td colSpan={3} className="dim small">closed sprints{t.noCommit ? ` · ${t.noCommit} with no commitment recorded` : ''}</td>
                   <td className="num">{t.cItems}</td>
                   <td className="num">{t.cPts}</td>
                   <td className="num"><N v={t.aItems} /></td>
