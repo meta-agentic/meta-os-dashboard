@@ -1,6 +1,7 @@
 import React from 'react'
 import Card from '../Card.jsx'
-import { useGraph, TYPE_COLOR, typeLabel } from './GraphContext.jsx'
+import { useGraph } from './GraphContext.jsx'
+import { TYPE_COLOR, typeLabel } from './graphifyStyle.js'
 
 // The tabular half of the knowledge graph: top hubs per node type, over the SAME
 // filtered graph the viz shows. Picking a community here filters the viz too.
@@ -20,7 +21,7 @@ export default function GraphTable({ ontology }) {
         )}
         <span className="spacer" />
         {data?.stats && (
-          <span className="dim small">{data.stats.totalNodes} nodes · {data.stats.communities} communities</span>
+          <span className="dim small">{data.stats.totalNodes} nodes · {data.stats.groups} communities</span>
         )}
       </div>
       {hubs && Object.keys(hubs).length > 0 ? (
@@ -36,8 +37,8 @@ export default function GraphTable({ ontology }) {
                   <td className="mono">{n.label}</td>
                   <td className="num">{n.degree}</td>
                   <td>
-                    {n.community != null ? (
-                      <button className="chip" onClick={() => setCommunity(String(n.community))}>#{n.community}</button>
+                    {n.group != null ? (
+                      <button className="chip" onClick={() => setCommunity(String(n.group))}>#{n.group}</button>
                     ) : <span className="dim">—</span>}
                   </td>
                   <td className="dim mono small">{n.source}</td>

@@ -126,11 +126,15 @@ Or schedule it (e.g. via `launchd` on macOS or `cron`) for a daily pulse — see
 server/
   index.mjs     — Express app, route wiring
   readers.mjs   — registry, automations, memory, activity, lanes (backlog mirrors)
-  graph.mjs     — graphify graph.json parsing, caching, degree-ranked + type-stratified
-                  subgraph queries
+  graph.mjs     — the graphify knowledge graph: enumerates graphify-out/graph.json sources
+  graph/        — the generic graph layers (ADR-MOS-18): sources (local file, GitHub file),
+                  readers (NetworkX node-link), the canonical JGF model, the query
+                  (filter, search, type-stratified cap)
   lint.mjs      — ontology front-matter validation
 src/
   App.jsx       — polls each feed, lays out the widget grid
+  graph/        — the one graph drawing component: GraphCanvas, GraphList (its text twin),
+                  the style specification, the layout strategies (force), opt-in behaviours
   widgets/      — one component per card (Lanes, Graph, Memory, Automations, Registry,
                   Lint, Activity)
 scripts/
