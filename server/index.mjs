@@ -274,7 +274,7 @@ if (isGithub) {
     const { sources } = await graphSources(instanceRoot, reg.projects ?? [])
     const src = sources.find((s) => s.name === name) ?? sources[0]
     if (!src) return { available: false, reason: 'no graphs found' }
-    return { name: src.name, ...(await graphView(src.file, opts)) }
+    return { name: src.name, ...(await graphView(src, opts)) }
   }))
 }
 

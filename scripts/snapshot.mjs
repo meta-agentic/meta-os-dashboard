@@ -71,7 +71,7 @@ const { sources, ...graphsMeta } = await graphSources(instanceRoot, projects)
 await write('graphs', { ...graphsMeta, sources })
 
 for (const src of sources ?? []) {
-  const view = await graphView(src.file, {})
+  const view = await graphView(src, {})
   await write(`graph-${src.name}`, { name: src.name, ...view })
 }
 

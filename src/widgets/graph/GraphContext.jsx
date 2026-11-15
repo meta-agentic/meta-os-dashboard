@@ -1,17 +1,10 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { apiFetch } from '../../api.js'
 
-// Shared visual vocabulary for both graph widgets.
-export const TYPE_COLOR = {
-  code: '#58a6ff', document: '#3fb950', paper: '#d29922',
-  concept: '#bc8cff', rationale: '#f85149', image: '#8b949e',
-}
-const TYPE_LABEL = { paper: 'spike' } // display alias only — graph.json keeps graphify's vocabulary
-export const typeLabel = (t) => TYPE_LABEL[t] ?? t
-
 // One source of truth for source/filter state and the graph payload, so the graph
 // viz and the hubs table are two widgets over the SAME data — a community picked in
-// one filters the other. Lives above the grid (see main.jsx).
+// one filters the other. Lives above the grid (see main.jsx). The payload is a
+// canonical graph view: { version, stats, hubsByType, model }.
 const Ctx = createContext(null)
 export const useGraph = () => useContext(Ctx)
 
@@ -36,13 +29,13 @@ export function GraphProvider({ children }) {
     if (!name) return
     const key = `${name}|${type}|${q}|${community}`
     const load = () => {
-      const params = new URLSearchParams({ name, ...(type && { type }), ...(q && { q }), ...(community !== '' && { community }) })
+      const params = new URLSearchParams({ name, ...(type && { type }), ...(q && { q }), ...(community !== '' && { group: community }) })
       apiFetch(`/api/graph?${params}`).then((r) => r.json()).then((d) => {
         setData((prev) => {
-          if (prev && fetchKey.current === key && prev.mtime === d.mtime) return prev
-          if (prev && fetchKey.current === key && d.nodes) {
-            const old = new Set(prev.nodes.map((n) => n.id))
-            pendingSparks.current = d.nodes.filter((n) => !old.has(n.id)).slice(0, 8).map((n) => n.id)
+          if (prev && fetchKey.current === key && prev.version === d.version) return prev
+          if (prev && fetchKey.current === key && d.model) {
+            const old = new Set(Object.keys(prev.model?.graph.nodes ?? {}))
+            pendingSparks.current = Object.keys(d.model.graph.nodes).filter((id) => !old.has(id)).slice(0, 8)
           }
           fetchKey.current = key
           return d

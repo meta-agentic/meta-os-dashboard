@@ -1228,6 +1228,17 @@ line.zap { stroke: var(--accent); stroke-opacity: 0.9; }
 .hubs .chip { cursor: pointer; }
 .legend { display: flex; gap: 0.9rem; margin-top: 0.4rem; flex-wrap: wrap; }
 .legend .dot { margin-right: 0.25em; }
+/* The text twin of a graph drawing (GraphList): collapsed by default, scrolls when long. */
+.graphlist { margin-top: 0.4rem; font-size: 0.8em; }
+.graphlist > summary { cursor: pointer; color: var(--dim); }
+.graphlist ol { margin: 0.3rem 0 0; padding: 0; list-style: none; max-height: 12rem; overflow: auto; }
+.graphlist-nodes { columns: 2; column-gap: 1rem; }
+.graphlist-node { background: none; border: 0; padding: 0.05rem 0; font: inherit; color: inherit; cursor: pointer; text-align: left; }
+.graphlist-node:hover .graphlist-label, .graphlist-node:focus-visible .graphlist-label { color: var(--accent); }
+.graphlist-node .dot { margin-right: 0.3em; }
+.graphlist-edges li { color: var(--dim); }
+svg.graph .graphnode:focus-visible { outline: none; }
+svg.graph .graphnode:focus-visible circle { stroke: var(--accent); stroke-width: 2px; }
 .lintok { color: var(--ok); }
 .feed { list-style: none; margin: 0; padding: 0; }
 .feed li { padding: 0.3rem 0; border-top: 1px solid var(--border); }
