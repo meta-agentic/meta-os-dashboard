@@ -26,7 +26,7 @@ const GraphCanvas = forwardRef(function GraphCanvas(
 ) {
   const { width: W, height: H } = geometry
   const laid = useMemo(() => {
-    const nodes = nodesOf(model).map((n) => ({ ...n, x: geometry.positions[n.id]?.x ?? 0, y: geometry.positions[n.id]?.y ?? 0 }))
+    const nodes = nodesOf(model).map((n) => ({ ...n, x: geometry.positions[n.id]?.x ?? 0, y: geometry.positions[n.id]?.y ?? 0, r: style.nodeSize(n) }))
     const byId = new Map(nodes.map((n) => [n.id, n]))
     // A route is geometry only; the edge's own attributes (relation, metadata) come back
     // from the model by index so the style can read them.
@@ -35,7 +35,7 @@ const GraphCanvas = forwardRef(function GraphCanvas(
       .map((r) => ({ ...edges[r.index], ...r, source: byId.get(r.source), target: byId.get(r.target) }))
       .filter((l) => l.source && l.target)
     return { nodes, links, byId }
-  }, [model, geometry])
+  }, [model, geometry, style])
 
   const [vb, setVb] = useState(geometry.home)
   const vbRef = useRef(vb)
@@ -117,7 +117,7 @@ const GraphCanvas = forwardRef(function GraphCanvas(
           stroke={style.edgeStroke(l)} strokeOpacity={style.edgeOpacity(l)} />
       ))}
       {laid.nodes.map((n) => {
-        const r = style.nodeSize(n)
+        const r = n.r
         return (
           <g key={n.id} className="graphnode" onClick={click(n)} onKeyDown={key(n)} tabIndex={onNodeClick ? 0 : undefined} cursor={onNodeClick ? 'pointer' : undefined}>
             <circle cx={n.x} cy={n.y} r={r} fill={style.nodeColor(n)} fillOpacity={0.85}

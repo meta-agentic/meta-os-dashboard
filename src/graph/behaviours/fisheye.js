@@ -4,6 +4,23 @@ import { useCallback, useMemo, useRef } from 'react'
 
 const RADIUS = 64, MAX_DISPLACEMENT = 10
 
+/**
+ * How far a node at distance `d` from the pointer moves away, for a node of radius `r`
+ * inside a lens of radius `R`. Zero under the pointer (within the node's own radius, so
+ * the pointer can reach and click it), largest halfway out, zero again at the lens edge.
+ * The old profile peaked at the centre, so a node fled the pointer and could never be
+ * reached: the repulsion grew as the pointer closed in.
+ */
+export function fisheyePush(d, r, R = RADIUS, max = MAX_DISPLACEMENT) {
+  if (d >= R || d <= r) return 0
+  return max * Math.sin(Math.PI * Math.min(1, d / R))
+}
+
+/** The hovered neighbourhood grows: largest under the pointer, back to 1 at the lens edge. */
+export function fisheyeScale(d, R = RADIUS) {
+  return d >= R ? 1 : 1 + 0.45 * (1 - d / R)
+}
+
 export function useFisheye({ enabled, laid, svgRef, vbRef, dragRef, nodeEls, lineEls }) {
   const displaced = useRef(new Set())
   const raf = useRef(0)
@@ -44,9 +61,9 @@ export function useFisheye({ enabled, laid, svgRef, vbRef, dragRef, nodeEls, lin
         const dx = n.x - mx, dy = n.y - my
         const d = Math.max(Math.abs(dx), Math.abs(dy))
         if (d < RADIUS) {
-          const f = 1 - d / RADIUS
+          const push = fisheyePush(d, n.r ?? 0)
           const inv = d || 1
-          moveNode(n, (dx / inv) * MAX_DISPLACEMENT * f, (dy / inv) * MAX_DISPLACEMENT * f, 1 + 0.45 * f)
+          moveNode(n, (dx / inv) * push, (dy / inv) * push, fisheyeScale(d))
           displaced.current.add(n.id)
         } else if (displaced.current.has(n.id)) {
           moveNode(n, 0, 0, 1)
