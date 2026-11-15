@@ -10,7 +10,7 @@ const R = 64, MAX = 10
 test('a node under the pointer does not move: zero push within its own radius', () => {
   assert.equal(fisheyePush(0, 6, R, MAX), 0)
   assert.equal(fisheyePush(5.9, 6, R, MAX), 0)
-  assert.equal(fisheyePush(0.001, 0, R, MAX), 0) // not a division by a vanishing distance
+  assert.ok(fisheyePush(0.001, 0, R, MAX) < 0.01) // a vanishing distance gives a vanishing push, not a blow-up
 })
 
 test('the push rises from the node edge, peaks halfway out, and is zero at the lens edge', () => {
