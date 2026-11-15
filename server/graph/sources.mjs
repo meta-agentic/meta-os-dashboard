@@ -17,10 +17,17 @@ export function localFile(root, relative, { format } = {}) {
   return {
     kind: 'local', key: `local:${file}`, file, format,
     async stat() { const st = await fs.stat(file); return { bytes: st.size, version: st.mtimeMs } },
+    // One open handle for the size check and the read, so the file checked is the file
+    // read: a stat followed by a separate readFile would let the file change in between.
     async read() {
-      const st = await fs.stat(file)
-      if (st.size > MAX_BYTES) throw new Error(`graph source: ${path.basename(file)} is ${st.size} bytes, over the ${MAX_BYTES} cap`)
-      return { text: await fs.readFile(file, 'utf8'), version: st.mtimeMs }
+      const fh = await fs.open(file, 'r')
+      try {
+        const st = await fh.stat()
+        if (st.size > MAX_BYTES) throw new Error(`graph source: ${path.basename(file)} is ${st.size} bytes, over the ${MAX_BYTES} cap`)
+        return { text: await fh.readFile({ encoding: 'utf8' }), version: st.mtimeMs }
+      } finally {
+        await fh.close()
+      }
     },
   }
 }
