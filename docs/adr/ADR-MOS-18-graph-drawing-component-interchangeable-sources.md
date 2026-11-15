@@ -1,7 +1,10 @@
 # ADR-MOS-18 — One graph drawing component, interchangeable graph sources
 
-- **Status:** Proposed
+- **Status:** Approved (PO, 2026-11-15). Approved binds new work from that date; the body may still be amended, each change a dated line below; open items stay listed until the record is Accepted.
 - **Date:** 2026-11-08
+- **Status log:**
+  - 2026-11-08 — Proposed.
+  - 2026-11-15 — Approved by the PO on slice 1 (meta-os-dashboard#44): the canonical model is a JGF v2 profile and parsing and queries stay on the server (open decisions 1 and 3 taken as recommended). Still open: the layered layout library (decision 2, slice 2) and the repository's licence (decision 4).
 - **Method:** SPARC (Specification, Pseudocode, Architecture, Refinement, Completion), with the layout choices checked against the graph-drawing discipline: classify the graph first, let its meaning pick the drawing convention, keep layout and rendering apart.
 
 ## Background
@@ -159,7 +162,7 @@ Slices, each releasable on its own and each leaving the knowledge graph working:
 
 ## Open decisions
 
-1. The canonical model is a JGF version 2 profile (recommended) or an own schema.
-2. Layered layout through `@dagrejs/dagre` first (recommended), `elkjs`, or our own implementation of the four phases.
-3. Parsing and queries stay on the server (recommended).
+1. ~~The canonical model is a JGF version 2 profile (recommended) or an own schema.~~ **Decided 2026-11-15:** the JGF v2 profile `meta-graph/1` (`server/graph/model.mjs`).
+2. Layered layout through `@dagrejs/dagre` first (recommended), `elkjs`, or our own implementation of the four phases. Open; slice 2 decides it on measured crossings.
+3. ~~Parsing and queries stay on the server (recommended).~~ **Decided 2026-11-15:** on the server (`server/graph/sources.mjs`, `query.mjs`).
 4. This repository declares no licence in `package.json` and has no licence file; dependency licences (MIT, ISC, EPL-2.0) should be checked against the one it will carry.
