@@ -5,7 +5,7 @@
 - **Status log:**
   - 2026-11-08 — Proposed.
   - 2026-11-15 — Approved by the PO on slice 1 (meta-os-dashboard#44): the canonical model is a JGF v2 profile and parsing and queries stay on the server (open decisions 1 and 3 taken as recommended). Still open: the layered layout library (decision 2, slice 2) and the repository's licence (decision 4).
-  - 2026-11-16 — The component and the query language leave this repository for `meta-graph-model`, `meta-graph-react` and `meta-graph-query` under MIT (ADR-MOS-19); decision 4 is closed for the extracted code by that record. Slices 2 and 6 are built there.
+  - 2026-11-16 — The component and the query language leave this repository for `meta-agentic/meta-graph`, one repository with the packages `graph-model`, `graph-react` and `graph-query` under MIT (ADR-MOS-19); decision 4 is closed for the extracted code by that record. Slices 2 and 6 are built there, and this record moves there with the code.
 - **Method:** SPARC (Specification, Pseudocode, Architecture, Refinement, Completion), with the layout choices checked against the graph-drawing discipline: classify the graph first, let its meaning pick the drawing convention, keep layout and rendering apart.
 
 ## Background
