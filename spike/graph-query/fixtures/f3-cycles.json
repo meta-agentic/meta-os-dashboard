@@ -1,0 +1,29 @@
+{
+  "graph": {
+    "id": "f3-cycles",
+    "directed": true,
+    "metadata": { "profile": "meta-graph/1", "version": 1, "kinds": "directed, disconnected, labelled, unweighted, multigraph", "note": "a 3-cycle feeding a 2-cycle with a duplicated edge; a chain; an isolated node" },
+    "nodes": {
+      "P": { "label": "P", "metadata": { "group": "x" } },
+      "Q": { "label": "Q", "metadata": { "group": "x" } },
+      "R": { "label": "R", "metadata": { "group": "x" } },
+      "S": { "label": "S", "metadata": { "group": "x" } },
+      "T": { "label": "T", "metadata": { "group": "x" } },
+      "U": { "label": "U", "metadata": { "group": "y" } },
+      "V": { "label": "V", "metadata": { "group": "y" } },
+      "W": { "label": "W", "metadata": { "group": "y" } },
+      "Z": { "label": "Z", "metadata": { "group": "y" } }
+    },
+    "edges": [
+      { "source": "P", "target": "Q", "relation": "flows" },
+      { "source": "Q", "target": "R", "relation": "flows" },
+      { "source": "R", "target": "P", "relation": "flows" },
+      { "source": "R", "target": "S", "relation": "flows" },
+      { "source": "S", "target": "T", "relation": "flows" },
+      { "source": "T", "target": "S", "relation": "flows" },
+      { "source": "S", "target": "T", "relation": "flows" },
+      { "source": "U", "target": "V", "relation": "flows" },
+      { "source": "V", "target": "W", "relation": "flows" }
+    ]
+  }
+}

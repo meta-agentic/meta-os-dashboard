@@ -1,0 +1,34 @@
+{
+  "graph": {
+    "id": "f4-weighted",
+    "directed": false,
+    "metadata": { "profile": "meta-graph/1", "version": 1, "kinds": "undirected, connected, labelled, weighted", "note": "a hub with two concept triangles, a paper triangle with a heavy pendant, a memo bridging them" },
+    "nodes": {
+      "hub": { "label": "ADR-1 hub", "metadata": { "type": "document" } },
+      "memo": { "label": "ADR-2 memo", "metadata": { "type": "document" } },
+      "k1": { "label": "concept k1", "metadata": { "type": "concept" } },
+      "k2": { "label": "concept k2", "metadata": { "type": "concept" } },
+      "k3": { "label": "concept k3", "metadata": { "type": "concept" } },
+      "k4": { "label": "concept k4", "metadata": { "type": "concept" } },
+      "p1": { "label": "paper p1", "metadata": { "type": "paper" } },
+      "p2": { "label": "paper p2", "metadata": { "type": "paper" } },
+      "p3": { "label": "paper p3", "metadata": { "type": "paper" } },
+      "L": { "label": "paper L", "metadata": { "type": "paper" } }
+    },
+    "edges": [
+      { "source": "hub", "target": "k1", "metadata": { "weight": 1 } },
+      { "source": "hub", "target": "k2", "metadata": { "weight": 2 } },
+      { "source": "hub", "target": "k3", "metadata": { "weight": 2 } },
+      { "source": "hub", "target": "k4", "metadata": { "weight": 1 } },
+      { "source": "hub", "target": "p1", "metadata": { "weight": 3 } },
+      { "source": "k1", "target": "k2", "metadata": { "weight": 1 } },
+      { "source": "k3", "target": "k4", "metadata": { "weight": 4 } },
+      { "source": "p1", "target": "p2", "metadata": { "weight": 7 } },
+      { "source": "p2", "target": "p3", "metadata": { "weight": 6 } },
+      { "source": "p1", "target": "p3", "metadata": { "weight": 9 } },
+      { "source": "memo", "target": "p3", "metadata": { "weight": 2 } },
+      { "source": "memo", "target": "k4", "metadata": { "weight": 1 } },
+      { "source": "L", "target": "p2", "metadata": { "weight": 12 } }
+    ]
+  }
+}

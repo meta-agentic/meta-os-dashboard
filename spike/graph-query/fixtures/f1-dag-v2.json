@@ -1,0 +1,39 @@
+{
+  "graph": {
+    "id": "f1-dag",
+    "directed": true,
+    "metadata": { "profile": "meta-graph/1", "version": 2, "kinds": "directed, connected, labelled, weighted", "note": "f1-dag one version later: B is DONE, K was added (depends on C), D no longer depends on H, B -> D weighs 5" },
+    "nodes": {
+      "E1": { "label": "Epic alpha", "metadata": { "type": "epic", "group": "alpha", "status": "IN PROGRESS" } },
+      "E2": { "label": "Epic beta", "metadata": { "type": "epic", "group": "beta", "status": "TO DO" } },
+      "E3": { "label": "Epic beta two", "metadata": { "type": "epic", "group": "beta", "status": "IN PROGRESS" } },
+      "A": { "label": "ADR-3 story", "metadata": { "type": "story", "group": "alpha", "status": "DONE", "weight": 3 } },
+      "B": { "label": "story B", "metadata": { "type": "story", "group": "alpha", "status": "DONE", "weight": 5 } },
+      "C": { "label": "story C", "metadata": { "type": "story", "group": "alpha", "status": "TO DO", "weight": 2 } },
+      "D": { "label": "story D", "metadata": { "type": "story", "group": "beta", "status": "DONE", "weight": 3 } },
+      "F": { "label": "story F", "metadata": { "type": "story", "group": "beta", "status": "NO GO", "weight": 1 } },
+      "G": { "label": "story G", "metadata": { "type": "story", "group": "beta", "status": "TO DO", "weight": 8 } },
+      "H": { "label": "ADR-12 spike", "metadata": { "type": "spike", "group": "alpha", "status": "DONE", "weight": 2 } },
+      "K": { "label": "story K", "metadata": { "type": "story", "group": "alpha", "status": "TO DO", "weight": 1 } }
+    },
+    "edges": [
+      { "source": "B", "target": "A", "relation": "depends", "metadata": { "kind": "dependency", "weight": 2 } },
+      { "source": "C", "target": "B", "relation": "depends", "metadata": { "kind": "dependency", "weight": 1 } },
+      { "source": "C", "target": "H", "relation": "depends", "metadata": { "kind": "dependency", "weight": 3 } },
+      { "source": "G", "target": "D", "relation": "depends", "metadata": { "kind": "dependency", "weight": 2 } },
+      { "source": "G", "target": "F", "relation": "depends", "metadata": { "kind": "dependency", "weight": 1 } },
+      { "source": "B", "target": "D", "relation": "depends", "metadata": { "kind": "dependency", "weight": 5 } },
+      { "source": "B", "target": "G", "relation": "depends", "metadata": { "kind": "dependency", "weight": 1 } },
+      { "source": "K", "target": "C", "relation": "depends", "metadata": { "kind": "dependency", "weight": 1 } },
+      { "source": "A", "target": "E1", "relation": "child", "metadata": { "kind": "child" } },
+      { "source": "B", "target": "E1", "relation": "child", "metadata": { "kind": "child" } },
+      { "source": "C", "target": "E1", "relation": "child", "metadata": { "kind": "child" } },
+      { "source": "H", "target": "E1", "relation": "child", "metadata": { "kind": "child" } },
+      { "source": "D", "target": "E3", "relation": "child", "metadata": { "kind": "child" } },
+      { "source": "F", "target": "E2", "relation": "child", "metadata": { "kind": "child" } },
+      { "source": "G", "target": "E2", "relation": "child", "metadata": { "kind": "child" } },
+      { "source": "E3", "target": "E2", "relation": "child", "metadata": { "kind": "child" } },
+      { "source": "K", "target": "E1", "relation": "child", "metadata": { "kind": "child" } }
+    ]
+  }
+}
