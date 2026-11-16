@@ -5,6 +5,7 @@
 - **Status log:**
   - 2026-11-08 — Proposed.
   - 2026-11-15 — Approved by the PO on slice 1 (meta-os-dashboard#44): the canonical model is a JGF v2 profile and parsing and queries stay on the server (open decisions 1 and 3 taken as recommended). Still open: the layered layout library (decision 2, slice 2) and the repository's licence (decision 4).
+  - 2026-11-16 — The component and the query language leave this repository for `meta-graph-model`, `meta-graph-react` and `meta-graph-query` under MIT (ADR-MOS-19); decision 4 is closed for the extracted code by that record. Slices 2 and 6 are built there.
 - **Method:** SPARC (Specification, Pseudocode, Architecture, Refinement, Completion), with the layout choices checked against the graph-drawing discipline: classify the graph first, let its meaning pick the drawing convention, keep layout and rendering apart.
 
 ## Background
@@ -165,4 +166,4 @@ Slices, each releasable on its own and each leaving the knowledge graph working:
 1. ~~The canonical model is a JGF version 2 profile (recommended) or an own schema.~~ **Decided 2026-11-15:** the JGF v2 profile `meta-graph/1` (`server/graph/model.mjs`).
 2. Layered layout through `@dagrejs/dagre` first (recommended), `elkjs`, or our own implementation of the four phases. Open; slice 2 decides it on measured crossings.
 3. ~~Parsing and queries stay on the server (recommended).~~ **Decided 2026-11-15:** on the server (`server/graph/sources.mjs`, `query.mjs`).
-4. This repository declares no licence in `package.json` and has no licence file; dependency licences (MIT, ISC, EPL-2.0) should be checked against the one it will carry.
+4. **Decided 2026-11-16 for the extracted code: MIT (ADR-MOS-19).** Still open for this repository itself. Original text: this repository declares no licence in `package.json` and has no licence file; dependency licences (MIT, ISC, EPL-2.0) should be checked against the one it will carry.
