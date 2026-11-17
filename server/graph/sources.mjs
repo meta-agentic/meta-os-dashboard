@@ -3,8 +3,7 @@
 // cached, so a poll that brings no change costs a stat and nothing else.
 import fs from 'node:fs/promises'
 import path from 'node:path'
-import { detectReader } from './readers/index.mjs'
-import { degrees, validateModel } from './model.mjs'
+import { detectReader, degrees, validateModel } from '@meta-agentic/graph-model'
 
 /** Refuse a file above this before parsing it (the instance's knowledge graph is 33 MB). */
 export const MAX_BYTES = 128 * 1024 * 1024

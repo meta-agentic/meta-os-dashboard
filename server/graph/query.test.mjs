@@ -4,8 +4,7 @@
 // copied verbatim, run over the same fixture in graphify's shape.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { networkx } from './readers/networkx.mjs'
-import { degrees } from './model.mjs'
+import { networkx, degrees } from '@meta-agentic/graph-model'
 import { queryView } from './query.mjs'
 
 function legacyGraphViewInline(g, { q, type, community, limit = 400 } = {}) {
