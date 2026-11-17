@@ -127,16 +127,14 @@ server/
   index.mjs     — Express app, route wiring
   readers.mjs   — registry, automations, memory, activity, lanes (backlog mirrors)
   graph.mjs     — the graphify knowledge graph: enumerates graphify-out/graph.json sources
-  graph/        — the generic graph layers (ADR-MOS-18): sources (local file, GitHub file),
-                  readers (NetworkX node-link), the canonical JGF model, the query
-                  (filter, search, type-stratified cap)
+  graph/        — the dashboard's graph sources (local file under a root, GitHub file) and
+                  the view query (filter, search, type-stratified cap); the model and the
+                  readers come from @meta-agentic/graph-model
   lint.mjs      — ontology front-matter validation
 src/
   App.jsx       — polls each feed, lays out the widget grid
-  graph/        — the one graph drawing component: GraphCanvas, GraphList (its text twin),
-                  the style specification, the layout strategies (force), opt-in behaviours
   widgets/      — one component per card (Lanes, Graph, Memory, Automations, Registry,
-                  Lint, Activity)
+                  Lint, Activity); the graph widgets draw through @meta-agentic/graph-react
 scripts/
   heartbeat.mjs — the scheduled self-check (see above)
 ```
@@ -144,3 +142,7 @@ scripts/
 No database, no build-time coupling to any specific instance — everything is read fresh
 from `instanceRoot` on each request (with a small in-memory cache for the potentially
 large graphify graphs, invalidated on file mtime change).
+
+## Graph packages
+
+The graph drawing component, the canonical graph model and the graph query language live in [`meta-agentic/meta-graph`](https://github.com/meta-agentic/meta-graph) (MIT), published to npm as `@meta-agentic/graph-model`, `@meta-agentic/graph-react`, `@meta-agentic/graph-query` and the aggregator `@meta-agentic/meta-graph`. This dashboard depends on the first two; their design records (ADR-MOS-18, ADR-MOS-19) moved there with the code.
