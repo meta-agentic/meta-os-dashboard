@@ -2,7 +2,7 @@
 // group, text search, and a capped selection that keeps every type represented. It
 // generalises what the knowledge graph did for graphify alone; the view it returns is
 // itself a canonical model, small enough to lay out in a browser.
-import { PROFILE } from './model.mjs'
+import { PROFILE } from '@meta-agentic/graph-model'
 
 /** How many nodes of each type are guaranteed a place before the rest is filled by degree. */
 const PER_TYPE = 30

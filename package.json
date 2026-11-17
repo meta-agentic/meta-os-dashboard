@@ -15,7 +15,8 @@
     "test": "node --test \"server/**/*.test.mjs\" \"scripts/**/*.test.mjs\" \"src/**/*.test.mjs\""
   },
   "dependencies": {
-    "d3-force": "^3.0.0",
+    "@meta-agentic/graph-model": "^0.1.3",
+    "@meta-agentic/graph-react": "^0.1.3",
     "express": "^4.21.2",
     "gray-matter": "^4.0.3",
     "jose": "^5.10.0",

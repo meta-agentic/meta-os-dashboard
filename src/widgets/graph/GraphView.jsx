@@ -3,11 +3,7 @@
 // drawing component. Everything graphify-specific is here or in graphifyStyle.js.
 import React, { useCallback, useMemo, useRef, useState } from 'react'
 import Card from '../Card.jsx'
-import GraphCanvas from '../../graph/GraphCanvas.jsx'
-import GraphList from '../../graph/GraphList.jsx'
-import { resolveStyle } from '../../graph/style.js'
-import { forceLayout } from '../../graph/layout/force.js'
-import { nodesOf } from '../../graph/model.js'
+import { GraphCanvas, GraphList, resolveStyle, forceLayout, nodesOf } from '@meta-agentic/graph-react'
 import { useGraph } from './GraphContext.jsx'
 import { graphifyStyle, TYPE_COLOR, typeLabel } from './graphifyStyle.js'
 
