@@ -129,3 +129,40 @@ test('normalizeSprint labels a sprint with no goal yet by its id, not a blank', 
   assert.equal(normalizeSprint({ ...opened, goal: 'Ship it' }).name, 'Ship it')
   assert.equal(normalizeSprint(opened).goal, '', 'the goal itself is carried unchanged')
 })
+
+// The claim `backlog.py claim` writes, read and passed on; nothing written.
+import { normalizeClaim } from './backlog-schema.mjs'
+import { itemRows } from './items.mjs'
+
+const FM = {
+  claimedBy: { name: 'lane-a', id: 'session-uuid' },
+  claimedAt: '2026-11-26T06:29:02Z',
+  claimExpires: '2026-11-26T18:29:02Z',
+  claimTrigger: { sessionId: 's', uuid: 'u', line: 3 },
+}
+
+const CLAIMS = [
+  ['a recorded claim', FM, { by: 'lane-a', at: '2026-11-26T06:29:02Z', expires: '2026-11-26T18:29:02Z' }],
+  ['stamps YAML read as dates', { ...FM, claimedAt: new Date('2026-11-26T06:29:02Z'), claimExpires: new Date('2026-11-26T18:29:02Z') },
+    { by: 'lane-a', at: '2026-11-26T06:29:02Z', expires: '2026-11-26T18:29:02Z' }],
+  ['an unreadable expiry', { ...FM, claimExpires: 'soon' }, { by: 'lane-a', at: '2026-11-26T06:29:02Z', expires: null }],
+  ['no claim fields', {}, null],
+  ['a holder with no name', { ...FM, claimedBy: { id: 'x' } }, null],
+  ['a holder that is a bare string', { ...FM, claimedBy: 'lane-a' }, null],
+  ['a holder name that is not a session name', { ...FM, claimedBy: { name: '<b>x</b>' } }, null],
+]
+for (const [name, fm, want] of CLAIMS) {
+  test(`normalizeClaim: ${name}`, () => assert.deepEqual(normalizeClaim(fm), want))
+}
+
+test('an item row carries the claim, without the session id or the transcript pointer', () => {
+  const d = backlogFromVault({ items: [{ fm: { id: 'AAA-1', title: 't', status: 'IN PROGRESS', kind: 'story', ...FM } }], sprintDocs: [] })
+  const [row] = itemRows({ ...d, skipped: [] })
+  assert.deepEqual(row.claim, { by: 'lane-a', at: '2026-11-26T06:29:02Z', expires: '2026-11-26T18:29:02Z' })
+  assert.doesNotMatch(JSON.stringify(row), /session-uuid|claimTrigger/)
+})
+
+test('an unclaimed item row has a null claim', () => {
+  const d = backlogFromVault({ items: [{ fm: { id: 'AAA-2', title: 't', status: 'TO DO', kind: 'story' } }], sprintDocs: [] })
+  assert.equal(itemRows(d)[0].claim, null)
+})

@@ -4,11 +4,14 @@
 // the user dragged or resized inside each tab — so a widget added to a group later
 // appears in its tab on its own, and one removed from the code drops out.
 
-// Tab order. A group missing here still gets a tab, after these.
+// Tab order. A group missing here still gets a tab, after these. The sprint and backlog
+// views come first, then Flow, then the rest. Saved arrangements are keyed by
+// group id, never by position, so reordering here leaves every saved layout loadable.
 export const GROUPS = [
-  { id: 'flow', name: 'Flow' },
   { id: 'sprint', name: 'Sprint' },
   { id: 'backlog', name: 'Backlog' },
+  { id: 'flow', name: 'Flow' },
+  { id: 'questions', name: 'PO questions' },
   { id: 'memory', name: 'Memory' },
   { id: 'knowledge', name: 'Knowledge' },
   { id: 'usage', name: 'Usage' },

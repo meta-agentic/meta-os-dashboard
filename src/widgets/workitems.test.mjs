@@ -197,3 +197,61 @@ test('sorting by sprint orders the latest sprint naturally (S9 before S19), item
   const ids = [...m.el.querySelectorAll('.wi-row .wi-id')].map((n) => n.textContent)
   assert.deepEqual(ids, ['AAA-3', 'AAA-1', 'AAA-2'])
 })
+
+// A claimed item stands out — live (marker, holder, age), expired, or none.
+const CLAIMED = [
+  { id: 'AAA-1', title: 'live claim', status: 'IN PROGRESS', flowState: 'in-progress',
+    claim: { by: 'lane-a', at: new Date(Date.now() - 3 * 3600_000).toISOString(), expires: new Date(Date.now() + 3600_000).toISOString() } },
+  { id: 'AAA-2', title: 'expired claim', status: 'IN PROGRESS', flowState: 'in-progress',
+    claim: { by: 'lane-b', at: '2026-01-01T00:00:00Z', expires: '2026-01-01T12:00:00Z' } },
+  { id: 'AAA-3', title: 'unclaimed', status: 'TO DO', flowState: 'todo', claim: null },
+]
+const claimedApi = () => async (p) => (p.startsWith('/api/items') ? { items: CLAIMED } : { item: null })
+const rowOf = (m, id) => [...m.el.querySelectorAll('.wi-row')].find((r) => r.querySelector('.wi-id')?.textContent === id)
+
+test('a live claim shows a marker with the holder and the claim age', async () => {
+  globalThis.__api = claimedApi()
+  const m = await mount(loaded, W)
+  const chip = rowOf(m, 'AAA-1').querySelector('.wi-claim')
+  assert.ok(chip.classList.contains('live'))
+  assert.equal(chip.querySelector('.wi-claim-by').textContent, 'lane-a')
+  assert.equal(chip.querySelector('.wi-claim-age').textContent, '3h')
+})
+
+test('a row with a live claim is marked as claimed', async () => {
+  globalThis.__api = claimedApi()
+  const m = await mount(loaded, W)
+  assert.ok(rowOf(m, 'AAA-1').classList.contains('claimed'))
+})
+
+test('an expired claim shows as expired, and its row is not marked as claimed', async () => {
+  globalThis.__api = claimedApi()
+  const m = await mount(loaded, W)
+  const row = rowOf(m, 'AAA-2')
+  const chip = row.querySelector('.wi-claim')
+  assert.ok(chip.classList.contains('expired'))
+  assert.match(chip.textContent, /expired/)
+  assert.ok(!row.classList.contains('claimed'))
+})
+
+test('an unclaimed item shows no claim marker', async () => {
+  globalThis.__api = claimedApi()
+  const m = await mount(loaded, W)
+  const row = rowOf(m, 'AAA-3')
+  assert.equal(row.querySelector('.wi-claim'), null)
+  assert.ok(!row.classList.contains('claimed'))
+})
+
+test('sorting by claim puts live claims first, then expired, then unclaimed', async () => {
+  globalThis.__api = async (p) => (p.startsWith('/api/items') ? { items: [CLAIMED[2], CLAIMED[1], CLAIMED[0]] } : {})
+  const m = await mount(loaded, W)
+  await m.act(async () => { m.el.querySelector('button[title="Sort by claimed"]').click(); await flush() })
+  assert.deepEqual([...m.el.querySelectorAll('.wi-row .wi-id')].map((n) => n.textContent), ['AAA-1', 'AAA-2', 'AAA-3'])
+})
+
+test('the opened item shows its claim in the header', async () => {
+  globalThis.__api = async (p) => (p.startsWith('/api/items') ? { items: CLAIMED }
+    : { item: { ...CLAIMED[0], dependencies: [], parents: [], body: '' } })
+  const m = await mount({ spaces: ['aaa'], selected: new Set(['aaa']), focus: focus('AAA-1') }, W)
+  assert.equal(m.el.querySelector('.wi-ihead .wi-claim .wi-claim-by')?.textContent, 'lane-a')
+})

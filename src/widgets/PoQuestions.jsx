@@ -4,13 +4,12 @@ import { apiGet, isStatic } from '../api.js'
 // The questions only the PO can answer: every open decision in the vault's register,
 // oldest first, with its space, its recommendation and what it blocks. Read-only —
 // answering stays with the vault CLI, and an answered question is gone on the next read.
-// Local only: a static snapshot or a GitHub source has no register to read, so the panel
-// renders nothing there rather than a fake empty state.
+// Local only: a static snapshot or a GitHub source has no register to read, so there is
+// no tab there rather than a fake empty state (its own tab, not the top panel).
 
-export default function PoQuestions({ refreshSec = 30 }) {
+// The register, polled. App holds it: the tab's count badge and the widget read one copy.
+export function useDecisions(refreshSec = 30) {
   const [state, setState] = useState(null)
-  const [open, setOpen] = useState(null)
-
   useEffect(() => {
     if (isStatic) return undefined
     let live = true
@@ -19,6 +18,11 @@ export default function PoQuestions({ refreshSec = 30 }) {
     const t = setInterval(load, refreshSec * 1000)
     return () => { live = false; clearInterval(t) }
   }, [refreshSec])
+  return state
+}
+
+export default function PoQuestions({ state }) {
+  const [open, setOpen] = useState(null)
 
   if (!state || state.available === false) return null
   const rows = state.decisions ?? []

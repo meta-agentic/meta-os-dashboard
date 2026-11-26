@@ -100,7 +100,26 @@ export function normalizeStory(s) {
     estimate: normalizeEstimate(s.estimate),
     // The day the item turned DONE (`transition` writes it); the burndown is built from it.
     completed: isoDay(s.completed ?? null),
+    claim: normalizeClaim(s),
   }
+}
+
+// A session's claim on the item, as `backlog.py claim` writes it in the front-matter
+// (its claims module): `claimedBy: {name, id}`, `claimedAt` and
+// `claimExpires` as UTC ISO stamps. Read only: the holder's name and the two instants.
+// The session id and the transcript pointer (`claimTrigger`) stay in the vault. Null when
+// no named holder is recorded. YAML may hand an unquoted stamp over as a Date; an instant
+// that cannot be read is null, and the reader decides what that means (claimState).
+const SESSION_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/
+const instant = (v) => {
+  if (v instanceof Date) return Number.isNaN(v.getTime()) ? null : v.toISOString().replace('.000Z', 'Z')
+  return typeof v === 'string' && !Number.isNaN(Date.parse(v)) ? v : null
+}
+export function normalizeClaim(s) {
+  const by = s?.claimedBy
+  const name = by && typeof by === 'object' && !Array.isArray(by) ? by.name : null
+  if (typeof name !== 'string' || !SESSION_NAME.test(name)) return null
+  return { by: name, at: instant(s.claimedAt), expires: instant(s.claimExpires) }
 }
 
 // An unquoted `start: 2026-10-29` in front-matter parses to a Date, not a string; every
