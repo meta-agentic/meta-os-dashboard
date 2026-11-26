@@ -1,4 +1,4 @@
-// Stories by status bucket (To do, In progress, Done, No go, Other), split out of the Scrum
+// Stories by status bucket (To do, Refined, In progress, In review, Done, No go, Other), split out of the Scrum
 // Report. The spaces come already narrowed by the header's project filter: one space shows
 // that space, several are summed bucket by bucket, in the per-space bucket order.
 export function combineStatusMix(spaces) {

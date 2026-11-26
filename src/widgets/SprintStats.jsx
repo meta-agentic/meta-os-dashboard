@@ -134,7 +134,7 @@ export default function SprintStats({ data }) {
                       <td className="num">
                         <N v={r.deliveredPts} />
                         {r.drift && (
-                          <span className="warn small" title={`the close record says ${r.storedSP} SP · ${r.storedItems} items; live work now gives ${r.deliveredPts} SP · ${r.deliveredItems} items`}> ≠</span>
+                          <span className="warn small" title={`shown: the close record, ${r.storedSP} SP · ${r.storedItems} items; live work now gives ${r.livePts} SP · ${r.liveItems} items`}> ≠</span>
                         )}
                       </td>
                       <td className="num">

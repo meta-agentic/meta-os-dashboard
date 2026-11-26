@@ -8,9 +8,10 @@
 // date (work closed before the field existed), there is no series and the reason says
 // how many, rather than a curve with a silent hole. Scope added mid-sprint is counted from
 // day 0: the vault records when an item was committed only in prose, so the curve starts
-// at the sprint's full scope, the same figure as the "committed" tile.
+// at the sprint's full scope, the same figure as the "committed" tile. Work finished before
+// an open sprint started is not part of it at all (the window rule, delivery.mjs).
 import { sprintMembers } from './backlog-schema.mjs'
-import { sprintCredit } from './delivery.mjs'
+import { inWindow, sprintCredit } from './delivery.mjs'
 
 const DONE = 'DONE'
 const DAY = 864e5
@@ -23,7 +24,8 @@ const dayAfter = (iso) => new Date(Date.parse(iso + 'T00:00:00Z') + DAY).toISOSt
  * @param {string} today  ISO day, the last day the series may reach
  * @returns {{ series: object|null, reason: string|null }}
  */
-export function vaultBurndown(sprint, members, today) {
+export function vaultBurndown(sprint, allMembers, today) {
+  const members = inWindow(sprint, allMembers)
   if (!sprint?.start || !sprint?.end) return { series: null, reason: 'the sprint has no start or end date' }
   if (sprint.start > today) return { series: null, reason: 'the sprint has not started' }
 
