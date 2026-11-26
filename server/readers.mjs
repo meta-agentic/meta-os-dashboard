@@ -10,6 +10,7 @@ import YAML from 'yaml'
 import { annotateSchedule } from './cron.mjs'
 import { laneEstimate, sprintMembers } from './backlog-schema.mjs'
 import { loadBacklog } from './vault-backlog.mjs'
+import { deliveredIn } from './delivery.mjs'
 
 const run = promisify(execFile)
 const unavailable = (reason) => ({ available: false, reason })
@@ -584,18 +585,13 @@ export async function events(instanceRoot, backlogs, limit = 40) {
   }
 
   // Sprint open/close from the backlog mirrors. Closed sprints report their delivered
-  // count (stories DONE linked to the sprint) — sprint-close accounting, the only
+  // count as the close recorded it (delivery.mjs) — sprint-close accounting, the only
   // timestamps the mirror has. Future/planned sprints emit nothing.
   const now = Date.now()
   for (const b of backlogs ?? []) {
     const space = b.space
     try {
       const d = await loadBacklog(b)
-      const doneBySprint = new Map()
-      for (const s of d.stories) {
-        if (s.status !== 'DONE') continue
-        for (const sid of sprintMembers(s)) doneBySprint.set(sid, (doneBySprint.get(sid) ?? 0) + 1)
-      }
       for (const s of d.sprints) {
         const started = s.start && new Date(s.start).getTime() <= now
         if (started && ['IN PROGRESS', 'CLOSED'].includes(s.status))
@@ -603,7 +599,7 @@ export async function events(instanceRoot, backlogs, limit = 40) {
         if (s.status === 'CLOSED' && s.end)
           out.push({
             ts: s.end, source: 'backlog', actor: space, action: 'sprint closed',
-            target: s.name ?? s.id, note: `${doneBySprint.get(s.id) ?? 0} delivered`,
+            target: s.name ?? s.id, note: `${deliveredIn(s, d.stories).items} delivered`,
           })
       }
       sources.push({ name: `backlog:${space}`, available: true })
@@ -688,13 +684,10 @@ export async function lanes(backlogs) {
         points: { todo: pts(l.queues.todo), wip: pts(l.queues['in-progress']), done: pts(l.queues.done) },
       })).sort((a, b) => b.wip + b.depth - (a.wip + a.depth))
 
-      // Velocity: done stories per week over closed sprints that have dates.
+      // Velocity: delivered stories per week over closed sprints that have dates, each
+      // sprint's count as its close recorded it (delivery.mjs), so an item is counted once.
       const closed = closedSprints
-      const doneBySprint = new Map()
-      for (const s of d.stories) {
-        if (s.status !== 'DONE') continue
-        for (const sid of sprintMembers(s)) doneBySprint.set(sid, (doneBySprint.get(sid) ?? 0) + 1)
-      }
+      const doneBySprint = new Map(closed.map((s) => [s.id, deliveredIn(s, d.stories).items]))
       let throughput = null
       if (closed.length) {
         const weeks = closed.reduce((acc, s) => acc + Math.max((new Date(s.end) - new Date(s.start)) / 6048e5, 0.1), 0)

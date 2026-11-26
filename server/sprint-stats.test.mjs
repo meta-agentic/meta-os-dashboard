@@ -58,7 +58,7 @@ test('a sprint with no recorded commitment reports null, not zero', () => {
 
 test('a carried item is delivered once, by the sprint that finished it', () => {
   const s = statsOf(
-    [item('A-1', 'DONE', 5, ['S1', 'S2'])],
+    [item('A-1', 'DONE', 5, ['S1', 'S2'], { deliveredPoints: { S1: 0, S2: 5 } })],
     [sprint('S1', 'closed', '2026-09-01', '2026-09-14', ['A-1']), sprint('S2', 'closed', '2026-09-15', '2026-09-28')],
   )
   assert.equal(s.S1.deliveredPts, 0, 'the origin sprint delivers nothing for it')
@@ -112,8 +112,55 @@ test('drift flags a close record that no longer matches live work', () => {
   )
   assert.equal(s.S1.drift, true)
   assert.equal(s.S1.storedSP, 3)
-  assert.equal(s.S1.deliveredPts, 8)
+  assert.deepEqual([s.S1.deliveredItems, s.S1.deliveredPts], [1, 3], 'the close record is what is shown')
+  assert.deepEqual([s.S1.liveItems, s.S1.livePts], [2, 8], 'the live credit is kept beside it')
   assert.equal(s.S2.drift, false)
+})
+
+// The double count the close never makes: planned into S2 before it started, finished
+// during S1, so the S1 close credited it and its map names S1 alone.
+const early = (extra = {}) => item('A-1', 'DONE', 3, ['S2', 'S1'], { completed: '2026-09-10', deliveredPoints: { S1: 3 }, ...extra })
+const s1s2 = (s1 = {}, s2 = {}, s2state = 'closed') => [
+  sprint('S1', 'closed', '2026-09-01', '2026-09-14', ['A-1'], s1),
+  sprint('S2', s2state, '2026-09-15', '2026-09-28', ['A-1', 'A-2'], s2),
+]
+
+test('an item stamped into two sprints and finished before the second starts counts once, in the first', () => {
+  const s = statsOf([early(), item('A-2', 'DONE', 2, 'S2', { completed: '2026-09-20' })], s1s2())
+  assert.deepEqual([s.S1.deliveredItems, s.S1.deliveredPts], [1, 3])
+  assert.deepEqual([s.S2.deliveredItems, s.S2.deliveredPts], [1, 2], 'S2 delivered only A-2')
+  assert.equal(s.S2.carryItems, 0, 'finished in an earlier sprint is not carried over')
+})
+
+test('the same item without a map is still left out of an open sprint it was finished before', () => {
+  const s = statsOf([early({ deliveredPoints: undefined }), item('A-2', 'DONE', 2, 'S2', { completed: '2026-09-20' })], s1s2({}, {}, 'active'))
+  assert.deepEqual([s.S2.deliveredItems, s.S2.deliveredPts], [1, 2])
+})
+
+test("a closed sprint shows the close's stamps and its delivered list, not a recount", () => {
+  const s = statsOf(
+    [early({ deliveredPoints: undefined }), item('A-2', 'DONE', 2, 'S2', { completed: '2026-09-20' })],
+    s1s2({ deliveredSP: 3, deliveredItems: 1, delivered: ['A-1'] }, { deliveredSP: 2, deliveredItems: 1, delivered: ['A-2'], committedAtStart: ['A-2'] }),
+  )
+  assert.deepEqual([s.S2.deliveredItems, s.S2.deliveredPts, s.S2.deliveredSource], [1, 2, 'stamped'])
+  assert.equal(s.S2.drift, true, 'the legacy item without a map recounts in both; the stamp says otherwise')
+})
+
+test('an item without a map that names two sprints counts in each, as the vault rule reads it', () => {
+  const s = statsOf(
+    [item('A-1', 'DONE', 5, ['S1', 'S2'])],
+    [sprint('S1', 'closed', '2026-09-01', '2026-09-14', ['A-1']), sprint('S2', 'closed', '2026-09-15', '2026-09-28')],
+  )
+  assert.deepEqual([s.S1.deliveredPts, s.S2.deliveredPts], [5, 5], 'vaultlib.sprint_credit: no map, full credit wherever it is named')
+})
+
+test('the delivered points are the slice the sprint earned, not the whole estimate', () => {
+  const s = statsOf(
+    [item('A-1', 'DONE', 5, ['S1', 'S2'], { completed: '2026-09-20', deliveredPoints: { S1: 2, S2: 3 } })],
+    [sprint('S1', 'closed', '2026-09-01', '2026-09-14', ['A-1']), sprint('S2', 'active', '2026-09-15', '2026-09-28')],
+  )
+  assert.deepEqual([s.S1.deliveredItems, s.S1.deliveredPts], [0, 2])
+  assert.deepEqual([s.S2.deliveredItems, s.S2.deliveredPts], [1, 3])
 })
 
 test('an active sprint is never flagged as drifting', () => {

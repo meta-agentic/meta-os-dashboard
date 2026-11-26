@@ -24,7 +24,7 @@ test('work finished after the planned end extends the series (an overrun)', () =
   assert.equal(r.series.days.at(-1).remaining, 0)
 })
 
-test('work finished before the start counts from day 0', () => {
+test('work finished before an open sprint started is not part of it', () => {
   const r = vaultBurndown(S, [story('A', 'DONE', 3, '2026-01-01'), story('B', 'TO DO', 1)], '2026-01-07')
   assert.equal(r.series.days[0].remaining, 1)
 })

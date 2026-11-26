@@ -9,17 +9,20 @@ import path from 'node:path'
 import { normalizeBacklog, sprintMembers } from './backlog-schema.mjs'
 import { loadBacklog } from './vault-backlog.mjs'
 import { sprintStats } from './sprint-stats.mjs'
-import { deliveredIn } from './delivery.mjs'
+import { deliveredIn, inWindow } from './delivery.mjs'
 import { vaultBurndown } from './burndown-vault.mjs'
 
 const WEEK = 6048e5
 const DONE = 'DONE'
+// Every workflow state has its own bucket; REFINED and IN REVIEW are not folded into Other.
 const bucketOf = (status) =>
   status === DONE ? 'Done'
     : status === 'IN PROGRESS' ? 'In progress'
-      : status === 'TO DO' || status === 'PLANNED' ? 'To do'
-        : status === 'NO GO' ? 'No go'
-          : 'Other'
+      : status === 'IN REVIEW' ? 'In review'
+        : status === 'REFINED' ? 'Refined'
+          : status === 'TO DO' || status === 'PLANNED' ? 'To do'
+            : status === 'NO GO' ? 'No go'
+              : 'Other'
 
 function membersOf(sprint, stories) {
   const ids = new Set(sprint.issues)
@@ -83,12 +86,13 @@ export function reportFromData(space, doc, daily = null) {
     cur.points += s.storyPoints ?? 0
     mix.set(b, cur)
   }
-  const ORDER = ['To do', 'In progress', 'Done', 'No go', 'Other']
+  const ORDER = ['To do', 'Refined', 'In progress', 'In review', 'Done', 'No go', 'Other']
   const statusMix = [...mix.values()].sort((a, b) => ORDER.indexOf(a.label) - ORDER.indexOf(b.label))
 
   // Scorecard + honest burndown for the active sprint.
   const active = sprints.find((sp) => sp.status === 'IN PROGRESS')
-  const activeMembers = active ? membersOf(active, stories) : []
+  // The scope excludes work finished before the start, as the burndown does (delivery.mjs).
+  const activeMembers = active ? inWindow(active, membersOf(active, stories)) : []
   const activeDonePts = active ? deliveredIn(active, activeMembers).pts : 0
   const activeCommittedPts = sum(activeMembers, (s) => s.storyPoints)
   const closed = sprintRows.filter((r) => r.status === 'CLOSED' && r.start && r.end)
