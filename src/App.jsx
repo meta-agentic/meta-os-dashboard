@@ -28,6 +28,7 @@ import Outputs from './widgets/Outputs.jsx'
 import Usage from './widgets/Usage.jsx'
 import Engines from './widgets/Engines.jsx'
 import Nav from './Nav.jsx'
+import TabBar from './TabBar.jsx'
 import Distribution from './widgets/Distribution.jsx'
 import FilePreview from './widgets/FilePreview.jsx'
 import Gantt from './widgets/Gantt.jsx'
@@ -36,7 +37,8 @@ import StatusMix from './widgets/StatusMix.jsx'
 import WorkItems from './widgets/WorkItems.jsx'
 import AdrRegister from './widgets/AdrRegister.jsx'
 import Flow from './widgets/Flow.jsx'
-import PoQuestions from './widgets/PoQuestions.jsx'
+import PoQuestions, { useDecisions } from './widgets/PoQuestions.jsx'
+import { openCount } from './widgets/poQuestionsShared.js'
 import { apiFetch, isStatic } from './api.js'
 import { useAuth } from './auth/AuthProvider.jsx'
 import Onboarding from './Onboarding.jsx'
@@ -88,7 +90,12 @@ const WIDGETS = [
   // Read-only, on demand (/api/adrs, /api/adr) like Work Items, and narrowed by the
   // same project filter. Its home is the backlog tab: the vault's read-only views.
   { i: 'adr-register', group: 'backlog', title: 'ADR Register', render: (d, ctx) => <AdrRegister selected={ctx?.selectedProjects} roots={d.meta?.roots} /> },
+  // Its own tab, out of the top panel. App polls the register (useDecisions) so
+  // the tab's badge and the widget read one copy; no register to read, no tab (onlyWhen).
+  { i: 'po-questions', group: 'questions', title: 'PO questions', onlyWhen: (ctx) => ctx.openQuestions != null, render: (d, ctx) => <PoQuestions state={ctx?.decisions} /> },
 ]
+
+const TITLES = Object.fromEntries(WIDGETS.map((w) => [w.i, w.title]))
 
 // Default size and size floor per widget: the auto-arranged tabs place each widget at
 // this size, and a resize can never go below the floor.
@@ -125,6 +132,7 @@ const SIZES = Object.fromEntries([
   { i: 'engines', x: 0, y: 101, w: 6, h: 9, minW: 4, minH: 6 },
   { i: 'harness', x: 6, y: 101, w: 6, h: 9, minW: 4, minH: 6 },
   { i: 'flow', x: 0, y: 0, w: 12, h: 22, minW: 6, minH: 10 },
+  { i: 'po-questions', x: 0, y: 0, w: 12, h: 14, minW: 6, minH: 6 },
 ].map(({ i, ...size }) => [i, size]))
 
 const PREFS_KEY = 'meta-os.prefs.v1'
@@ -203,7 +211,7 @@ const Grid = WidthProvider(GridLayout)
 // Widgets that lay themselves out against the height they are given (a graph canvas,
 // a scrolling table, a chart that fills its panel). They have no natural height, so
 // the one-column view gives them a fixed one.
-const FILL_HEIGHT = new Set(['graph', 'files', 'work-items', 'adr-register', 'distribution', 'flow'])
+const FILL_HEIGHT = new Set(['graph', 'files', 'work-items', 'adr-register', 'distribution', 'flow', 'po-questions'])
 
 // Below this width the grid gives way to one column of widgets in the saved order
 // (stackLayout), each as tall as its content, with nothing to drag: twelve columns on a phone leave each widget about a hundred pixels wide.
@@ -232,6 +240,8 @@ export default function App() {
   const [showGridAnyway, setShowGridAnyway] = useState(false)
   const [navOpen, setNavOpen] = useState(false)
   const narrow = useNarrow()
+  const decisions = useDecisions(prefs.refreshSec)
+  const openQuestions = openCount(decisions)
   const auth = useAuth()
   const userKey = auth?.user?.sub || auth?.user?.email || 'local'
   const serverReady = useRef(false)
@@ -321,7 +331,12 @@ export default function App() {
     return () => clearTimeout(t)
   }, [layouts, activeId, userKey])
 
-  const tabs = tabsFor(WIDGETS)
+  // A widget with `onlyWhen` is left out (and so is its tab, when it is the tab's only one)
+  // until its condition holds; a saved arrangement for it is kept either way.
+  const present = WIDGETS.filter((w) => !w.onlyWhen || w.onlyWhen({ openQuestions }))
+  const tabs = tabsFor(present)
+  // A count on a tab's name, in place of its widget count, when there is something to act on.
+  const badges = { questions: openQuestions }
   const active = tabs.find((t) => t.id === activeId) ?? tabs[0]
   const activeLayout = reconcile(layouts[active.id], active.ids, SIZES)
   const showTab = (id) => setState((s) => ({ ...s, activeId: id }))
@@ -388,11 +403,11 @@ export default function App() {
   const showOnboarding = onb.steps.length > 0 && !onboarding.dismissed
   const suppressGrid = onb.fresh && !onboarding.dismissed && !showGridAnyway
 
-  const visible = WIDGETS.filter((w) => w.group === active.id)
+  const visible = present.filter((w) => w.group === active.id)
   const projects = projectOptions(data)
 
   const dens = DENSITY[prefs.density] || DENSITY.comfortable
-  const renderWidget = (w) => w.render(scopeToProject(data, w.i, selectedProjects), { selectedProjects, itemsFocus, focusItems })
+  const renderWidget = (w) => w.render(scopeToProject(data, w.i, selectedProjects), { selectedProjects, itemsFocus, focusItems, decisions })
 
   return (
     <>
@@ -422,8 +437,6 @@ export default function App() {
         </button>
       </header>
 
-      <PoQuestions refreshSec={prefs.refreshSec} />
-
       {projects.length > 0 && (
         <div className="projectbar" role="group" aria-label="Project filter">
           <span className="dim small">projects</span>
@@ -447,21 +460,7 @@ export default function App() {
           )}
         </div>
       )}
-      <nav className="tabbar" role="tablist">
-        {tabs.map((t) => (
-          <div key={t.id} className={'tab' + (t.id === active.id ? ' active' : '')}>
-            <button
-              className="tab-name"
-              role="tab"
-              aria-selected={t.id === active.id}
-              onClick={() => showTab(t.id)}
-              title={t.ids.map((i) => WIDGETS.find((w) => w.i === i)?.title ?? i).join(' · ')}
-            >
-              {t.name} <span className="tab-n">{t.ids.length}</span>
-            </button>
-          </div>
-        ))}
-      </nav>
+      <TabBar tabs={tabs} activeId={active.id} onShow={showTab} badges={badges} titles={TITLES} />
 
 
       {showOnboarding && (

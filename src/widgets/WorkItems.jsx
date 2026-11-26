@@ -2,6 +2,7 @@ import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 're
 import Markdown from 'markdown-to-jsx'
 import { apiGet, isStatic } from '../api.js'
 import QuadrantPlot from './QuadrantPlot.jsx'
+import { claimAge, claimState, cmpClaim } from './claim.js'
 
 // Fixed row height is what makes the window arithmetic exact — keep in step with
 // .wi-row in styles.css.
@@ -29,6 +30,7 @@ const COLS = [
   { k: 'space', label: 'project', w: '4.5rem', cmp: (a, b) => cmpText(a.space, b.space) },
   { k: 'id', label: 'id', w: '7.5rem', cmp: (a, b) => cmpText(idKey(a.id), idKey(b.id)) },
   { k: 'title', label: 'title', w: 'auto', cmp: (a, b) => cmpText(a.title, b.title) },
+  { k: 'claim', label: 'claimed', w: '9.5rem', cmp: cmpClaim },
   { k: 'status', label: 'status', w: '7.5rem', cmp: (a, b) => cmpText(a.flowState ?? 'z', b.flowState ?? 'z') || cmpText(a.status, b.status) },
   { k: 'sprint', label: 'sprint', w: '6.5rem', cmp: cmpSprint },
   { k: 'kind', label: 'kind', w: '5.5rem', cmp: (a, b) => cmpText(a.kind, b.kind) },
@@ -42,6 +44,25 @@ function Pill({ status, flowState, small }) {
   return (
     <span className={`wi-pill ${FLOW[flowState] ?? 'none'}${small ? ' small' : ''}`}>
       {String(status ?? '').toLowerCase() || '—'}
+    </span>
+  )
+}
+
+// Who holds the item and for how long, from the claim the vault records. A live
+// claim is a filled marker with the holder's session name and the claim's age; an expired
+// one says so, so a lapsed claim is never read as work in progress.
+export function ClaimChip({ claim }) {
+  const state = claimState(claim)
+  if (!state) return null
+  const age = claimAge(claim)
+  const title = `${state === 'live' ? 'claimed' : 'claim expired'}: ${claim.by}`
+    + (claim.at ? `, since ${claim.at}` : '') + (claim.expires ? `, until ${claim.expires}` : '')
+  return (
+    <span className={`chip wi-claim ${state}`} title={title}>
+      <span className="wi-claim-dot" aria-hidden="true">{state === 'live' ? '●' : '○'}</span>
+      {state === 'expired' && <span className="wi-claim-x">expired</span>}
+      <span className="mono wi-claim-by">{claim.by}</span>
+      {age && <span className="wi-claim-age">{age}</span>}
     </span>
   )
 }
@@ -138,7 +159,7 @@ function Table({ rows, sort, onSort, onOpen, scrollPos, selId, revealed }) {
           {rows.slice(first, last).map((r) => (
             <tr
               key={r.space + r.id}
-              className={'wi-row' + (r.id === selId ? ' sel' : '')}
+              className={'wi-row' + (r.id === selId ? ' sel' : '') + (claimState(r.claim) === 'live' ? ' claimed' : '')}
               aria-current={r.id === selId ? 'true' : undefined}
               tabIndex={0}
               onClick={() => onOpen(r.id, r.space)}
@@ -147,6 +168,7 @@ function Table({ rows, sort, onSort, onOpen, scrollPos, selId, revealed }) {
               <td className="mono dim">{r.space}</td>
               <td className="wi-id mono">{r.id}</td>
               <td className="wi-title" title={r.title}>{r.title}</td>
+              <td className="wi-claim-cell"><ClaimChip claim={r.claim} /></td>
               <td><Pill status={r.status} flowState={r.flowState} /></td>
               <td className="wi-sprint-cell">{sprintsOf(r.sprint).length ? <SprintChip sprint={r.sprint} /> : <span className="dim">—</span>}</td>
               <td className="dim">{r.kind ?? ''}</td>
@@ -204,6 +226,7 @@ function ItemHeader({ it, onOpen, current }) {
           <button className="chip wi-link mono wi-id" onClick={() => onOpen(it.id)} title={`Open ${it.id}`}>{it.id}</button>
         )}
         {known && <Pill status={it.status} flowState={it.flowState} />}
+        <ClaimChip claim={it.claim} />
         {it.kind && <span className="chip">{it.kind}</span>}
         {it.priority && <span className="chip">{it.priority}</span>}
         {it.project && <span className="chip mono">{it.project}</span>}

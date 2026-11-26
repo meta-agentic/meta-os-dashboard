@@ -1811,3 +1811,19 @@ th.num .wi-sort { justify-content: flex-end; }
 .wi-skipped { margin: 0.25rem 0 0.4rem; }
 .wi-skipped summary { cursor: pointer; }
 .wi-skipped ul { margin: 0.25rem 0 0; padding-left: 1.1rem; }
+
+/* A claimed work item. The row keeps its own colours; the claim column and a
+   left rule say who holds it. An expired claim is dimmed and struck, never read as live. */
+.wi-row.claimed:not(.sel) td:first-child { box-shadow: inset 3px 0 0 var(--wip); }
+.wi-claim { display: inline-flex; align-items: center; gap: 0.3em; max-width: 100%; overflow: hidden; white-space: nowrap; font-size: 0.7rem; }
+.wi-claim.live { color: var(--wip); border-color: color-mix(in srgb, var(--wip) 55%, transparent); background: color-mix(in srgb, var(--wip) 12%, transparent); }
+.wi-claim.expired { color: var(--dim); border-style: dashed; }
+.wi-claim.expired .wi-claim-by { text-decoration: line-through; }
+.wi-claim-by { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.wi-claim-age { opacity: 0.8; font-variant-numeric: tabular-nums; }
+.wi-claim-x { text-transform: uppercase; font-size: 0.6rem; letter-spacing: 0.04em; }
+/* The PO questions live in their own tab, inside a widget card. */
+.wgt .poq { margin: 0; padding: 0; border: none; background: none; height: 100%; display: flex; flex-direction: column; }
+.wgt .poq-title { display: none; }
+.wgt .poq-list { max-height: none; flex: 1; min-height: 0; }
+.tab-badge { margin-left: 0.35rem; padding: 0 0.45em; border-radius: 999px; font-size: 0.66rem; line-height: 1.5; font-weight: 600; color: var(--bg, #fff); background: var(--warn); font-variant-numeric: tabular-nums; }

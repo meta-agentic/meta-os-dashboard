@@ -28,6 +28,7 @@ const row = (s, blockers) => ({
   id: s.id, title: s.title, status: s.status, flowState: STATE[s.status] ?? null,
   kind: s.kind, storyPoints: s.storyPoints, priority: s.priority, epic: s.epic, project: s.project,
   sprint: s.sprint, labels: s.labels, blockedBy: blockers.length ? blockers : null,
+  claim: s.claim ?? null,
 })
 
 export function itemRows(d) {
